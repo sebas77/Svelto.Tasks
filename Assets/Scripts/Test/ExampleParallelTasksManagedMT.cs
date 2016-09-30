@@ -1,0 +1,89 @@
+using System.Collections;
+using Svelto.Tasks;
+using UnityEngine;
+
+namespace Test.MultiThread
+{
+    class LoadSomething : IEnumerable, IChainLink<SomeData>
+    {
+        public SomeData token { set; private get; }
+
+        public LoadSomething(WWW wWW)
+        {
+            this.wWW = wWW;
+            task = TaskRunner.Instance.AllocateNewTaskRoutine();
+            task.SetScheduler(StandardSchedulers.mainThreadScheduler).SetEnumeratorProvider(DoIt);
+        }
+
+        public IEnumerator GetEnumerator()
+        {
+            yield return task.Start(); //Continuation! The task will continue on the main thread scheduler!
+        }
+
+        IEnumerator DoIt()
+        {
+            yield return new WWWEnumerator(wWW);
+
+            foreach (string s in wWW.responseHeaders.Values)
+                Debug.Log(s);
+        }
+
+        WWW             wWW;
+        ITaskRoutine    task;
+    }
+
+    public class ExampleParallelTasksManagedMT : MonoBehaviour 
+    {
+        // Use this for initialization
+        void Start () 
+        {
+            ParallelTaskCollection pt = new ParallelTaskCollection();
+            SerialTaskCollection   st = new SerialTaskCollection();
+            
+            st.Add(Print("s1"));
+            st.Add(Print("s2"));
+            st.Add(Print("s3"));
+            st.Add(Print("s4"));
+            
+            pt.Add(Print("p1")).Add(Print("p2"));
+            pt.Add(new LoadSomething(new WWW("www.google.com"))); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
+            pt.Add(new LoadSomething(new WWW("http://download.thinkbroadband.com/5MB.zip")));
+            pt.Add(new LoadSomething(new WWW("www.ebay.com")));
+            pt.Add(Print("p3")).Add(Print("p4")).Add(st).Add(Print("p5")).Add(Print("p6")).Add(Print("p7"));
+
+            TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(new MultiThreadRunner()).SetEnumerator(pt).Start(); //running on another thread!
+        }
+
+        void Update()
+        {
+            if (Input.anyKeyDown)
+                if (_paused == false)
+                {
+                    Debug.LogWarning("Paused!");
+                    TaskRunner.Instance.PauseAllTasks();
+                    _paused = true;
+                }
+                else
+                {
+                    Debug.LogWarning("Resumed!");
+                    _paused = false;
+                    TaskRunner.Instance.ResumeAllTasks();
+                }
+        }
+
+        void OnApplicationQuit()
+        {
+            StandardSchedulers.StopSchedulers(); //Unity will get stuck for ever if you don't do this
+        }
+
+        IEnumerator Print(string i)
+        {
+            Debug.Log(i);
+            yield return null;
+        }
+
+        int i;
+
+        bool _paused;
+    }
+}
