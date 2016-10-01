@@ -9,5 +9,7 @@ namespace Svelto.Tasks
         void	StartCoroutine(IEnumerator task);
 
         void 	StopAllCoroutines();
+
+        int numberOfRunningTasks { get; }
     }
 }

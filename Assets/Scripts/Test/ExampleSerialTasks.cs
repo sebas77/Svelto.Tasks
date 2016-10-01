@@ -4,11 +4,6 @@ using UnityEngine;
 
 public class ExampleSerialTasks : MonoBehaviour 
 {
-	int i;
-	
-	bool variableThatCouldHaveBeenUseful;
-	
-	// Use this for initialization
 	void Start () 
 	{
 		SerialTaskCollection st = new SerialTaskCollection();

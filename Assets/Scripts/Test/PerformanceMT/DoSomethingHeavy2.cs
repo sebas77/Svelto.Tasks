@@ -11,7 +11,6 @@ namespace PerformanceMT
         {
             TaskRunner.Instance.RunOnSchedule(StandardSchedulers.multiThreadScheduler, CalculateAndShowNumber());
             direction = new Vector2(Mathf.Cos(Random.Range(0, 3.14f)) / 1000, Mathf.Sin(Random.Range(0, 3.14f) / 1000));
-            _task = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.mainThreadScheduler);
         }
 
         IEnumerator CalculateAndShowNumber() //this will run on another thread
@@ -24,7 +23,7 @@ namespace PerformanceMT
 
                 long result = (long)enumerator.Current * 333;
 
-                yield return _task.SetEnumerator(SetColor(result)).Start(); //yep the thread will wait for this other task to finish
+                yield return SetColor(result).Run(); //yep the thread will wait for this other task to finish on the mainThreadScheduler
             }
         }
 
@@ -69,8 +68,6 @@ namespace PerformanceMT
 
             yield return --a;
         }
-
-        ITaskRoutine _task;
 
         static System.Random rnd1 = new System.Random(); //not a problem, multithreaded coroutine are threadsafe within the same runner
     }

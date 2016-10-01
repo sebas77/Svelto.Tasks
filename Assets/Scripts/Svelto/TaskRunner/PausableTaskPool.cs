@@ -9,29 +9,7 @@ namespace Svelto.Tasks.Internal
         void PushTaskBack(PausableTask task);
     }
 
-    class PausableTaskPool : IPausableTaskPool
-    {
-        public ITaskRoutine RetrieveTaskFromPool()
-        {
-            if (_pool.Count > 0) return _pool.Pop();
-
-            return CreateEmptyTask();
-        }
-
-        public void PushTaskBack(PausableTask task)
-        {
-            _pool.Push(task);
-        }
-
-        ITaskRoutine CreateEmptyTask()
-        {
-            return new PausableTask(this);
-        }
-
-        Stack<PausableTask> _pool = new Stack<PausableTask>();
-    }
-#if _DEPRECATED
-    class PausableTaskPoolThreadSafe : IPausableTaskPool
+    class PausableTaskPool: IPausableTaskPool
     {
         public ITaskRoutine RetrieveTaskFromPool()
         {
@@ -59,5 +37,4 @@ namespace Svelto.Tasks.Internal
 
         ThreadSafeQueue<PausableTask> _pool = new ThreadSafeQueue<PausableTask>();
     }
-#endif    
 }

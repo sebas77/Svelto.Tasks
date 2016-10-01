@@ -5,24 +5,24 @@ namespace Svelto.Tasks
 {
     public static class TaskRunnerExtensions
     {
-        public static void RunOnSchedule(this IEnumerable enumerable, IRunner runner)
+        public static IEnumerator RunOnSchedule(this IEnumerable enumerable, IRunner runner)
         {
-            enumerable.GetEnumerator().RunOnSchedule(runner);
+            return enumerable.GetEnumerator().RunOnSchedule(runner);
         }
 
-        public static void Run(this IEnumerable enumerable)
+        public static IEnumerator Run(this IEnumerable enumerable)
         {
-            enumerable.GetEnumerator().Run();
+            return enumerable.GetEnumerator().Run();
         }
 
-        public static void RunOnSchedule(this IEnumerator enumerator, IRunner runner)
+        public static IEnumerator RunOnSchedule(this IEnumerator enumerator, IRunner runner)
         {
-            TaskRunner.Instance.RunOnSchedule(runner, enumerator);
+            return TaskRunner.Instance.RunOnSchedule(runner, enumerator);
         }
 
-        public static void Run(this IEnumerator enumerator)
+        public static IEnumerator Run(this IEnumerator enumerator)
         {
-            TaskRunner.Instance.Run(enumerator);
+            return TaskRunner.Instance.Run(enumerator);
         }
 
         public static ITaskRoutine PrepareOnSchedule(this IEnumerable enumerable, IRunner runner)

@@ -39,24 +39,24 @@ public class TaskRunner
         _runner.paused = false;
     }
 
-    public void Run(Func<IEnumerator> taskGenerator)
+    public IEnumerator Run(Func<IEnumerator> taskGenerator)
     {
-        _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumeratorProvider(taskGenerator).Start();
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumeratorProvider(taskGenerator).Start();
     }
 
-    public void Run(IEnumerator taskGenerator)
+    public IEnumerator Run(IEnumerator task)
     {
-        _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumerator(taskGenerator).Start();
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumerator(task).Start();
     }
 
-    public void RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
+    public IEnumerator RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
     {
-        _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).Start();
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).Start();
     }
 
-    public void RunOnSchedule(IRunner runner, IEnumerator taskGenerator)
+    public IEnumerator RunOnSchedule(IRunner runner, IEnumerator task)
     {
-        _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(taskGenerator).Start();
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
     }
 
     public void StopDefaultSchedulerTasks()

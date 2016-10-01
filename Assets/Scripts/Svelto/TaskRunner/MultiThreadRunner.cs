@@ -88,6 +88,7 @@ namespace Svelto.Tasks
 
         public bool paused { set { _paused = value; Thread.MemoryBarrier(); } get { Thread.MemoryBarrier(); return _paused; } }
         public bool stopped { private set { _stopped = value; Thread.MemoryBarrier(); } get { Thread.MemoryBarrier(); return _stopped; } }
+        public int numberOfRunningTasks { get { return _coroutines.Count; } }
 
         FasterList<IEnumerator>         _coroutines = new FasterList<IEnumerator>();
         ThreadSafeQueue<IEnumerator>    _newTaskRoutines = new ThreadSafeQueue<IEnumerator>();

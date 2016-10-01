@@ -15,6 +15,8 @@ namespace Svelto.Tasks.Internal
         public bool paused { set; get; }
         public bool stopped { private set; get; }
 
+        public int numberOfRunningTasks { get { return _coroutines.Count; } }
+
         public MonoRunner()
         {
             _coroutines = new FasterList<IEnumerator>(NUMBER_OF_INITIAL_COROUTINE);
@@ -36,13 +38,14 @@ namespace Svelto.Tasks.Internal
         /// TaskRunner doesn't stop executing tasks between scenes
         /// it's the final user responsability to stop the tasks if needed
         /// </summary>
-        public void StopAllCoroutines() //this is not thread safe yet, can't be called from another thread
+        public void StopAllCoroutines() 
         {
             stopped = true; _mustStop = true;
 
             _runnerBehaviour.StopAllCoroutines();
             
-            _coroutines.DeepClear();
+            //note: _coroutines will be cleaned by the single tasks stopping silently.
+            //in this way they will be put back to the pool.
             _newTaskRoutines.Clear();
 
             _runnerBehaviour.StartCoroutine(StartCoroutineInternal());

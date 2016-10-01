@@ -118,9 +118,10 @@ namespace Svelto.Tasks.Internal
 
         public void Reset()
         {
-            _enumerator = null;
+            _pendingEnumerator = null;
             _taskGenerator = null;
             _taskEnumerator = null;
+            _runner = null;
         }
 
         public void Pause()
@@ -131,14 +132,6 @@ namespace Svelto.Tasks.Internal
         public void Resume()
         {
             _paused = false;
-        }
-
-        public void Retry()
-        {
-            _stopped = false;
-            _completed = false;
-
-            _runner.StartCoroutine(this);
         }
 
         public IEnumerator Start(Action<PausableTaskException> onFail = null, Action onStop = null)
@@ -153,6 +146,8 @@ namespace Svelto.Tasks.Internal
 
         public void Stop()
         {
+            //pay attention, completed cannot be put to true here, because it the task restarts
+            //it must ends naturally through the fact that _stopped is true
             _stopped = true;
         }
 
@@ -167,13 +162,13 @@ namespace Svelto.Tasks.Internal
             if (_taskGenerator == null && _taskEnumerator == null)
                 throw new Exception("An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
 
-            Stop();
-            Resume();
+            Resume(); //if it's paused, must resume
 
             IEnumerator enumerator = _taskEnumerator ?? _taskGenerator();
 
             if (_completed == false)
             {
+                _stopped = true; //if it's reused, must stop naturally
                 _pendingEnumerator = enumerator;
                 _pendingRestart = true;
             }

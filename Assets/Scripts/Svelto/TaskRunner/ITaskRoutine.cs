@@ -14,6 +14,6 @@ namespace Svelto.Tasks
         void Pause();
         void Resume();
         void Stop();
-        void Retry();
+
     }
 }

@@ -18,5 +18,7 @@ namespace Svelto.Tasks.Internal
         {
             while (task.MoveNext() == true);
         }
+
+        public int numberOfRunningTasks { get { return -1; } }
     }
 }

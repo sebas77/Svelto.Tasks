@@ -60,7 +60,7 @@ namespace Test.MultiThread
         MultiThreadRunner MTRunner = new MultiThreadRunner();
     }
 
-    class LoadSomething : IEnumerable, IChainLink<SomeData>
+    class LoadSomething : IEnumerable
     {
         public SomeData token { set; private get; }
 
