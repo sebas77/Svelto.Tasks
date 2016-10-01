@@ -7,7 +7,6 @@ public class SpawnObjects : MonoBehaviour
     // Use this for initialization
     void Start () 
     {
-        Application.stackTraceLogType = StackTraceLogType.None;
         Application.targetFrameRate = -1;
         
         parent1 = new GameObject();
