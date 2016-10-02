@@ -9,6 +9,7 @@ namespace PerformanceMT
         void Start()
         {
             Application.targetFrameRate = -1;
+            QualitySettings.vSyncCount = 0;
 
             var parent1 = new GameObject();
 

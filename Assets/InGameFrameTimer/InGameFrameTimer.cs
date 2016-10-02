@@ -28,9 +28,11 @@ public class InGameFrameTimer : MonoBehaviour {
     public bool ActivatedOnF2 = true;
     private long _memUsed = 0;
 
+    public Shader shader;
+
     void Start() {
 
-        _currentRefreshRate = Screen.currentResolution.refreshRate;
+        _currentRefreshRate = 30;
 
         if (DisableVsync) {
             QualitySettings.vSyncCount = 0;
@@ -40,10 +42,10 @@ public class InGameFrameTimer : MonoBehaviour {
             Application.targetFrameRate = _currentRefreshRate * 2;
         }
         else {
-            Application.targetFrameRate = 2000;
+            Application.targetFrameRate = -1;
         }
 
-        _mat = new Material("Shader \"Lines/Colored Blended\" {" + "SubShader {Tags { \"RenderType\"=\"Opaque\" } Pass { " + "ZWrite On ZTest LEqual Cull Off Fog { Mode Off } " + "BindChannels {" + "Bind \"vertex\", vertex Bind \"color\", color }" + "} } }");
+        _mat = new Material(shader);
 
     }
 
@@ -56,6 +58,7 @@ public class InGameFrameTimer : MonoBehaviour {
         LabelWithShadow(new Rect(BottomLeftPosX + GraphLength + 5, Screen.height - (1 + BottomLeftPosY + (1f / (_currentRefreshRate) * 1000) * GraphScale) - 10, 100, 20), _currentRefreshRate + " fps");
         LabelWithShadow(new Rect(BottomLeftPosX + GraphLength + 5, Screen.height - (1 + BottomLeftPosY + (1f / (_currentRefreshRate * 2) * 1000) * GraphScale) - 10, 100, 20), _currentRefreshRate * 2 + " fps");
         LabelWithShadow(new Rect(BottomLeftPosX + GraphLength + 5, Screen.height - (1 + BottomLeftPosY + (1f / (_currentRefreshRate * 4) * 1000) * GraphScale) - 10, 100, 20), _currentRefreshRate * 4 + " fps");
+        LabelWithShadow(new Rect(BottomLeftPosX + GraphLength + 5, Screen.height - (1 + BottomLeftPosY + (1f / (_currentRefreshRate * 8) * 1000) * GraphScale) - 10, 100, 20), _currentRefreshRate * 8 + " fps");
 
         if (ShowGcCollectedAmount) {
             for (int i = 0; i < _gcCollected.Count; i++) {
@@ -144,21 +147,15 @@ public class InGameFrameTimer : MonoBehaviour {
             Vector3 stop = _stopPos[i];
 
             Color greenColor;
-            Color blueColor;
             if (_gcRanThatFrame[i]) {
-                blueColor = Color.magenta;
                 greenColor = Color.magenta;
             }
             else {
-                blueColor = Color.blue;
                 greenColor = Color.green;
             }
 
-            GL.Color(blueColor);
-            GL.Vertex(start);
-            GL.Vertex(middle);
             GL.Color(greenColor);
-            GL.Vertex(middle);
+            GL.Vertex(start);
             GL.Vertex(stop);
 
             _startPos[i] = new Vector3(start.x - (1 / width), start.y);
@@ -170,6 +167,9 @@ public class InGameFrameTimer : MonoBehaviour {
 
         GL.Vertex(new Vector3((BottomLeftPosX + 0.5f) / width, (0.5f + BottomLeftPosY) / heigth));
         GL.Vertex(new Vector3((BottomLeftPosX + GraphLength + 1f) / width, (0.5f + BottomLeftPosY) / heigth));
+
+        GL.Vertex(new Vector3((BottomLeftPosX + 0.5f) / width, (1.5f + BottomLeftPosY + (1f / (_currentRefreshRate * 8) * 1000) * GraphScale) / heigth));
+        GL.Vertex(new Vector3((BottomLeftPosX + GraphLength + 1f) / width, (1.5f + BottomLeftPosY + (1f / (_currentRefreshRate * 8) * 1000) * GraphScale) / heigth));
 
         GL.Vertex(new Vector3((BottomLeftPosX + 0.5f) / width, (1.5f + BottomLeftPosY + (1f / (_currentRefreshRate * 4) * 1000) * GraphScale) / heigth));
         GL.Vertex(new Vector3((BottomLeftPosX + GraphLength + 1f) / width, (1.5f + BottomLeftPosY + (1f / (_currentRefreshRate * 4) * 1000) * GraphScale) / heigth));
@@ -196,10 +196,4 @@ public class InGameFrameTimer : MonoBehaviour {
         GUI.color = oldColor;
         GUI.Label(new Rect(rect.x, rect.y, rect.width, rect.height), s);
     }
-
-
-
-
-
-
 }

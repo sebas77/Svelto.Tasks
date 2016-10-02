@@ -1,0 +1,13 @@
+Library
+/Assets/VSCode
+test_Data
+/ProjectSettings
+/.vscode/launch.json
+/Assembly-CSharp-Editor.csproj
+/Assembly-CSharp-firstpass.csproj
+/Assembly-CSharp.csproj
+/Assets/VSCode.meta
+/Svelto.Tasks.sln
+/output_log.txt
+/test.exe
+Temp

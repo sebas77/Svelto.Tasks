@@ -14,6 +14,7 @@ public class SpawnObjects : MonoBehaviour
     void Start () 
     {
         Application.targetFrameRate = -1;
+        QualitySettings.vSyncCount = 0;
         
         parent1 = new GameObject();
         parent1.SetActive(false);
