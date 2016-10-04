@@ -33,8 +33,9 @@ namespace Svelto.Tasks.Internal
             }
             else
             {
-                _runnerBehaviour = _go.GetComponent<RunnerBehaviour>();
-                _runnerBehaviourForUnityCoroutine = _go.GetComponent<RunnerBehaviour>();
+                RunnerBehaviour[] behaviours = _go.GetComponents<RunnerBehaviour>();
+                _runnerBehaviour = behaviours[0];
+                _runnerBehaviourForUnityCoroutine = behaviours[1];
             }
         }
 
