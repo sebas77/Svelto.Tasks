@@ -1,4 +1,3 @@
-using System.Collections;
 
 namespace Svelto.Tasks.Internal
 {
@@ -14,7 +13,7 @@ namespace Svelto.Tasks.Internal
         public void StopAllCoroutines()
         {}
 
-        public void StartCoroutine(IEnumerator task)
+        public void StartCoroutine(PausableTask task)
         {
             while (task.MoveNext() == true);
         }

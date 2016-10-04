@@ -26,12 +26,16 @@ namespace Svelto.Tasks.Internal
                 _go = new GameObject("TaskRunner");
 
                 _runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
+                _runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
                 _runnerBehaviour.StartCoroutine(StartCoroutineInternal());
 
                 Object.DontDestroyOnLoad(_go);
             }
             else
+            {
                 _runnerBehaviour = _go.GetComponent<RunnerBehaviour>();
+                _runnerBehaviourForUnityCoroutine = _go.GetComponent<RunnerBehaviour>();
+            }
         }
 
         /// <summary>
@@ -40,24 +44,21 @@ namespace Svelto.Tasks.Internal
         /// </summary>
         public void StopAllCoroutines() 
         {
-            stopped = true; _mustStop = true;
+            stopped = true; paused = false;
 
-            _runnerBehaviour.StopAllCoroutines();
+            _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
             
-            //note: _coroutines will be cleaned by the single tasks stopping silently.
-            //in this way they will be put back to the pool.
             _newTaskRoutines.Clear();
 
-            _runnerBehaviour.StartCoroutine(StartCoroutineInternal());
+            //note: _coroutines will be cleaned by the single tasks stopping silently.
+            //in this way they will be put back to the pool.
+            //let's be sure that the runner had the time to stop and recycle the previous tasks
+            _waitForflush = true; 
         }
 
-        public void StartCoroutine(IEnumerator task)
+        public void StartCoroutine(PausableTask task)
         {
             paused = false;
-            stopped = false;
-
-            //_go.SetActive(true);
-            //_runnerBehaviour.enabled = true;
 
             _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
@@ -66,7 +67,7 @@ namespace Svelto.Tasks.Internal
         {
             while (true)
             {
-                while (_newTaskRoutines.Count > 0)
+                if (_newTaskRoutines.Count > 0 && _waitForflush == false) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
                 for (int i = 0; i < _coroutines.Count; i++)
@@ -76,16 +77,7 @@ namespace Svelto.Tasks.Internal
                     try
                     {
                         if (enumerator.MoveNext() == false)
-                        {
-                            if (_mustStop) //this is needed in case StopAllCoroutine is called from an inside a coroutine!
-                            {
-                                _mustStop = false;
-
-                                break; //breaks the for loop, we don't want the coroutine to end.
-                            }
-
                             _coroutines.UnorderredRemoveAt(i--);
-                        }
                         else
                         {
                             //let's spend few words about this. Special YieldInstruction can be only processed internally
@@ -104,8 +96,8 @@ namespace Svelto.Tasks.Internal
 
                             if (current is WWW || current is YieldInstruction || current is AsyncOperation)
                             {
-                                _runnerBehaviour.StartCoroutine(HandItToUnity(current, enumeratorToHandle));
-
+                                _runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle));
+                                
                                 if (enumeratorToHandle != null)
                                     _coroutines.UnorderredRemoveAt(i--);
                             }
@@ -121,6 +113,12 @@ namespace Svelto.Tasks.Internal
                     }
                 }
 
+                if (_waitForflush == true && _coroutines.Count == 0)
+                {  //this process is more complex than I like, not 100% sure it covers all the cases yet
+                    _waitForflush = false;
+                    stopped = false;
+                }
+
                 yield return null;
             }
         }
@@ -134,8 +132,9 @@ namespace Svelto.Tasks.Internal
         FasterList<IEnumerator>      _coroutines;
         ThreadSafeQueue<IEnumerator> _newTaskRoutines = new ThreadSafeQueue<IEnumerator>();
         RunnerBehaviour              _runnerBehaviour;
+        RunnerBehaviour              _runnerBehaviourForUnityCoroutine;
         GameObject                   _go;
-        bool                         _mustStop;
+        bool                         _waitForflush;
 
         const int                   NUMBER_OF_INITIAL_COROUTINE = 3;
     }

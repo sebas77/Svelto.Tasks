@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
@@ -15,9 +16,9 @@ namespace Svelto.Tasks
     }
 }
 
-namespace Svelto.Tasks.Internal
+namespace Svelto.Tasks
 {
-    class PausableTask : ITaskRoutine, IEnumerator
+    public class PausableTask : ITaskRoutine, IEnumerator
     {
         internal PausableTask(IPausableTaskPool pool):this()
         {

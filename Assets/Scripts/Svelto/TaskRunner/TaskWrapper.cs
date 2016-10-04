@@ -42,10 +42,11 @@ namespace Svelto.Tasks
             return task.ToString();
         }
 
-        virtual protected void ExecuteTask()
+        protected virtual void ExecuteTask()
         {
-            if (task is ITask)
-                ((ITask)task).Execute();    
+            var task1 = task as ITask;
+            if (task1 != null)
+                task1.Execute();    
             else
                 throw new Exception("not supported task " + task.GetType());
         }
@@ -54,10 +55,7 @@ namespace Svelto.Tasks
         {
             ExecuteTask();            
             
-            ITaskExceptionHandler taskException = null;
-
-            if (task is ITaskExceptionHandler)
-                taskException = (task as ITaskExceptionHandler);
+            ITaskExceptionHandler taskException = task as ITaskExceptionHandler;
 
             while (task.isDone == false)
             {
@@ -69,22 +67,6 @@ namespace Svelto.Tasks
         }
 
         IEnumerator _enumerator;
-    }
-
-    public class TaskWrapper<Token>: TaskWrapper
-    {
-        internal Token token { set; private get; }
-
-        public TaskWrapper(IAbstractTask task):base(task)
-        {}
-
-        override protected void ExecuteTask()
-        {
-            if (task is ITaskChain<Token>)
-                ((ITaskChain<Token>)task).Execute(token);
-            else
-                base.ExecuteTask();
-        }
     }
 }
 

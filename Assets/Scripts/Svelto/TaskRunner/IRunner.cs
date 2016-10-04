@@ -1,4 +1,3 @@
-using System.Collections;
 
 namespace Svelto.Tasks
 {
@@ -6,8 +5,8 @@ namespace Svelto.Tasks
     {
         bool    paused { get; set; }
         bool    stopped { get; }
-        void	StartCoroutine(IEnumerator task);
 
+        void	StartCoroutine(PausableTask task);
         void 	StopAllCoroutines();
 
         int numberOfRunningTasks { get; }

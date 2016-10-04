@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using NUnit.Framework;
 using Svelto.Tasks;
+using Svelto.Tasks.Experimental;
 
 #endregion
 

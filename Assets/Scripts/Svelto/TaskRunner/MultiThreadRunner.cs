@@ -15,9 +15,8 @@ namespace Svelto.Tasks
             stopped = false;
         }
 
-        public void StartCoroutine(IEnumerator task)
-        {	
-            stopped = false;
+        public void StartCoroutine(PausableTask task)
+        {
             paused = false;
 
             //Task.Factory.StartNew(() => {}, TaskCreationOptions.LongRunning); for WSA
@@ -35,6 +34,7 @@ namespace Svelto.Tasks
                     StartCoroutineInternal();
 
                     _isAlive = false;
+                    stopped = false;
                     Thread.MemoryBarrier();
                 });
             }
@@ -44,7 +44,7 @@ namespace Svelto.Tasks
         {
             while (_coroutines.Count > 0 || _newTaskRoutines.Count > 0)
             {
-                while (_newTaskRoutines.Count > 0)
+                if (_newTaskRoutines.Count > 0 && _waitForflush == false) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
                 for (int i = 0; i < _coroutines.Count; i++)
@@ -54,17 +54,7 @@ namespace Svelto.Tasks
                     try
                     {
                         if (enumerator.MoveNext() == false)
-                        {
-                            Thread.MemoryBarrier();
-                            if (stopped == true)
-                            {
-                                _coroutines.DeepClear();
-    
-                                return; //will kill the thread
-                            }
-
                             _coroutines.UnorderredRemoveAt(i--);
-                        }
                     }
                     catch (Exception e)
                     {
@@ -75,7 +65,13 @@ namespace Svelto.Tasks
                         _coroutines.UnorderredRemoveAt(i--);
                     }
                 }
+
+                Thread.MemoryBarrier();
+                if (_waitForflush == true && _coroutines.Count == 0)
+                    break; //kill the thread
             }
+
+            _waitForflush = false;
         }
 
         public void StopAllCoroutines()
@@ -83,6 +79,7 @@ namespace Svelto.Tasks
             _newTaskRoutines.Clear();
 
             stopped = true;
+            _waitForflush = true;
             Thread.MemoryBarrier();
         }
 
@@ -97,5 +94,6 @@ namespace Svelto.Tasks
 
         volatile bool _stopped;
         volatile bool _isAlive;
+        volatile bool _waitForflush;
     }
 }
