@@ -1,4 +1,4 @@
-# Svelto.Task
+# Svelto.Tasks
 New Svelto Task Runner
 ======================
 
