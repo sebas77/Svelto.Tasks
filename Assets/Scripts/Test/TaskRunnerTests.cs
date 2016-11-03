@@ -310,10 +310,10 @@ namespace Test
         TaskRunner _taskRunner;
         ITaskRoutine _reusableTaskRoutine;
 
-        SerialTaskCollection serialTasks1;
-        SerialTaskCollection serialTasks2;
-        ParallelTaskCollection parallelTasks1;
-        ParallelTaskCollection parallelTasks2;
+        SerialTaskCollection<ValueObject> serialTasks1;
+        SerialTaskCollection<ValueObject> serialTasks2;
+        ParallelTaskCollection<ValueObject> parallelTasks1;
+        ParallelTaskCollection<ValueObject> parallelTasks2;
 
         Task task1;
         Task task2;
@@ -370,7 +370,7 @@ namespace Test
         class TaskChain: ITaskChain<ValueObject>
         {
             public bool  isDone { get; private set; }
-
+            
             public TaskChain()
             {
                 isDone = false;

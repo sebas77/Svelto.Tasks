@@ -27,12 +27,12 @@ namespace Svelto.Tasks
             _listOfStacks.Clear();
         }
 
-        public TaskCollection Add(IAbstractTask task)
+        public TaskCollection Add(ITask task)
         {
             if (task == null)
                 throw new ArgumentNullException();
-            
-            Add(CreateTaskWrapper(task));
+
+            Add(new TaskWrapper(task));
 
             return this;
         }
@@ -82,7 +82,12 @@ namespace Svelto.Tasks
 
         protected virtual TaskWrapper CreateTaskWrapper(IAbstractTask task)
         {
-            return new TaskWrapper(task);
+            var taskI = task as ITask;
+
+            if (taskI == null)
+                throw new ArgumentException();
+
+            return new TaskWrapper(taskI);
         }
 
         protected virtual void CheckForToken(object current)

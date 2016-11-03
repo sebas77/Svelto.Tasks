@@ -11,3 +11,6 @@ test_Data
 /output_log.txt
 /test.exe
 Temp
+/Svelto.Tasks.CSharp.Plugins.csproj
+/Svelto.Tasks.CSharp.csproj
+/Svelto.Tasks.v11.suo

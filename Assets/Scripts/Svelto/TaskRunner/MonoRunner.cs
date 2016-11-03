@@ -5,38 +5,31 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 //
-//it doesn't make any sense to have
-//more than one MonoRunner active
+//it doesn't make any sense to have more than one MonoRunner active
+//that's why I eventually decided to keep it as a static class.
+//Only downside is that I assume that the TaskRunner gameobject
+//is never destroyed after it's created.
 //
 namespace Svelto.Tasks.Internal
 {
     class MonoRunner : IRunner
     {
         public bool paused { set; get; }
-        public bool stopped { private set; get; }
+        public bool stopped { get { return _stopped; } }
 
         public int numberOfRunningTasks { get { return _coroutines.Count; } }
 
-        public MonoRunner()
+        static MonoRunner()
         {
-            _coroutines = new FasterList<IEnumerator>(NUMBER_OF_INITIAL_COROUTINE);
+            _coroutines = new FasterList<PausableTask>(NUMBER_OF_INITIAL_COROUTINE);
 
-            if (_go == null)
-            {
-                _go = new GameObject("TaskRunner");
+            _go = new GameObject("TaskRunner");
 
-                _runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
-                _runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-                _runnerBehaviour.StartCoroutine(StartCoroutineInternal());
+            RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
+            _runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
+            runnerBehaviour.StartCoroutine(CoroutinesRunner());
 
-                Object.DontDestroyOnLoad(_go);
-            }
-            else
-            {
-                RunnerBehaviour[] behaviours = _go.GetComponents<RunnerBehaviour>();
-                _runnerBehaviour = behaviours[0];
-                _runnerBehaviourForUnityCoroutine = behaviours[1];
-            }
+            Object.DontDestroyOnLoad(_go);
         }
 
         /// <summary>
@@ -45,7 +38,7 @@ namespace Svelto.Tasks.Internal
         /// </summary>
         public void StopAllCoroutines() 
         {
-            stopped = true; paused = false;
+            _stopped = true; paused = false;
 
             _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
             
@@ -57,51 +50,78 @@ namespace Svelto.Tasks.Internal
             _waitForflush = true; 
         }
 
-        public void StartCoroutine(PausableTask task)
+        public void StartCoroutineThreadSafe(PausableTask task)
         {
+            if (task == null) return; 
+
             paused = false;
 
             _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
 
-        protected IEnumerator StartCoroutineInternal()
+        public void StartCoroutine(PausableTask task)
+        {
+            paused = false;
+
+            InternalThreadUnsafeStartCoroutine(task);
+        }
+
+        static void InternalThreadUnsafeStartCoroutine(PausableTask task)
+        {
+            if (task == null || (_stopped == false && task.MoveNext() == false))
+                return;
+
+            _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
+        }
+
+        static protected IEnumerator CoroutinesRunner()
         {
             while (true)
             {
-                if (_newTaskRoutines.Count > 0 && _waitForflush == false) //don't start anything while flushing
-                    _coroutines.AddRange(_newTaskRoutines.DequeueAll());
+                var newTaskRoutine = _newTaskRoutines;
+                var coroutines = _coroutines;
 
-                for (int i = 0; i < _coroutines.Count; i++)
+                if (newTaskRoutine.Count > 0 && _waitForflush == false) //don't start anything while flushing
+                    coroutines.AddRange(newTaskRoutine.DequeueAll());
+
+                for (int i = 0; i < coroutines.Count; i++)
                 {
                     var enumerator = _coroutines[i];
 
                     try
                     {
-                        if (enumerator.MoveNext() == false)
-                            _coroutines.UnorderredRemoveAt(i--);
+                        //let's spend few words about this. Special YieldInstruction can be only processed internally
+                        //by Unity. The simplest way to handle them is to hand them to Unity itself. 
+                        //However while the Unity routine is processed, the rest of the coroutine is waiting for it.
+                        //This would defeat the purpose of the parallel procedures. For this reason, the Parallel
+                        //routines will mark the enumerator returned as ParallelYield which will change the way the routine is processed.
+                        //in this case the MonoRunner won't wait for the Unity routine to continue processing the next tasks.
+                        var current = enumerator.Current;
+                        PausableTask enumeratorToHandle = null;
+                        var yield = current as ParallelYield;
+                        if (yield != null)
+                            current = yield.Current;
                         else
-                        {
-                            //let's spend few words about this. Special YieldInstruction can be only processed internally
-                            //by Unity. The simplest way to handle them is to hand them to Unity itself. 
-                            //However while the Unity routine is processed, the rest of the coroutine is waiting for it.
-                            //This would defeat the purpose of the parallel procedures. For this reason, the Parallel
-                            //routines will mark the enumerator returned as ParallelYield which will change the way the routine is processed.
-                            //in this case the MonoRunner won't wait for the Unity routine to continue processing the next tasks.
-                            var current = enumerator.Current;
-                            IEnumerator enumeratorToHandle = null;
-                            var yield = current as ParallelYield;
-                            if (yield != null)
-                                current = yield.Current;
-                            else
-                                enumeratorToHandle = enumerator;
+                            enumeratorToHandle = enumerator;
 
-                            if (current is WWW || current is YieldInstruction || current is AsyncOperation)
+                        if (current is WWW || current is YieldInstruction || current is AsyncOperation)
+                        {
+                            _runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle));
+
+                            if (enumeratorToHandle != null)
                             {
-                                _runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle));
-                                
-                                if (enumeratorToHandle != null)
-                                    _coroutines.UnorderredRemoveAt(i--);
+                                _coroutines.UnorderredRemoveAt(i--);
+                                continue;
                             }
+                        }
+
+                        if (enumerator.MoveNext() == false)
+                        {
+                            var disposable = enumerator as IDisposable;
+                            if (disposable != null)
+                                disposable.Dispose();
+
+                            _coroutines.UnorderredRemoveAt(i--);
                         }
                     }
                     catch (Exception e)
@@ -114,29 +134,30 @@ namespace Svelto.Tasks.Internal
                     }
                 }
 
-                if (_waitForflush == true && _coroutines.Count == 0)
+                if (_waitForflush == true && coroutines.Count == 0)
                 {  //this process is more complex than I like, not 100% sure it covers all the cases yet
                     _waitForflush = false;
-                    stopped = false;
+                    _stopped = false;
                 }
 
                 yield return null;
             }
         }
 
-        IEnumerator HandItToUnity(object current, IEnumerator enumerator)
+        static  IEnumerator HandItToUnity(object current, PausableTask task)
         {
             yield return current;
-            yield return enumerator;
+            InternalThreadUnsafeStartCoroutine(task);
         }
 
-        FasterList<IEnumerator>      _coroutines;
-        ThreadSafeQueue<IEnumerator> _newTaskRoutines = new ThreadSafeQueue<IEnumerator>();
-        RunnerBehaviour              _runnerBehaviour;
-        RunnerBehaviour              _runnerBehaviourForUnityCoroutine;
-        GameObject                   _go;
-        bool                         _waitForflush;
+        static readonly FasterList<PausableTask>     _coroutines;
+        static readonly ThreadSafeQueue<PausableTask> _newTaskRoutines = new ThreadSafeQueue<PausableTask>();
+        static readonly RunnerBehaviour               _runnerBehaviourForUnityCoroutine;
+        static readonly GameObject                   _go;
 
-        const int                   NUMBER_OF_INITIAL_COROUTINE = 3;
+        static bool                                  _stopped;
+        static bool                                  _waitForflush;
+
+        const int   NUMBER_OF_INITIAL_COROUTINE = 3;
     }
 }

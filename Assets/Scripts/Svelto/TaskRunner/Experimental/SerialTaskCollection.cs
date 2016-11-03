@@ -1,12 +1,29 @@
-﻿namespace Svelto.Tasks.Experimental
+﻿using System;
+
+namespace Svelto.Tasks.Experimental
 {
     public class SerialTaskCollection<Token> : SerialTaskCollection
     {
         public SerialTaskCollection(Token token) { _token = token; }
 
+        public TaskCollection Add(ITaskChain<Token> task)
+        {
+            if (task == null)
+                throw new ArgumentNullException();
+
+            Add(new TaskWrapper<Token>(task) { token = _token });
+
+            return this;
+        }
+
         protected override TaskWrapper CreateTaskWrapper(IAbstractTask task)
         {
-            return new TaskWrapper<Token>(task) { token = _token };
+            var taskI = task as ITaskChain<Token>;
+
+            if (taskI == null)
+                return base.CreateTaskWrapper(task);
+
+            return new TaskWrapper<Token>(taskI);
         }
 
         protected override void CheckForToken(object current)

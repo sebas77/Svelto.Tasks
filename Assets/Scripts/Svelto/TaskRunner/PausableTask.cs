@@ -137,12 +137,21 @@ namespace Svelto.Tasks
 
         public IEnumerator Start(Action<PausableTaskException> onFail = null, Action onStop = null)
         {
+            _threadSafe = false;
+
             _onStop = onStop;
             _onFail = onFail;
 
             InternalStart();
 
             return _enumeratorWrap;
+        }
+
+        public IEnumerator ThreadSafeStart(Action<PausableTaskException> onFail = null, Action onStop = null)
+        {
+            _threadSafe = true;
+
+            return Start(onFail, onStop);
         }
 
         public void Stop()
@@ -187,7 +196,10 @@ namespace Svelto.Tasks
 
             SetTask(task);
 
-            _runner.StartCoroutine(this);
+            if (_threadSafe == false)
+                _runner.StartCoroutine(this);
+            else
+                _runner.StartCoroutineThreadSafe(this);
         }
 
         void SetTask(IEnumerator task)
@@ -219,6 +231,7 @@ namespace Svelto.Tasks
         Action<PausableTaskException>   _onFail;
         Action                          _onStop;
         IEnumerator                     _enumeratorWrap;
+        bool                            _threadSafe;
     }
 }
 

@@ -13,14 +13,15 @@ namespace Svelto.Tasks
     /// </summary>
     public class TaskWrapper: IEnumerator
     {
-        public object         Current { get { return this; } }
+        public object Current { get { return this; } }
 
-        internal IAbstractTask task { get; private set; }
-        
-        public TaskWrapper(IAbstractTask task)
+        public TaskWrapper(ITask task):this(task as IAbstractTask)
+        {}
+
+        protected TaskWrapper(IAbstractTask task)
         {
-            DesignByContract.Check.Require(task is IEnumerable == false && task is IEnumerator == false, "Tasks and IEnumerators are mutually exclusive");
-            
+            DesignByContract.Check.Require((task is IEnumerable == false) && (task is IEnumerator == false), "Tasks and IEnumerators are mutually exclusive");
+
             this.task = task;
             _enumerator = Execute();
 
@@ -55,16 +56,18 @@ namespace Svelto.Tasks
         {
             ExecuteTask();            
             
-            ITaskExceptionHandler taskException = task as ITaskExceptionHandler;
+            var taskException = task as ITaskExceptionHandler;
 
             while (task.isDone == false)
             {
-                if (taskException != null && taskException.throwException != null)
+                if ((taskException != null) && (taskException.throwException != null))
                     throw taskException.throwException;
 
                 yield return null;
             }
         }
+
+        protected IAbstractTask task { get; private set; }
 
         IEnumerator _enumerator;
     }

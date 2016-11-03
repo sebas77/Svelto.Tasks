@@ -1,10 +1,17 @@
+using System;
+
 namespace Svelto.Tasks.Experimental
 {
     public class ParallelTaskCollection<Token> : ParallelTaskCollection
     {
-        override protected TaskWrapper CreateTaskWrapper(IAbstractTask task)
+        public TaskCollection Add(ITaskChain<Token> task)
         {
-            return new TaskWrapper<Token>(task) { token = _token };
+            if (task == null)
+                throw new ArgumentNullException();
+
+            Add(new TaskWrapper<Token>(task) { token = _token });
+
+            return this;
         }
 
         public ParallelTaskCollection(Token token) { _token = token; }

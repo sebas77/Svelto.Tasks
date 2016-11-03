@@ -1,12 +1,9 @@
-using System.Collections;
 using UnityEngine;
 
 namespace Svelto.Tasks
 {
-    public class WWWEnumerator : IEnumerator
+    public class WWWEnumerator : ParallelEnumerator
     {
-        WWW _www;
-
         public WWWEnumerator(WWW www)
         {
             _www = www;
@@ -22,6 +19,8 @@ namespace Svelto.Tasks
         public void Reset()
         {
         }
+
+        WWW _www;
     }
 }
     

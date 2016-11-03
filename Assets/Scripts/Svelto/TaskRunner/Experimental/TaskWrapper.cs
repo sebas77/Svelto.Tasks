@@ -4,11 +4,11 @@
     {
         internal Token token { set; private get; }
 
-        public TaskWrapper(IAbstractTask task)
+        public TaskWrapper(ITaskChain<Token> task)
             : base(task)
         { }
 
-        override protected void ExecuteTask()
+        protected override void ExecuteTask()
         {
             var chain = task as ITaskChain<Token>;
             if (chain != null)

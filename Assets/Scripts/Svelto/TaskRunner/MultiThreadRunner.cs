@@ -15,6 +15,11 @@ namespace Svelto.Tasks
             stopped = false;
         }
 
+        public void StartCoroutineThreadSafe(PausableTask task)
+        {
+            StartCoroutine(task);
+        }
+
         public void StartCoroutine(PausableTask task)
         {
             paused = false;
@@ -31,7 +36,7 @@ namespace Svelto.Tasks
 
                 ThreadPool.QueueUserWorkItem((stateInfo) => //creates a new thread only if there isn't any running. It's always unique
                 {
-                    StartCoroutineInternal();
+                    RunCoroutineFiber();
 
                     _isAlive = false;
                     stopped = false;
@@ -40,7 +45,7 @@ namespace Svelto.Tasks
             }
         }
 
-        void StartCoroutineInternal()
+        void RunCoroutineFiber()
         {
             while (_coroutines.Count > 0 || _newTaskRoutines.Count > 0)
             {
@@ -54,7 +59,13 @@ namespace Svelto.Tasks
                     try
                     {
                         if (enumerator.MoveNext() == false)
+                        {
+                            var disposable = enumerator as IDisposable;
+                            if (disposable != null)
+                                disposable.Dispose(); 
+
                             _coroutines.UnorderredRemoveAt(i--);
+                        }
                     }
                     catch (Exception e)
                     {

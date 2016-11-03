@@ -97,8 +97,11 @@ namespace Svelto.Tasks
                                 _current = current;
                             else
                             {
-                                _markUP.Current = current;
-                                _current = _markUP;
+                                if (ce is ParallelEnumerator)
+                                {
+                                    _markUP.Current = current;
+                                    _current = _markUP;
+                                }
                             }
 
                             _index = index + 1;
@@ -134,12 +137,10 @@ namespace Svelto.Tasks
             get { return _current; }
         }
 
-        ParallelYield _markUP = new ParallelYield(); 
+        ParallelYield   _markUP = new ParallelYield(); 
 
         object          _current;
-        int             _index;
-        
-
+        int             _index; 
 #if TO_IMPLEMENT_PROPERLY
         float 					 _progress;
         float                    _subprogress;

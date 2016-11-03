@@ -1,9 +1,8 @@
-using System.Collections;
 using UnityEngine;
 
 namespace Svelto.Tasks
 {
-    public class AsyncOperationEnumerator : IEnumerator
+    public class AsyncOperationEnumerator : ParallelEnumerator
     {
         AsyncOperation _asyncOp;
 
@@ -20,7 +19,6 @@ namespace Svelto.Tasks
         }
 
         public void Reset()
-        {
-        }
+        {}
     }
 }
