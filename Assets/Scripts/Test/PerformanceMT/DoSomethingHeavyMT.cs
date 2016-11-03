@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace PerformanceMT
 {
-    public class DoSomethingHeavy2 : MonoBehaviour
+    public class DoSomethingHeavyMT : MonoBehaviour
     {
         Vector2 direction;
         void Start()
@@ -23,7 +23,7 @@ namespace PerformanceMT
 
                 long result = (long)enumerator.Current * 333;
 
-                yield return SetColor(result).RunOnSchedule(StandardSchedulers.mainThreadScheduler); //yep the thread will wait for this other task to finish on the mainThreadScheduler
+                yield return SetColor(result).ThreadSafeRunOnSchedule(StandardSchedulers.mainThreadScheduler); //yep the thread will wait for this other task to finish on the mainThreadScheduler
             }
         }
 

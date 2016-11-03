@@ -41,12 +41,12 @@ public class TaskRunner
 
     public IEnumerator Run(Func<IEnumerator> taskGenerator)
     {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumeratorProvider(taskGenerator).Start();
+        return RunOnSchedule(_runner, taskGenerator);
     }
 
     public IEnumerator Run(IEnumerator task)
     {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumerator(task).Start();
+        return RunOnSchedule(_runner, task);
     }
 
     public IEnumerator RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
@@ -58,6 +58,27 @@ public class TaskRunner
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
     }
+
+    public IEnumerator ThreadSafeRun(Func<IEnumerator> taskGenerator)
+    {
+        return ThreadSafeRunOnSchedule(_runner, taskGenerator);
+    }
+
+    public IEnumerator ThreadSafeRun(IEnumerator task)
+    {
+        return ThreadSafeRunOnSchedule(_runner, task);
+    }
+
+    public IEnumerator ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
+    {
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).ThreadSafeStart();
+    }
+
+    public IEnumerator ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)
+    {
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
+    }
+
 
     public void StopDefaultSchedulerTasks()
     {

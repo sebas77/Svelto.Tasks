@@ -17,7 +17,7 @@ namespace PerformanceMT
             {
                 GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 
-                sphere.AddComponent<DoSomethingHeavy2>();
+                sphere.AddComponent<DoSomethingHeavyMT>();
 
                 sphere.transform.parent = parent1.transform;
             }

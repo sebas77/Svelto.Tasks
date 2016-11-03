@@ -23,12 +23,13 @@ namespace Test.MultiThread
             pt.Add(new LoadSomething(new WWW("www.ebay.com")));
             pt.Add(Print("p3")).Add(Print("p4")).Add(st).Add(Print("p5")).Add(Print("p6")).Add(Print("p7"));
 
-            TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(MTRunner).SetEnumerator(pt).Start(); //running on another thread!
+            TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(_MTRunner).SetEnumerator(pt).Start(); //running on another thread!
         }
 
         void Update()
         {
             if (Input.anyKeyDown)
+            {
                 if (_paused == false)
                 {
                     Debug.LogWarning("Paused!");
@@ -41,23 +42,25 @@ namespace Test.MultiThread
                     _paused = false;
                     TaskRunner.Instance.ResumeAllTasks();
                 }
+            }
         }
 
         void OnApplicationQuit()
         {
-            MTRunner.StopAllCoroutines(); //Unity will get stuck for ever if you don't do this
+            _MTRunner.StopAllCoroutines(); //Unity will get stuck for ever if you don't do this
         }
 
         IEnumerator Print(string i)
         {
             Debug.Log(i);
+
             yield return null;
         }
 
         int i;
 
-        bool _paused;
-        MultiThreadRunner MTRunner = new MultiThreadRunner();
+        bool              _paused;
+        MultiThreadRunner _MTRunner = new MultiThreadRunner();
     }
 
     class LoadSomething : IEnumerable
@@ -67,13 +70,12 @@ namespace Test.MultiThread
         public LoadSomething(WWW wWW)
         {
             this.wWW = wWW;
-            task = TaskRunner.Instance.AllocateNewTaskRoutine();
-            task.SetScheduler(StandardSchedulers.mainThreadScheduler).SetEnumeratorProvider(DoIt);
+            task = TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumeratorProvider(DoIt);
         }
 
         public IEnumerator GetEnumerator()
         {
-            yield return task.Start(); //Continuation! The task will continue on the main thread scheduler!
+            yield return task.ThreadSafeStart(); //Continuation! The task will continue on the main thread scheduler!
         }
 
         IEnumerator DoIt()

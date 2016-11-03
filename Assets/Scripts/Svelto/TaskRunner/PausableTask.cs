@@ -151,7 +151,12 @@ namespace Svelto.Tasks
         {
             _threadSafe = true;
 
-            return Start(onFail, onStop);
+            _onStop = onStop;
+            _onFail = onFail;
+
+            InternalStart();
+
+            return _enumeratorWrap;
         }
 
         public void Stop()
