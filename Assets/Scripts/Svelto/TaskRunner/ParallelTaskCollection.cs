@@ -34,6 +34,20 @@ namespace Svelto.Tasks
         {
             isRunning = true;
             
+            if (RunTasks()) return true;
+            
+            isRunning = false;
+            
+            if (onComplete != null)
+                onComplete();
+
+            Reset();
+
+            return false;
+        }
+
+        bool RunTasks()
+        {
             while (_listOfStacks.Count > 0)
             {
 #if TO_IMPLEMENT_PROPERLY   
@@ -57,7 +71,7 @@ namespace Svelto.Tasks
                 for (int index = _index; index < _listOfStacks.Count; ++index)
                 {
                     Stack<IEnumerator> stack = _listOfStacks[index];
-                    
+
                     if (stack.Count > 0)
                     {
                         IEnumerator ce = stack.Peek(); //without popping it.
@@ -67,32 +81,32 @@ namespace Svelto.Tasks
                         else //ok the iteration is not over
                         {
                             _current = ce.Current;
-                            if (_current != ce && _current != null && _current != Break.It) 
+                            if (_current != ce && _current != null && _current != Break.It)
                             {
                                 var enumerator = _current as IEnumerator;
-                               if (enumerator != null)
-                               {
-                                   CheckForToken(_current);
-                                   stack.Push(enumerator);
-                                   continue;
-                               }
+                                if (enumerator != null)
+                                {
+                                    CheckForToken(_current);
+                                    stack.Push(enumerator);
+                                    continue;
+                                }
 
-                               var task = _current as IAbstractTask;
-                               if (task != null)
-                               {
-                                   stack.Push(CreateTaskWrapper(task));
-                                   continue;
-                               }
+                                var task = _current as IAbstractTask;
+                                if (task != null)
+                                {
+                                    stack.Push(CreateTaskWrapper(task));
+                                    continue;
+                                }
 
-                               var ptasks = _current as IEnumerator[];
-                               if (ptasks != null)
-                               {
-                                   stack.Push(new ParallelTaskCollection(ptasks));
+                                var ptasks = _current as IEnumerator[];
+                                if (ptasks != null)
+                                {
+                                    stack.Push(new ParallelTaskCollection(ptasks));
 
-                                   continue;
-                               }
+                                    continue;
+                                }
                             }
-                            else
+                            else 
                             if (_current == Break.It)
                                 return false;
 
@@ -104,7 +118,7 @@ namespace Svelto.Tasks
 
                             _index = index + 1;
 
-                            return true; 
+                            return true;
                         }
                     }
                     else
@@ -119,14 +133,6 @@ namespace Svelto.Tasks
 
                 _index = 0;
             }
-            
-            isRunning = false;
-            
-            if (onComplete != null)
-                onComplete();
-
-            Reset();
-
             return false;
         }
 

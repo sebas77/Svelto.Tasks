@@ -34,6 +34,19 @@ namespace Svelto.Tasks
 #if TO_IMPLEMENT_PROPERLY            
             int startingCount = registeredEnumerators.Count;
 #endif
+            if (RunTasks()) return true;
+
+            if (onComplete != null)
+                onComplete();
+
+            isRunning = false;
+            Reset();
+
+            return false;
+        }
+
+        bool RunTasks()
+        {
             while (_index < _listOfStacks.Count)
             {
                 var stack = _listOfStacks[_index];
@@ -53,7 +66,7 @@ namespace Svelto.Tasks
                     else
                     {
                         _current = ce.Current;
-                        if (_current != ce && _current != null && _current != Break.It) 
+                        if (_current != ce && _current != null && _current != Break.It)
                         {
                             var enumerator = _current as IEnumerator;
                             if (enumerator != null)
@@ -82,9 +95,9 @@ namespace Svelto.Tasks
                                 continue;
                             }
                         }
-                        else
+                        else 
                         if (_current == Break.It)
-                            return false;
+                             return false;
 
                         return true;
 #if TO_IMPLEMENT_PROPERLY
@@ -99,13 +112,6 @@ namespace Svelto.Tasks
 
                 _index++;
             }
-
-            if (onComplete != null)
-                onComplete();
-
-            isRunning = false;
-            Reset();
-
             return false;
         }
 
