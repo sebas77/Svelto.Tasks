@@ -53,7 +53,7 @@ namespace Svelto.Tasks
                     else
                     {
                         _current = ce.Current;
-                        if (_current != ce && _current != null)
+                        if (_current != ce && _current != null && _current != Break.It) 
                         {
                             var enumerator = _current as IEnumerator;
                             if (enumerator != null)
@@ -82,6 +82,9 @@ namespace Svelto.Tasks
                                 continue;
                             }
                         }
+                        else
+                        if (_current == Break.It)
+                            return false;
 
                         return true;
 #if TO_IMPLEMENT_PROPERLY

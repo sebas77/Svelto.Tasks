@@ -66,25 +66,25 @@ namespace Svelto.Tasks
                             stack.Pop(); //now it can be popped
                         else //ok the iteration is not over
                         {
-                            var current = ce.Current;
-                            if (current != ce && current != null) 
+                            _current = ce.Current;
+                            if (_current != ce && _current != null && _current != Break.It) 
                             {
-                               var enumerator = current as IEnumerator;
+                                var enumerator = _current as IEnumerator;
                                if (enumerator != null)
                                {
-                                   CheckForToken(current);
+                                   CheckForToken(_current);
                                    stack.Push(enumerator);
                                    continue;
                                }
 
-                               var task = current as IAbstractTask;
+                               var task = _current as IAbstractTask;
                                if (task != null)
                                {
                                    stack.Push(CreateTaskWrapper(task));
                                    continue;
                                }
 
-                               var ptasks = current as IEnumerator[];
+                               var ptasks = _current as IEnumerator[];
                                if (ptasks != null)
                                {
                                    stack.Push(new ParallelTaskCollection(ptasks));
@@ -92,16 +92,14 @@ namespace Svelto.Tasks
                                    continue;
                                }
                             }
-
-                            if (current == Break.It || current == null)
-                                _current = current;
                             else
+                            if (_current == Break.It)
+                                return false;
+
+                            if (ce is ParallelEnumerator)
                             {
-                                if (ce is ParallelEnumerator)
-                                {
-                                    _markUP.Current = current;
-                                    _current = _markUP;
-                                }
+                                _markUP.Current = _current;
+                                _current = _markUP;
                             }
 
                             _index = index + 1;

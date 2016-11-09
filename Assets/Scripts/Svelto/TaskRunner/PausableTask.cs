@@ -6,13 +6,9 @@ namespace Svelto.Tasks
 {
     public class PausableTaskException : Exception
     {
-        public PausableTaskException(ITaskRoutine task, Exception e)
+        public PausableTaskException(Exception e)
             : base(e.Message, e)
-        {
-            _task = task;
-        }
-
-        public ITaskRoutine _task;
+        {}
     }
 }
 
@@ -96,21 +92,27 @@ namespace Svelto.Tasks
                     if (_enumerator.Current == Break.It)
                     {
                         _completed = true;
+
                         if (_onStop != null)
                             _onStop();
                     }
                 }
                 catch (Exception e)
                 {
-                    if (_onFail != null)
-                        _onFail(new PausableTaskException(this, e));
-                    else
-                        throw;
-
                     _completed = true;
-                }   
-            }
 
+                    if (_onFail != null)
+                        _onFail(new PausableTaskException(e));
+                    else
+                    {
+                        if (_pool != null)
+                            _pool.PushTaskBack(this);
+
+                        throw new PausableTaskException(e);
+                    }
+                }
+            }
+            
             if (_completed == true && _pool != null)
                 _pool.PushTaskBack(this);
 
