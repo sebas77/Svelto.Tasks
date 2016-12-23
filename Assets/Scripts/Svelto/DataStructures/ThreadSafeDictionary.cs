@@ -58,6 +58,25 @@ namespace Svelto.DataStructures
             }
         }
 
+        public virtual TValue this[TKey key]
+        {
+            get
+            {
+                using (new ReadOnlyLock(dictionaryLock))
+                {
+                    return dict[key];
+                }
+            }
+
+            set
+            {
+                using (new WriteLock(dictionaryLock))
+                {
+                    dict[key] = value;
+                }
+            }
+        }
+
         public virtual void Add(KeyValuePair<TKey, TValue> item)
         {
             using (new WriteLock(dictionaryLock))
@@ -141,9 +160,7 @@ namespace Svelto.DataStructures
             {
                 // take a writelock immediately since we will always be writing
                 if (dict.ContainsKey(key))
-                {
                     dict.Remove(key);
-                }
 
                 dict.Add(key, newValue);
             }
@@ -158,12 +175,10 @@ namespace Svelto.DataStructures
             using (new ReadLock(dictionaryLock))
             {
                 if (dict.ContainsKey(key))
-                {
                     using (new WriteLock(dictionaryLock))
                     {
                         dict.Remove(key);
                     }
-                }
             }
         }
 
@@ -171,25 +186,6 @@ namespace Svelto.DataStructures
         readonly IDictionary<TKey, TValue> dict = new Dictionary<TKey, TValue>();
 
         [NonSerialized] readonly ReaderWriterLockSlim dictionaryLock = Locks.GetLockInstance(LockRecursionPolicy.NoRecursion);
-
-        public virtual TValue this[TKey key]
-        {
-            get
-            {
-                using (new ReadOnlyLock(dictionaryLock))
-                {
-                    return dict[key];
-                }
-            }
-
-            set
-            {
-                using (new WriteLock(dictionaryLock))
-                {
-                    dict[key] = value;
-                }
-            }
-        }
     }
 
     public static class Locks
@@ -208,27 +204,21 @@ namespace Svelto.DataStructures
         {
             var lockAcquired = false;
             while (!lockAcquired)
-            {
                 lockAcquired = locks.TryEnterUpgradeableReadLock(1);
-            }
         }
 
         public static void GetReadOnlyLock(ReaderWriterLockSlim locks)
         {
             var lockAcquired = false;
             while (!lockAcquired)
-            {
                 lockAcquired = locks.TryEnterReadLock(1);
-            }
         }
 
         public static void GetWriteLock(ReaderWriterLockSlim locks)
         {
             var lockAcquired = false;
             while (!lockAcquired)
-            {
                 lockAcquired = locks.TryEnterWriteLock(1);
-            }
         }
 
         public static void ReleaseLock(ReaderWriterLockSlim locks)
@@ -241,38 +231,32 @@ namespace Svelto.DataStructures
         public static void ReleaseReadLock(ReaderWriterLockSlim locks)
         {
             if (locks.IsUpgradeableReadLockHeld)
-            {
                 locks.ExitUpgradeableReadLock();
-            }
         }
 
         public static void ReleaseReadOnlyLock(ReaderWriterLockSlim locks)
         {
             if (locks.IsReadLockHeld)
-            {
                 locks.ExitReadLock();
-            }
         }
 
         public static void ReleaseWriteLock(ReaderWriterLockSlim locks)
         {
             if (locks.IsWriteLockHeld)
-            {
                 locks.ExitWriteLock();
-            }
         }
     }
 
     public abstract class BaseLock : IDisposable
     {
+        protected ReaderWriterLockSlim _Locks;
+
         public BaseLock(ReaderWriterLockSlim locks)
         {
             _Locks = locks;
         }
 
         public abstract void Dispose();
-
-        protected ReaderWriterLockSlim _Locks;
     }
 
     public class ReadLock : BaseLock

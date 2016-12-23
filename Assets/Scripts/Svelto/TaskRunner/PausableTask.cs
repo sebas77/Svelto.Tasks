@@ -1,23 +1,20 @@
 using System;
 using System.Collections;
+using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
     public class PausableTaskException : Exception
     {
-        public PausableTaskException(ITaskRoutine task, Exception e)
-            : base(e.Message, e)
-        {
-            _task = task;
-        }
-
-        public ITaskRoutine _task;
+        public PausableTaskException(Exception e)
+            : base(e.ToString(), e)
+        {}
     }
 }
 
-namespace Svelto.Tasks.Internal
+namespace Svelto.Tasks
 {
-    class PausableTask : ITaskRoutine, IEnumerator
+    public class PausableTask : ITaskRoutine, IEnumerator
     {
         internal PausableTask(IPausableTaskPool pool):this()
         {
@@ -95,21 +92,27 @@ namespace Svelto.Tasks.Internal
                     if (_enumerator.Current == Break.It)
                     {
                         _completed = true;
+
                         if (_onStop != null)
                             _onStop();
                     }
                 }
                 catch (Exception e)
                 {
-                    if (_onFail != null)
-                        _onFail(new PausableTaskException(this, e));
-                    else
-                        throw;
-
                     _completed = true;
-                }   
-            }
 
+                    if (_onFail != null && (e is TaskYieldsIEnumerableException) == false)
+                        _onFail(new PausableTaskException(e));
+                    else
+                    {
+                        if (_pool != null)
+                            _pool.PushTaskBack(this);
+
+                        throw new PausableTaskException(e);
+                    }
+                }
+            }
+            
             if (_completed == true && _pool != null)
                 _pool.PushTaskBack(this);
 
@@ -136,6 +139,20 @@ namespace Svelto.Tasks.Internal
 
         public IEnumerator Start(Action<PausableTaskException> onFail = null, Action onStop = null)
         {
+            _threadSafe = false;
+
+            _onStop = onStop;
+            _onFail = onFail;
+
+            InternalStart();
+
+            return _enumeratorWrap;
+        }
+
+        public IEnumerator ThreadSafeStart(Action<PausableTaskException> onFail = null, Action onStop = null)
+        {
+            _threadSafe = true;
+
             _onStop = onStop;
             _onFail = onFail;
 
@@ -186,7 +203,10 @@ namespace Svelto.Tasks.Internal
 
             SetTask(task);
 
-            _runner.StartCoroutine(this);
+            if (_threadSafe == false)
+                _runner.StartCoroutine(this);
+            else
+                _runner.StartCoroutineThreadSafe(this);
         }
 
         void SetTask(IEnumerator task)
@@ -218,6 +238,7 @@ namespace Svelto.Tasks.Internal
         Action<PausableTaskException>   _onFail;
         Action                          _onStop;
         IEnumerator                     _enumeratorWrap;
+        bool                            _threadSafe;
     }
 }
 

@@ -34,6 +34,20 @@ namespace Svelto.Tasks
         {
             isRunning = true;
             
+            if (RunTasks()) return true;
+            
+            isRunning = false;
+            
+            if (onComplete != null)
+                onComplete();
+
+            Reset();
+
+            return false;
+        }
+
+        bool RunTasks()
+        {
             while (_listOfStacks.Count > 0)
             {
 #if TO_IMPLEMENT_PROPERLY   
@@ -57,7 +71,7 @@ namespace Svelto.Tasks
                 for (int index = _index; index < _listOfStacks.Count; ++index)
                 {
                     Stack<IEnumerator> stack = _listOfStacks[index];
-                    
+
                     if (stack.Count > 0)
                     {
                         IEnumerator ce = stack.Peek(); //without popping it.
@@ -66,44 +80,36 @@ namespace Svelto.Tasks
                             stack.Pop(); //now it can be popped
                         else //ok the iteration is not over
                         {
-                            var current = ce.Current;
-                            if (current != ce && current != null) 
+                            _current = ce.Current;
+
+                            if (_current == ce)
+                                throw new Exception("An enumerator returning itself is not supported");
+
+                            if (_current != null && _current != Break.It)
                             {
-                               var enumerator = current as IEnumerator;
-                               if (enumerator != null)
-                               {
-                                   CheckForToken(current);
-                                   stack.Push(enumerator);
-                                   continue;
-                               }
-
-                               var task = current as IAbstractTask;
-                               if (task != null)
-                               {
-                                   stack.Push(CreateTaskWrapper(task));
-                                   continue;
-                               }
-
-                               var ptasks = current as IEnumerator[];
-                               if (ptasks != null)
-                               {
-                                   stack.Push(new ParallelTaskCollection(ptasks));
-
-                                   continue;
-                               }
+                                if (StandardEnumeratorCheck(ce, stack) == true)
+                                    continue;
+                                //in all the cases above, the task collection is not meant to yield
                             }
-
-                            if (current == Break.It || current == null)
-                                _current = current;
+                            else 
+                            if (_current == Break.It)
+                                return false;
                             else
+                            //an Enumerator that must be handled by Unity
+                            //(www, asyncOp) inherits from ParalleEnumerator
+                            //to instruct the runners that it doesn't have
+                            //to wait for unity to finish does instructions.
+                            //It makes sense only for runners that support
+                            //unity operations, otherwise it will be ignored
+                            if (ce is IParallelEnumerator)
                             {
-                                _markUP.Current = current;
+                                _markUP.Current = _current;
                                 _current = _markUP;
                             }
 
                             _index = index + 1;
 
-                            return true; 
+                            return true;
                         }
                     }
                     else
@@ -118,14 +124,6 @@ namespace Svelto.Tasks
 
                 _index = 0;
             }
-            
-            isRunning = false;
-            
-            if (onComplete != null)
-                onComplete();
-
-            Reset();
-
             return false;
         }
 
@@ -134,35 +132,14 @@ namespace Svelto.Tasks
             get { return _current; }
         }
 
-        ParallelYield _markUP = new ParallelYield(); 
+        ParallelYield   _markUP = new ParallelYield(); 
 
         object          _current;
-        int             _index;
-        
-
+        int             _index; 
 #if TO_IMPLEMENT_PROPERLY
         float 					 _progress;
         float                    _subprogress;
 #endif
-    }
-
-    public class ParallelTaskCollection<Token>: ParallelTaskCollection
-    {
-        override protected TaskWrapper CreateTaskWrapper(IAbstractTask task)
-        {
-            return new TaskWrapper<Token> (task) { token = _token };
-        }
-
-        public ParallelTaskCollection(Token token) { _token = token; }
-
-        override protected void CheckForToken (object current)
-        {
-            var task = current as IChainLink<Token>;
-            if (task != null)
-                task.token = _token;
-        }
-
-        Token     _token;
     }
 }
 #endif

@@ -27,12 +27,12 @@ namespace Svelto.Tasks
             _listOfStacks.Clear();
         }
 
-        public TaskCollection Add(IAbstractTask task)
+        public TaskCollection Add(ITask task)
         {
             if (task == null)
                 throw new ArgumentNullException();
-            
-            Add(CreateTaskWrapper(task));
+
+            Add(new TaskWrapper(task));
 
             return this;
         }
@@ -80,9 +80,52 @@ namespace Svelto.Tasks
             return this;
         }
 
+        protected bool StandardEnumeratorCheck(object current, Stack<IEnumerator> stack)
+        {
+            var enumerator = current as IEnumerator;
+            if (enumerator != null)
+            {
+                CheckForToken(current);
+                //it's pushed because it can yield another IEnumerator on its turn
+                stack.Push(enumerator);
+
+                return true;
+            }
+
+            ///
+            /// Careful an array is an IEnumerable!!!
+            /// 
+            var ptasks = current as IEnumerator[]; 
+            if (ptasks != null)
+            {
+                stack.Push(new ParallelTaskCollection(ptasks));
+
+                return true;
+            }
+
+            var task = current as IAbstractTask;
+            if (task != null)
+            {
+                stack.Push(CreateTaskWrapper(task));
+
+                return true;
+            }
+            
+            var enumerable = current as IEnumerable;
+            if (enumerable != null)
+                throw new TaskYieldsIEnumerableException("Yield an IEnumerable is not supported " + current.GetType());
+
+            return false;
+        }
+
         protected virtual TaskWrapper CreateTaskWrapper(IAbstractTask task)
         {
-            return new TaskWrapper(task);
+            var taskI = task as ITask;
+
+            if (taskI == null)
+                throw new ArgumentException();
+
+            return new TaskWrapper(taskI);
         }
 
         protected virtual void CheckForToken(object current)

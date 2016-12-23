@@ -15,9 +15,13 @@ namespace Svelto.Tasks
             stopped = false;
         }
 
-        public void StartCoroutine(IEnumerator task)
-        {	
-            stopped = false;
+        public void StartCoroutineThreadSafe(PausableTask task)
+        {
+            StartCoroutine(task);
+        }
+
+        public void StartCoroutine(PausableTask task)
+        {
             paused = false;
 
             //Task.Factory.StartNew(() => {}, TaskCreationOptions.LongRunning); for WSA
@@ -32,19 +36,20 @@ namespace Svelto.Tasks
 
                 ThreadPool.QueueUserWorkItem((stateInfo) => //creates a new thread only if there isn't any running. It's always unique
                 {
-                    StartCoroutineInternal();
+                    RunCoroutineFiber();
 
                     _isAlive = false;
+                    stopped = false;
                     Thread.MemoryBarrier();
                 });
             }
         }
 
-        void StartCoroutineInternal()
+        void RunCoroutineFiber()
         {
             while (_coroutines.Count > 0 || _newTaskRoutines.Count > 0)
             {
-                while (_newTaskRoutines.Count > 0)
+                if (_newTaskRoutines.Count > 0 && _waitForflush == false) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
                 for (int i = 0; i < _coroutines.Count; i++)
@@ -55,13 +60,9 @@ namespace Svelto.Tasks
                     {
                         if (enumerator.MoveNext() == false)
                         {
-                            Thread.MemoryBarrier();
-                            if (stopped == true)
-                            {
-                                _coroutines.DeepClear();
-    
-                                return; //will kill the thread
-                            }
+                            var disposable = enumerator as IDisposable;
+                            if (disposable != null)
+                                disposable.Dispose(); 
 
                             _coroutines.UnorderredRemoveAt(i--);
                         }
@@ -75,7 +76,13 @@ namespace Svelto.Tasks
                         _coroutines.UnorderredRemoveAt(i--);
                     }
                 }
+
+                Thread.MemoryBarrier();
+                if (_waitForflush == true && _coroutines.Count == 0)
+                    break; //kill the thread
             }
+
+            _waitForflush = false;
         }
 
         public void StopAllCoroutines()
@@ -83,6 +90,7 @@ namespace Svelto.Tasks
             _newTaskRoutines.Clear();
 
             stopped = true;
+            _waitForflush = true;
             Thread.MemoryBarrier();
         }
 
@@ -97,5 +105,6 @@ namespace Svelto.Tasks
 
         volatile bool _stopped;
         volatile bool _isAlive;
+        volatile bool _waitForflush;
     }
 }

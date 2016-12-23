@@ -31,10 +31,5 @@ namespace Svelto.Tasks
     {
         Exception   throwException { get; }
     }
-
-    public interface ITaskChain<Token>:IAbstractTask
-    {
-        void		Execute(Token token);
-    }
 }
 

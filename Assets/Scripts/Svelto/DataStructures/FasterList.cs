@@ -262,7 +262,7 @@ namespace Svelto.DataStructures
 
     public class FasterList<T> : IList<T>
     {
-        const int MIN_SIZE = 32;
+        const int MIN_SIZE = 4;
 
         public int Count
         {
@@ -320,7 +320,7 @@ namespace Svelto.DataStructures
             _buffer[_count++] = item;
         }
 
-        static public FasterList<T> PreFill<U>(int initialSize) where U:T, new()
+        public static FasterList<T> PreFill<U>(int initialSize) where U:T, new()
         {
             var list = new FasterList<T>(initialSize);
 
@@ -353,17 +353,13 @@ namespace Svelto.DataStructures
 
         public void AddRange(FasterList<T> items)
         {
-            var count = items.Count;
-            if (_count + count >= _buffer.Length)
-                AllocateMore(_count + count);
-
-            Array.Copy(items._buffer, 0, _buffer, _count, count);
-            _count += count;
+            AddRange(items.ToArrayFast(), items.Count);
         }
 
-        public void AddRange(T[] items)
+        public void AddRange(T[] items, int count)
         {
-            var count = items.Length;
+            if (count == 0) return;
+
             if (_count + count >= _buffer.Length)
                 AllocateMore(_count + count);
 
@@ -553,13 +549,13 @@ namespace Svelto.DataStructures
 
         void AllocateMore(int newSize)
         {
-            var oldLength = _buffer.Length;
+            var oldLength = Mathf.Max(_buffer.Length, MIN_SIZE);
 
             while (oldLength < newSize)
                 oldLength <<= 1;
 
             var newList = new T[oldLength];
-            if (_count > 0) _buffer.CopyTo(newList, 0);
+            if (_count > 0) Array.Copy(_buffer, newList, _count);
             _buffer = newList;
         }
 

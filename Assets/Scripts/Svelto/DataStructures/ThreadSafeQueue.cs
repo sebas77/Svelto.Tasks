@@ -106,6 +106,21 @@ namespace Svelto.DataStructures
             }
         }
 
+        public void DequeueAll(FasterList<T> list)
+        {
+            LockQ.EnterWriteLock();
+            try
+            {
+                while (m_Queue.Count > 0)
+                    list.Add(m_Queue.Dequeue());
+            }
+
+            finally
+            {
+                LockQ.ExitWriteLock();
+            }
+        }
+
         public FasterList<U> DequeueAllAs<U>() where U:class
         {
             LockQ.EnterWriteLock();

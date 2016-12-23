@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 
 namespace Svelto.Tasks
@@ -8,17 +8,17 @@ namespace Svelto.Tasks
         public WaitForSecondsEnumerator(float seconds)
         {
             _seconds = seconds;
-            _future = DateTime.Now.AddSeconds(seconds);
+            _future = DateTime.UtcNow.AddSeconds(seconds);
         }
 
         public bool MoveNext()
         {
-            return _future >= DateTime.Now;
+            return _future >= DateTime.UtcNow;
         }
 
         public void Reset()
         {
-            _future = DateTime.Now.AddSeconds(_seconds);
+            _future = DateTime.UtcNow.AddSeconds(_seconds);
         }
 
         public object Current { get { return null; } }

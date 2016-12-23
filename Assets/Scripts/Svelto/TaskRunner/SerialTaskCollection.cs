@@ -34,6 +34,19 @@ namespace Svelto.Tasks
 #if TO_IMPLEMENT_PROPERLY            
             int startingCount = registeredEnumerators.Count;
 #endif
+            if (RunTasks()) return true;
+
+            if (onComplete != null)
+                onComplete();
+
+            isRunning = false;
+            Reset();
+
+            return false;
+        }
+
+        bool RunTasks()
+        {
             while (_index < _listOfStacks.Count)
             {
                 var stack = _listOfStacks[_index];
@@ -53,36 +66,20 @@ namespace Svelto.Tasks
                     else
                     {
                         _current = ce.Current;
-                        if (_current != ce && _current != null)
+
+                        if (_current == ce)
+                            throw new Exception("An enumerator returning itself is not supported");
+
+                        if (_current != null && _current != Break.It)
                         {
-                            var enumerator = _current as IEnumerator;
-                            if (enumerator != null)
-                            {
-                                CheckForToken(_current);
-                                stack.Push(enumerator); //it's pushed because it can yield another IEnumerator on its own
-#if TO_IMPLEMENT_PROPERLY
-                                push(subprogress);
-#endif
+                            if (StandardEnumeratorCheck(_current, stack) == true)
                                 continue;
-                            }
-
-                            var task = _current as IAbstractTask;
-                            if (task != null)
-                            {
-                                stack.Push(CreateTaskWrapper(task));
-
-                                continue;
-                            }
-
-                            var ptasks = _current as IEnumerator[];
-                            if (ptasks != null)
-                            {
-                                stack.Push(new ParallelTaskCollection(ptasks));
-
-                                continue;
-                            }
+                           //in all the cases above, the task collection is not meant to yield
                         }
-
+                        else 
+                        if (_current == Break.It)
+                             return false;
+                        
                         return true;
 #if TO_IMPLEMENT_PROPERLY
                         if (ce is AsyncTask) //asyn
@@ -96,13 +93,6 @@ namespace Svelto.Tasks
 
                 _index++;
             }
-
-            if (onComplete != null)
-                onComplete();
-
-            isRunning = false;
-            Reset();
-
             return false;
         }
 
@@ -118,25 +108,6 @@ namespace Svelto.Tasks
         }
 
         object _current;
-    }
-
-    public class SerialTaskCollection<Token>: SerialTaskCollection
-    {
-        public SerialTaskCollection(Token token) { _token = token; }
-
-        protected override TaskWrapper CreateTaskWrapper(IAbstractTask task)
-        {
-            return new TaskWrapper<Token>(task) { token = _token };
-        }
-
-        protected override void CheckForToken (object current)
-        {
-            var task = current as IChainLink<Token>;
-            if (task != null)
-                task.token = _token;
-        }
-
-        Token     _token;
     }
 }
 

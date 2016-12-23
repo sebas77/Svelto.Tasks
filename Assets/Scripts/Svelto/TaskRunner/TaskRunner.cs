@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Internal;
+using UnityEngine;
+using Object = UnityEngine.Object;
 
 public class TaskRunner
 {
@@ -41,12 +43,12 @@ public class TaskRunner
 
     public IEnumerator Run(Func<IEnumerator> taskGenerator)
     {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumeratorProvider(taskGenerator).Start();
+        return RunOnSchedule(_runner, taskGenerator);
     }
 
     public IEnumerator Run(IEnumerator task)
     {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumerator(task).Start();
+        return RunOnSchedule(_runner, task);
     }
 
     public IEnumerator RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
@@ -58,6 +60,27 @@ public class TaskRunner
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
     }
+
+    public IEnumerator ThreadSafeRun(Func<IEnumerator> taskGenerator)
+    {
+        return ThreadSafeRunOnSchedule(_runner, taskGenerator);
+    }
+
+    public IEnumerator ThreadSafeRun(IEnumerator task)
+    {
+        return ThreadSafeRunOnSchedule(_runner, task);
+    }
+
+    public IEnumerator ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
+    {
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).ThreadSafeStart();
+    }
+
+    public IEnumerator ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)
+    {
+        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
+    }
+
 
     public void StopDefaultSchedulerTasks()
     {
@@ -87,6 +110,14 @@ public class TaskRunner
         _instance._runner = new MultiThreadRunner();
 #endif
         _instance._taskPool = new PausableTaskPool();
+
+#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
+        var debugTasksObject = new GameObject("Tasks Debugger");
+
+        debugTasksObject.gameObject.AddComponent<Svelto.Tasks.Profiler.TasksProfilerBehaviour>();
+
+        Object.DontDestroyOnLoad(debugTasksObject);
+#endif
     }
 
     IRunner             _runner;

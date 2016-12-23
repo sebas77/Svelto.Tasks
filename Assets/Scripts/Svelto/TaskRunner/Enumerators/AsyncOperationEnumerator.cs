@@ -1,15 +1,14 @@
-using System.Collections;
 using UnityEngine;
 
 namespace Svelto.Tasks
 {
-    public class AsyncOperationEnumerator : IEnumerator
+    public class AsyncOperationEnumerator : IParallelEnumerator
     {
         AsyncOperation _asyncOp;
 
-        public AsyncOperationEnumerator(AsyncOperation www)
+        public AsyncOperationEnumerator(AsyncOperation async)
         {
-            _asyncOp = www;
+            _asyncOp = async;
         }
 
         public object Current { get { return _asyncOp; } }
@@ -20,7 +19,6 @@ namespace Svelto.Tasks
         }
 
         public void Reset()
-        {
-        }
+        {}
     }
 }

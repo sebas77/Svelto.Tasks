@@ -10,6 +10,7 @@ namespace Svelto.Tasks
         ITaskRoutine SetScheduler(IRunner runner);
 
         IEnumerator Start(Action<PausableTaskException> onFail = null, Action onStop = null);
+        IEnumerator ThreadSafeStart(Action<PausableTaskException> onFail = null, Action onStop = null);
      
         void Pause();
         void Resume();

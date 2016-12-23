@@ -5,33 +5,31 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 
 //
-//it doesn't make any sense to have
-//more than one MonoRunner active
+//it doesn't make any sense to have more than one MonoRunner active
+//that's why I eventually decided to keep it as a static class.
+//Only downside is that I assume that the TaskRunner gameobject
+//is never destroyed after it's created.
 //
 namespace Svelto.Tasks.Internal
 {
     class MonoRunner : IRunner
     {
         public bool paused { set; get; }
-        public bool stopped { private set; get; }
+        public bool stopped { get { return _stopped; } }
 
         public int numberOfRunningTasks { get { return _coroutines.Count; } }
 
-        public MonoRunner()
+        static MonoRunner()
         {
-            _coroutines = new FasterList<IEnumerator>(NUMBER_OF_INITIAL_COROUTINE);
+            _coroutines = new FasterList<PausableTask>(NUMBER_OF_INITIAL_COROUTINE);
 
-            if (_go == null)
-            {
-                _go = new GameObject("TaskRunner");
+            _go = new GameObject("TaskRunner");
 
-                _runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
-                _runnerBehaviour.StartCoroutine(StartCoroutineInternal());
+            RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
+            _runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
+            runnerBehaviour.StartCoroutine(CoroutinesRunner());
 
-                Object.DontDestroyOnLoad(_go);
-            }
-            else
-                _runnerBehaviour = _go.GetComponent<RunnerBehaviour>();
+            Object.DontDestroyOnLoad(_go);
         }
 
         /// <summary>
@@ -40,75 +38,96 @@ namespace Svelto.Tasks.Internal
         /// </summary>
         public void StopAllCoroutines() 
         {
-            stopped = true; _mustStop = true;
+            _stopped = true; paused = false;
 
-            _runnerBehaviour.StopAllCoroutines();
+            _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
             
-            //note: _coroutines will be cleaned by the single tasks stopping silently.
-            //in this way they will be put back to the pool.
             _newTaskRoutines.Clear();
 
-            _runnerBehaviour.StartCoroutine(StartCoroutineInternal());
+            //note: _coroutines will be cleaned by the single tasks stopping silently.
+            //in this way they will be put back to the pool.
+            //let's be sure that the runner had the time to stop and recycle the previous tasks
+            _waitForflush = true; 
         }
 
-        public void StartCoroutine(IEnumerator task)
+        public void StartCoroutineThreadSafe(PausableTask task)
         {
-            paused = false;
-            stopped = false;
+            if (task == null) return; 
 
-            //_go.SetActive(true);
-            //_runnerBehaviour.enabled = true;
+            paused = false;
 
             _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
 
-        protected IEnumerator StartCoroutineInternal()
+        public void StartCoroutine(PausableTask task)
+        {
+            paused = false;
+
+            InternalThreadUnsafeStartCoroutine(task);
+        }
+
+        static void InternalThreadUnsafeStartCoroutine(PausableTask task)
+        {
+            if (task == null || (_stopped == false && task.MoveNext() == false))
+                return;
+
+            _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
+        }
+
+        protected static IEnumerator CoroutinesRunner()
         {
             while (true)
             {
-                while (_newTaskRoutines.Count > 0)
-                    _coroutines.AddRange(_newTaskRoutines.DequeueAll());
+                var newTaskRoutine = _newTaskRoutines;
+                var coroutines = _coroutines;
 
-                for (int i = 0; i < _coroutines.Count; i++)
+                if (newTaskRoutine.Count > 0 && _waitForflush == false) //don't start anything while flushing
+                    newTaskRoutine.DequeueAll(coroutines);
+
+                for (int i = 0; i < coroutines.Count; i++)
                 {
                     var enumerator = _coroutines[i];
 
                     try
                     {
-                        if (enumerator.MoveNext() == false)
-                        {
-                            if (_mustStop) //this is needed in case StopAllCoroutine is called from an inside a coroutine!
-                            {
-                                _mustStop = false;
+                        //let's spend few words about this. Special YieldInstruction can be only processed internally
+                        //by Unity. The simplest way to handle them is to hand them to Unity itself. 
+                        //However while the Unity routine is processed, the rest of the coroutine is waiting for it.
+                        //This would defeat the purpose of the parallel procedures. For this reason, the Parallel
+                        //routines will mark the enumerator returned as ParallelYield which will change the way the routine is processed.
+                        //in this case the MonoRunner won't wait for the Unity routine to continue processing the next tasks.
+                        var current = enumerator.Current;
+                        PausableTask enumeratorToHandle = null;
+                        var yield = current as ParallelYield;
+                        if (yield != null)
+                            current = yield.Current;
+                        else
+                            enumeratorToHandle = enumerator;
 
-                                break; //breaks the for loop, we don't want the coroutine to end.
+                        if (current is YieldInstruction || current is AsyncOperation)
+                        {
+                            _runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle));
+
+                            if (enumeratorToHandle != null)
+                            {
+                                _coroutines.UnorderredRemoveAt(i--);
+                                continue;
                             }
+                        }
+
+                        bool result;
+#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
+                        result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator);
+#else
+                        result = enumerator.MoveNext();
+#endif
+                        if (result == false)
+                        {
+                            var disposable = enumerator as IDisposable;
+                            if (disposable != null)
+                                disposable.Dispose();
 
                             _coroutines.UnorderredRemoveAt(i--);
-                        }
-                        else
-                        {
-                            //let's spend few words about this. Special YieldInstruction can be only processed internally
-                            //by Unity. The simplest way to handle them is to hand them to Unity itself. 
-                            //However while the Unity routine is processed, the rest of the coroutine is waiting for it.
-                            //This would defeat the purpose of the parallel procedures. For this reason, the Parallel
-                            //routines will mark the enumerator returned as ParallelYield which will change the way the routine is processed.
-                            //in this case the MonoRunner won't wait for the Unity routine to continue processing the next tasks.
-                            var current = enumerator.Current;
-                            IEnumerator enumeratorToHandle = null;
-                            var yield = current as ParallelYield;
-                            if (yield != null)
-                                current = yield.Current;
-                            else
-                                enumeratorToHandle = enumerator;
-
-                            if (current is WWW || current is YieldInstruction || current is AsyncOperation)
-                            {
-                                _runnerBehaviour.StartCoroutine(HandItToUnity(current, enumeratorToHandle));
-
-                                if (enumeratorToHandle != null)
-                                    _coroutines.UnorderredRemoveAt(i--);
-                            }
                         }
                     }
                     catch (Exception e)
@@ -121,22 +140,30 @@ namespace Svelto.Tasks.Internal
                     }
                 }
 
+                if (_waitForflush == true && coroutines.Count == 0)
+                {  //this process is more complex than I like, not 100% sure it covers all the cases yet
+                    _waitForflush = false;
+                    _stopped = false;
+                }
+
                 yield return null;
             }
         }
 
-        IEnumerator HandItToUnity(object current, IEnumerator enumerator)
+        static  IEnumerator HandItToUnity(object current, PausableTask task)
         {
             yield return current;
-            yield return enumerator;
+            InternalThreadUnsafeStartCoroutine(task);
         }
 
-        FasterList<IEnumerator>      _coroutines;
-        ThreadSafeQueue<IEnumerator> _newTaskRoutines = new ThreadSafeQueue<IEnumerator>();
-        RunnerBehaviour              _runnerBehaviour;
-        GameObject                   _go;
-        bool                         _mustStop;
+        static readonly FasterList<PausableTask>     _coroutines;
+        static readonly ThreadSafeQueue<PausableTask> _newTaskRoutines = new ThreadSafeQueue<PausableTask>();
+        static readonly RunnerBehaviour               _runnerBehaviourForUnityCoroutine;
+        static readonly GameObject                   _go;
 
-        const int                   NUMBER_OF_INITIAL_COROUTINE = 3;
+        static bool                                  _stopped;
+        static bool                                  _waitForflush;
+
+        const int   NUMBER_OF_INITIAL_COROUTINE = 3;
     }
 }

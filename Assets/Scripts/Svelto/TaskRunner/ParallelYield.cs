@@ -1,4 +1,3 @@
-
 namespace Svelto.Tasks.Internal
 {
     class ParallelYield
