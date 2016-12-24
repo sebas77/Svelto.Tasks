@@ -22,11 +22,7 @@ namespace Svelto.Tasks
 
             var result = _www.isDone == false;
 
-            if (result == false)
-                Utility.Console.Log(_www.url + " " + _www.progress * 100.0f + " time passed " + _timePassed);
-
             return result;
-
         }
 
         public void Reset()

@@ -54,8 +54,6 @@ namespace Test.MultiThread
             yield return null;
         }
 
-        int i;
-
         bool _paused;
         MultiThreadRunner MTRunner = new MultiThreadRunner();
     }

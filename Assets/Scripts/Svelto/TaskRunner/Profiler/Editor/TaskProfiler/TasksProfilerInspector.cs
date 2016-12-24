@@ -38,11 +38,19 @@ namespace Svelto.Tasks.Profiler
         SORTING_OPTIONS _sortingOption = SORTING_OPTIONS.AVERAGE;
 
         const int SYSTEM_MONITOR_DATA_LENGTH = 300;
+
+        TaskInfo[] tasks = new TaskInfo[1];
         
         public override void OnInspectorGUI()
         {
             var taskProfilerBehaviour = (TasksProfilerBehaviour) target;
-            TaskInfo[] tasks = taskProfilerBehaviour.tasks;
+
+            var tasksV = taskProfilerBehaviour.tasks;
+
+            if (tasks.Length != tasksV.Count)
+                tasks = new TaskInfo[tasksV.Count];
+
+            taskProfilerBehaviour.tasks.CopyTo(tasks, 0);
 
             DrawTasksMonitor(tasks);
             DrawTaskList(taskProfilerBehaviour, tasks);

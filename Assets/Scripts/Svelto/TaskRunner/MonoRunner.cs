@@ -40,7 +40,8 @@ namespace Svelto.Tasks.Internal
         {
             _stopped = true; paused = false;
 
-            _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
+            if (_runnerBehaviourForUnityCoroutine != null) //in case it has been destroyed
+                _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
             
             _newTaskRoutines.Clear();
 
@@ -117,7 +118,7 @@ namespace Svelto.Tasks.Internal
 
                         bool result;
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
-                        result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator);
+                        result = Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator);
 #else
                         result = enumerator.MoveNext();
 #endif

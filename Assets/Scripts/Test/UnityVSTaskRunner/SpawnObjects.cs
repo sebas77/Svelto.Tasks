@@ -65,10 +65,7 @@ public class SpawnObjects : MonoBehaviour
             parent2.SetActive(!parent2.activeSelf);
 
             if (parent1.activeInHierarchy == true)
-            {
                 text.text = "Unity coroutine Enabled";
-                TaskRunner.Instance.StopDefaultSchedulerTasks();
-            }
             else
                 text.text = "TaskRunner coroutine Enabled";
         }

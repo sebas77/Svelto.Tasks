@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using NUnit.Framework;
 using Svelto.Tasks;
+using Svelto.Tasks.Experimental;
 
 #endregion
 
@@ -309,10 +310,10 @@ namespace Test
         TaskRunner _taskRunner;
         ITaskRoutine _reusableTaskRoutine;
 
-        SerialTaskCollection serialTasks1;
-        SerialTaskCollection serialTasks2;
-        ParallelTaskCollection parallelTasks1;
-        ParallelTaskCollection parallelTasks2;
+        SerialTaskCollection<ValueObject> serialTasks1;
+        SerialTaskCollection<ValueObject> serialTasks2;
+        ParallelTaskCollection<ValueObject> parallelTasks1;
+        ParallelTaskCollection<ValueObject> parallelTasks2;
 
         Task task1;
         Task task2;
