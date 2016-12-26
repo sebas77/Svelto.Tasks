@@ -5,6 +5,15 @@ using UnityEngine;
 
 public class ExamplePromises : MonoBehaviour
 {
+    class ValueObject<T>
+    {
+        public ValueObject(T par)
+        {
+            target = par;
+        }
+
+        public object target;
+    }
     // Use this for initialization
     void Start()
     {
@@ -37,7 +46,7 @@ public class ExamplePromises : MonoBehaviour
     {
         yield return new WaitForSecondsEnumerator(1); //well not real reason to wait, let's assume we were running a web service
 
-        yield return "http://download.thinkbroadband.com/50MB.zip";
+        yield return new ValueObject<string>("http://download.thinkbroadband.com/50MB.zip");
     }
 
     IEnumerator BreakOnTimeOut(int timeout) 

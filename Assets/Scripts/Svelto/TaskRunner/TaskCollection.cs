@@ -80,16 +80,14 @@ namespace Svelto.Tasks
             return this;
         }
 
-        protected bool StandardEnumeratorCheck(object current, Stack<IEnumerator> stack)
+        protected IEnumerator StandardEnumeratorCheck(object current)
         {
             var enumerator = current as IEnumerator;
             if (enumerator != null)
             {
                 CheckForToken(current);
-                //it's pushed because it can yield another IEnumerator on its turn
-                stack.Push(enumerator);
 
-                return true;
+                return enumerator;
             }
 
             ///
@@ -97,25 +95,17 @@ namespace Svelto.Tasks
             /// 
             var ptasks = current as IEnumerator[]; 
             if (ptasks != null)
-            {
-                stack.Push(new ParallelTaskCollection(ptasks));
-
-                return true;
-            }
+                return new ParallelTaskCollection(ptasks);
 
             var task = current as IAbstractTask;
             if (task != null)
-            {
-                stack.Push(CreateTaskWrapper(task));
-
-                return true;
-            }
+                return CreateTaskWrapper(task);
             
             var enumerable = current as IEnumerable;
             if (enumerable != null)
                 throw new TaskYieldsIEnumerableException("Yield an IEnumerable is not supported " + current.GetType());
 
-            return false;
+            return null;
         }
 
         protected virtual TaskWrapper CreateTaskWrapper(IAbstractTask task)

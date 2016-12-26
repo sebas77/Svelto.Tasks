@@ -18,9 +18,10 @@ namespace Test.MultiThread
             st.Add(Print("s4"));
             
             pt.Add(Print("p1")).Add(Print("p2"));
-            pt.Add(new LoadSomething(new WWW("www.google.com"))); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
-            pt.Add(new LoadSomething(new WWW("http://download.thinkbroadband.com/5MB.zip")));
-            pt.Add(new LoadSomething(new WWW("www.ebay.com")));
+            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("www.google.com")))); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
+            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("http://download.thinkbroadband.com/5MB.zip"))));
+            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("www.ebay.com"))));
+
             pt.Add(Print("p3")).Add(Print("p4")).Add(st).Add(Print("p5")).Add(Print("p6")).Add(Print("p7"));
 
             TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(MTRunner).SetEnumerator(pt).Start(); //running on another thread!
@@ -51,6 +52,7 @@ namespace Test.MultiThread
         IEnumerator Print(string i)
         {
             Debug.Log(i);
+            
             yield return null;
         }
 
@@ -62,7 +64,7 @@ namespace Test.MultiThread
     {
         public SomeData token { set; private get; }
 
-        public LoadSomething(WWW wWW)
+        public LoadSomething(WWWEnumerator wWW)
         {
             this.wWW = wWW;
             task = TaskRunner.Instance.AllocateNewTaskRoutine();
@@ -71,18 +73,18 @@ namespace Test.MultiThread
 
         public IEnumerator GetEnumerator()
         {
-            yield return task.Start(); //Continuation! The task will continue on the main thread scheduler!
+            yield return task.ThreadSafeStart(); //Continuation! The task will continue on the main thread scheduler!
         }
 
         IEnumerator DoIt()
         {
-            yield return new WWWEnumerator(wWW);
+            yield return wWW;
 
-            foreach (string s in wWW.responseHeaders.Values)
+            foreach (string s in wWW.www.responseHeaders.Values)
                 Debug.Log(s);
         }
 
-        WWW             wWW;
+        WWWEnumerator   wWW;
         ITaskRoutine    task;
     }
 }

@@ -41,7 +41,7 @@ public class ExampleParallelTasks : MonoBehaviour
 	IEnumerator DoSomethingAsynchonously()  //this can be awfully slow, I suppose it is synched with the frame rate
 	{
 		for (i = 0; i < 500; i++)
-	        yield return i;
+	        yield return i; //it will continue on the next frame
 		
 		Debug.Log("index " + i);
 	}

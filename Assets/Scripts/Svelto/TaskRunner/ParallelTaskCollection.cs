@@ -87,8 +87,14 @@ namespace Svelto.Tasks
 
                             if (_current != null && _current != Break.It)
                             {
-                                if (StandardEnumeratorCheck(ce, stack) == true)
+                                IEnumerator result = StandardEnumeratorCheck(_current);
+                                if (result != null)
+                                {
+                                    stack.Push(result);
+
                                     continue;
+                                }
+                                    
                                 //in all the cases above, the task collection is not meant to yield
                             }
                             else 
@@ -137,8 +143,8 @@ namespace Svelto.Tasks
         object          _current;
         int             _index; 
 #if TO_IMPLEMENT_PROPERLY
-        float 					 _progress;
-        float                    _subprogress;
+        float 			_progress;
+        float           _subprogress;
 #endif
     }
 }
