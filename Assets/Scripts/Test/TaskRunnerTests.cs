@@ -53,6 +53,52 @@ namespace Test
         }
 
         [Test]
+        public void TestSerialBreakIt()
+        {
+            serialTasks1.Add(iterable1);
+            serialTasks1.Add(BreakIt());
+            serialTasks1.Add(iterable2);
+
+            _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, serialTasks1);
+
+            Assert.That(iterable1.AllRight == true && iterable2.AllRight == false);
+        }
+
+        IEnumerator BreakIt()
+        {
+            yield return Break.It;
+        }
+
+        [Test]
+        public void TestParallelBreakIt()
+        {
+            parallelTasks1.Add(iterable1);
+            parallelTasks1.Add(BreakIt());
+            parallelTasks1.Add(iterable2);
+
+            _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, parallelTasks1);
+
+            Assert.That(iterable1.AllRight == false && iterable2.AllRight == false);
+        }
+
+        [Test]
+        public void TestBreakIt()
+        {
+             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler,SeveralTasks());
+
+             Assert.That(iterable1.AllRight == true && iterable2.AllRight == false);
+        }
+
+        IEnumerator SeveralTasks()
+        {
+            yield return iterable1.GetEnumerator();
+
+            yield return Break.It;
+
+            yield return iterable2.GetEnumerator();
+        }
+
+        [Test]
         public void TestEnumerablesAreExecutedInSerialWithReusableTask()
         {
             _reusableTaskRoutine.SetEnumerator(TestSerialTwice()).Start();
@@ -370,7 +416,7 @@ namespace Test
         class TaskChain: ITaskChain<ValueObject>
         {
             public bool  isDone { get; private set; }
-
+            
             public TaskChain()
             {
                 isDone = false;

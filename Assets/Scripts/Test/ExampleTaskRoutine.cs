@@ -15,8 +15,6 @@ public class ExampleTaskRoutine : MonoBehaviour
     // Use this for initialization
     void Start () 
     {
-        Application.targetFrameRate = 20;
-            
         _taskRountine = TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumeratorProvider(ResetTaskAndRun); //The Task routine is pooled! You could have used Start directly, but you need to use SetEnumeratorProvider if you want restart the TaskRoutine later
         _taskRountine.Start();
     }

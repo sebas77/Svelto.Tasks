@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace PerformanceMT
 {
-    public class DoSomethingHeavy2 : MonoBehaviour
+    public class DoSomethingHeavyMT : MonoBehaviour
     {
         Vector2 direction;
         void Start()
