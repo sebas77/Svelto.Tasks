@@ -30,12 +30,12 @@ namespace Svelto.Tasks
 
         object IEnumerator.Current
         {
-            get { return null; }
+            get { return _www; }
         }
 
         public WWW Current
         {
-            get { return null; }
+            get { return _www; }
         }
 
         public void Dispose()

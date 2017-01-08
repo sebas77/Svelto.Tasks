@@ -2,11 +2,10 @@ using UnityEngine;
 
 namespace PerformanceMT
 {
-
     public class SpawnObjectsMT : MonoBehaviour
     {
         // Use this for initialization
-        void Start()
+        void OnEnable()
         {
             Application.targetFrameRate = -1;
             QualitySettings.vSyncCount = 0;
@@ -18,6 +17,14 @@ namespace PerformanceMT
                 sphere.AddComponent<DoSomethingHeavy2>();
 
                 sphere.transform.parent = this.transform;
+            }
+        }
+
+        private void OnDisable()
+        {
+            foreach (Transform trans in transform)
+            {
+                Destroy(trans.gameObject);
             }
         }
     }

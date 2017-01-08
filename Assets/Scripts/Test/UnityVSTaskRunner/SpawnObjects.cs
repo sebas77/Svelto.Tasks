@@ -17,6 +17,7 @@ public class SpawnObjects : MonoBehaviour
         QualitySettings.vSyncCount = 0;
         
         parent1 = new GameObject();
+        parent1.transform.parent = this.transform;
         parent1.SetActive(false);
 
         Material matYellow = new Material(Shader.Find("Standard"));
@@ -36,6 +37,7 @@ public class SpawnObjects : MonoBehaviour
         }
 
         parent2 = new GameObject();
+        parent2.transform.parent = this.transform;
         parent2.SetActive(false);
         
         for (int i = 0; i < 15000; i++)

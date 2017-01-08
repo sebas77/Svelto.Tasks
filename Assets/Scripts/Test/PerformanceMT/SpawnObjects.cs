@@ -6,7 +6,7 @@ namespace PerformanceMT
     public class SpawnObjects : MonoBehaviour
     {
         // Use this for initialization
-        void Start()
+        void OnEnable()
         {
             Application.targetFrameRate = -1;
             QualitySettings.vSyncCount = 0;
@@ -18,6 +18,14 @@ namespace PerformanceMT
                 sphere.AddComponent<DoSomethingHeavy>();
 
                 sphere.transform.parent = this.transform;
+            }
+        }
+
+        private void OnDisable()
+        {
+            foreach (Transform trans in transform)
+            {
+                Destroy(trans.gameObject);
             }
         }
     }
