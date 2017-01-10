@@ -11,12 +11,12 @@ public class ExampleSerialTasks : MonoBehaviour
 		st.Add(Print(1));
 		st.Add(Print(2));
 		st.Add(DoSomethingAsynchonously(1));
-		st.Add(Print(4));
+		st.Add(Print(3));
 		st.Add(DoSomethingAsynchonously(5));
-		st.Add(Print(5));
+		st.Add(Print(4));
 		st.Add(WWWTest ());
+		st.Add(Print(5));
 		st.Add(Print(6));
-		st.Add(Print(7));
 		
 		StartCoroutine(st);
 	}

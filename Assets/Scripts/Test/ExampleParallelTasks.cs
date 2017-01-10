@@ -9,7 +9,9 @@ public class ExampleParallelTasks : MonoBehaviour
 	// Use this for initialization
 	void Start () 
 	{
-		Application.targetFrameRate = 20;
+		Application.targetFrameRate = 60;
+
+        Debug.Log("Set frame rate to 60fps");
 		
 		ParallelTaskCollection pt = new ParallelTaskCollection();
 		SerialTaskCollection	st = new SerialTaskCollection();
@@ -28,6 +30,12 @@ public class ExampleParallelTasks : MonoBehaviour
 		pt.Add(WWWTest ());
 		pt.Add(Print("7"));
 		pt.Add(Print("8"));
+
+        pt.onComplete += () =>
+        {
+            Application.targetFrameRate = -1;
+            Debug.Log("Unlock framerate");
+        };
 			
 		StartCoroutine(pt);
 	}
