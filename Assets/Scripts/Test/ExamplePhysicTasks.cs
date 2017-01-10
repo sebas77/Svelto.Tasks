@@ -5,14 +5,19 @@ using System;
 
 public class ExamplePhysicTasks : MonoBehaviour 
 {
-    void Start () 
+    void OnEnable () 
 	{
         Time.fixedDeltaTime = 0.5f;
 
         TaskRunner.Instance.RunOnSchedule(StandardSchedulers.physicScheduler, PrintTime);
 	}
-	
-	IEnumerator PrintTime()
+
+    void OnDisable()
+    {
+        StandardSchedulers.physicScheduler.StopAllCoroutines();
+    }
+
+    IEnumerator PrintTime()
 	{
         var timeNow = DateTime.Now;
         while (true)

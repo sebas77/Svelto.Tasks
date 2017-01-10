@@ -12,11 +12,10 @@ namespace Svelto.Tasks.Internal
 {
     class PhysicMonoRunner : MonoRunner
     {
-        new public bool paused { set; get; }
-        new public bool stopped { get { return _flushingOperation.stopped; } }
-        new public int numberOfRunningTasks { get { return _info.count; } }
+        override public int numberOfRunningTasks { get { return _info.count; } }
 
         override protected ThreadSafeQueue<PausableTask> newTaskRoutines { get { return _newTaskRoutines; } }
+        override protected FlushingOperation flushingOperation { get { return _flushingOperation; } }
 
         static PhysicMonoRunner()
         {
@@ -32,6 +31,8 @@ namespace Svelto.Tasks.Internal
             RunnerBehaviourPhysic runnerBehaviour = _go.AddComponent<RunnerBehaviourPhysic>();
             runnerBehaviour.StartCoroutinePhysic(CoroutinesRunner(_newTaskRoutines, coroutines, _flushingOperation, _info));
         }
+
+        override protected void StopUnityCouroutines()  {}
 
         readonly static ThreadSafeQueue<PausableTask> _newTaskRoutines = new ThreadSafeQueue<PausableTask>();
         readonly static FlushingOperation             _flushingOperation = new FlushingOperation();

@@ -15,11 +15,12 @@ namespace Svelto.Tasks.Internal
     class MonoRunner : IRunner
     {
         public bool paused { set; get; }
-        public bool stopped { get { return _flushingOperation.stopped; } }
-
-        public int numberOfRunningTasks { get { return _info.count; } }
+        public bool stopped { get { return flushingOperation.stopped; } }
+        
+        virtual public int  numberOfRunningTasks { get { return _info.count; } }
 
         virtual protected ThreadSafeQueue<PausableTask> newTaskRoutines { get { return _newTaskRoutines; } }
+        virtual protected FlushingOperation flushingOperation { get { return _flushingOperation; } }
 
         static MonoRunner()
         {
@@ -44,17 +45,16 @@ namespace Svelto.Tasks.Internal
         /// </summary>
         public void StopAllCoroutines() 
         {
-            _flushingOperation.stopped = true; paused = false;
+            flushingOperation.stopped = true; paused = false;
 
-            if (_runnerBehaviourForUnityCoroutine != null) //in case it has been destroyed
-                _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
+            StopUnityCouroutines();
             
             newTaskRoutines.Clear();
 
             //note: _coroutines will be cleaned by the single tasks stopping silently.
             //in this way they will be put back to the pool.
             //let's be sure that the runner had the time to stop and recycle the previous tasks
-            _flushingOperation.waitForflush = true; 
+            flushingOperation.waitForflush = true; 
         }
 
         public void StartCoroutineThreadSafe(PausableTask task)
@@ -70,15 +70,21 @@ namespace Svelto.Tasks.Internal
         {   
             paused = false;
 
-            InternalThreadUnsafeStartCoroutine(task, newTaskRoutines);
+            InternalThreadUnsafeStartCoroutine(task, newTaskRoutines, flushingOperation);
         }
 
-        static protected void InternalThreadUnsafeStartCoroutine(PausableTask task, ThreadSafeQueue<PausableTask> newTaskRoutines)
+        static protected void InternalThreadUnsafeStartCoroutine(PausableTask task, ThreadSafeQueue<PausableTask> newTaskRoutines, FlushingOperation flushingOperation)
         {
-            if (task == null || (_flushingOperation.stopped == false && task.MoveNext() == false))
+            if (task == null || (flushingOperation.stopped == false && task.MoveNext() == false))
                 return;
 
             newTaskRoutines.Enqueue(task); //careful this could run on another thread!
+        }
+
+        virtual protected void StopUnityCouroutines()
+        {
+            if (_runnerBehaviourForUnityCoroutine != null) //in case it has been destroyed
+                _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
         }
 
         protected static IEnumerator CoroutinesRunner(ThreadSafeQueue<PausableTask> newTaskRoutines, FasterList<PausableTask> coroutines, FlushingOperation flushingOperation, RunningTasksInfo info, RunnerBehaviour runnerBehaviourForUnityCoroutine = null)
@@ -114,7 +120,7 @@ namespace Svelto.Tasks.Internal
                         {
                             if (current is YieldInstruction || current is AsyncOperation)
                             {
-                                runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle, newTaskRoutines));
+                                runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle, newTaskRoutines, flushingOperation));
 
                                 if (enumeratorToHandle != null)
                                 {
@@ -164,11 +170,11 @@ namespace Svelto.Tasks.Internal
             }
         }
 
-        static IEnumerator HandItToUnity(object current, PausableTask task, ThreadSafeQueue<PausableTask> newTaskRoutines)
+        static IEnumerator HandItToUnity(object current, PausableTask task, ThreadSafeQueue<PausableTask> newTaskRoutines, FlushingOperation flushingOperation)
         {
             yield return current;
 
-            InternalThreadUnsafeStartCoroutine(task, newTaskRoutines);
+            InternalThreadUnsafeStartCoroutine(task, newTaskRoutines, flushingOperation);
         }
 
         readonly static ThreadSafeQueue<PausableTask> _newTaskRoutines = new ThreadSafeQueue<PausableTask>();
