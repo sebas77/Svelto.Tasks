@@ -517,15 +517,16 @@ namespace Svelto.DataStructures
 
         public T UnorderredRemoveAt(int index)
         {
-            DesignByContract.Check.Require(index < _count, "out of bound index");
+            DesignByContract.Check.Require(index < _count && _count > 0, "out of bound index");
 
             T item = _buffer[index];
 
             if (index == --_count)
                 return item;
 
+            T swap = _buffer[index];
             _buffer[index] = _buffer[_count];
-            _buffer[_count] = default(T);
+            _buffer[_count] = swap;
 
             return item;
         }

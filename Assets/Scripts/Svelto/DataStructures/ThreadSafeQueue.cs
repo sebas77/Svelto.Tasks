@@ -106,7 +106,7 @@ namespace Svelto.DataStructures
             }
         }
 
-        public void DequeueAll(FasterList<T> list)
+        public void DequeueAllInto(FasterList<T> list)
         {
             LockQ.EnterWriteLock();
             try

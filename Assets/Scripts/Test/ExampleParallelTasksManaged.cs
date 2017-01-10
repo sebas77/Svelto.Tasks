@@ -2,7 +2,6 @@ using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Experimental;
 using UnityEngine;
-using Svelto.Tasks.Experimental;
 
 class SomeData
 {
