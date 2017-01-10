@@ -15,21 +15,27 @@ namespace Svelto.Tasks.Internal
     class MonoRunner : IRunner
     {
         public bool paused { set; get; }
-        public bool stopped { get { return _stopped; } }
+        public bool stopped { get { return _flushingOperation.stopped; } }
 
-        public int numberOfRunningTasks { get { return _coroutines.Count; } }
+        public int numberOfRunningTasks { get { return _info.count; } }
+
+        virtual protected ThreadSafeQueue<PausableTask> newTaskRoutines { get { return _newTaskRoutines; } }
 
         static MonoRunner()
         {
-            _coroutines = new FasterList<PausableTask>(NUMBER_OF_INITIAL_COROUTINE);
+            if (_go == null)
+            {
+                _go = new GameObject("TaskRunner");
 
-            _go = new GameObject("TaskRunner");
+                Object.DontDestroyOnLoad(_go);
+            }
+
+            var coroutines = new FasterList<PausableTask>(NUMBER_OF_INITIAL_COROUTINE);
 
             RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
             _runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-            runnerBehaviour.StartCoroutine(CoroutinesRunner());
 
-            Object.DontDestroyOnLoad(_go);
+            runnerBehaviour.StartCoroutine(CoroutinesRunner(_newTaskRoutines, coroutines, _flushingOperation, _info, _runnerBehaviourForUnityCoroutine));
         }
 
         /// <summary>
@@ -38,17 +44,17 @@ namespace Svelto.Tasks.Internal
         /// </summary>
         public void StopAllCoroutines() 
         {
-            _stopped = true; paused = false;
+            _flushingOperation.stopped = true; paused = false;
 
             if (_runnerBehaviourForUnityCoroutine != null) //in case it has been destroyed
                 _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
             
-            _newTaskRoutines.Clear();
+            newTaskRoutines.Clear();
 
             //note: _coroutines will be cleaned by the single tasks stopping silently.
             //in this way they will be put back to the pool.
             //let's be sure that the runner had the time to stop and recycle the previous tasks
-            _waitForflush = true; 
+            _flushingOperation.waitForflush = true; 
         }
 
         public void StartCoroutineThreadSafe(PausableTask task)
@@ -57,37 +63,36 @@ namespace Svelto.Tasks.Internal
 
             paused = false;
 
-            _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
+            newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
 
         public void StartCoroutine(PausableTask task)
-        {
+        {   
             paused = false;
 
-            InternalThreadUnsafeStartCoroutine(task);
+            InternalThreadUnsafeStartCoroutine(task, newTaskRoutines);
         }
 
-        static void InternalThreadUnsafeStartCoroutine(PausableTask task)
+        static protected void InternalThreadUnsafeStartCoroutine(PausableTask task, ThreadSafeQueue<PausableTask> newTaskRoutines)
         {
-            if (task == null || (_stopped == false && task.MoveNext() == false))
+            if (task == null || (_flushingOperation.stopped == false && task.MoveNext() == false))
                 return;
 
-            _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
+            newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
 
-        protected static IEnumerator CoroutinesRunner()
+        protected static IEnumerator CoroutinesRunner(ThreadSafeQueue<PausableTask> newTaskRoutines, FasterList<PausableTask> coroutines, FlushingOperation flushingOperation, RunningTasksInfo info, RunnerBehaviour runnerBehaviourForUnityCoroutine = null)
         {
             while (true)
             {
-                var newTaskRoutine = _newTaskRoutines;
-                var coroutines = _coroutines;
+                if (newTaskRoutines.Count > 0 && flushingOperation.waitForflush == false) //don't start anything while flushing
+                    newTaskRoutines.DequeueAllInto(coroutines);
 
-                if (newTaskRoutine.Count > 0 && _waitForflush == false) //don't start anything while flushing
-                    newTaskRoutine.DequeueAll(coroutines);
+                info.count  = coroutines.Count;
 
-                for (int i = 0; i < coroutines.Count; i++)
+                for (int i = 0; i < info.count; i++)
                 {
-                    var enumerator = _coroutines[i];
+                    var enumerator = coroutines[i];
 
                     try
                     {
@@ -105,14 +110,20 @@ namespace Svelto.Tasks.Internal
                         else
                             enumeratorToHandle = enumerator;
 
-                        if (current is YieldInstruction || current is AsyncOperation)
+                        if (runnerBehaviourForUnityCoroutine != null)
                         {
-                            _runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle));
-
-                            if (enumeratorToHandle != null)
+                            if (current is YieldInstruction || current is AsyncOperation)
                             {
-                                _coroutines.UnorderredRemoveAt(i--);
-                                continue;
+                                runnerBehaviourForUnityCoroutine.StartCoroutine(HandItToUnity(current, enumeratorToHandle, newTaskRoutines));
+
+                                if (enumeratorToHandle != null)
+                                {
+                                    coroutines.UnorderredRemoveAt(i--);
+
+                                    info.count  = coroutines.Count;
+
+                                    continue;
+                                }
                             }
                         }
 
@@ -128,7 +139,7 @@ namespace Svelto.Tasks.Internal
                             if (disposable != null)
                                 disposable.Dispose();
 
-                            _coroutines.UnorderredRemoveAt(i--);
+                            coroutines.UnorderredRemoveAt(i--);
                         }
                     }
                     catch (Exception e)
@@ -137,33 +148,46 @@ namespace Svelto.Tasks.Internal
 
                         Debug.LogException(new CoroutineException(message, e));
 
-                        _coroutines.UnorderredRemoveAt(i--);
+                        coroutines.UnorderredRemoveAt(i--);
                     }
+
+                    info.count  = coroutines.Count;
                 }
 
-                if (_waitForflush == true && coroutines.Count == 0)
+                if (flushingOperation.waitForflush == true && coroutines.Count == 0)
                 {  //this process is more complex than I like, not 100% sure it covers all the cases yet
-                    _waitForflush = false;
-                    _stopped = false;
+                    flushingOperation.waitForflush = false;
+                    flushingOperation.stopped = false;
                 }
 
                 yield return null;
             }
         }
 
-        static  IEnumerator HandItToUnity(object current, PausableTask task)
+        static IEnumerator HandItToUnity(object current, PausableTask task, ThreadSafeQueue<PausableTask> newTaskRoutines)
         {
             yield return current;
-            InternalThreadUnsafeStartCoroutine(task);
+
+            InternalThreadUnsafeStartCoroutine(task, newTaskRoutines);
         }
 
-        static readonly FasterList<PausableTask>     _coroutines;
-        static readonly ThreadSafeQueue<PausableTask> _newTaskRoutines = new ThreadSafeQueue<PausableTask>();
-        static readonly RunnerBehaviour               _runnerBehaviourForUnityCoroutine;
-        static readonly GameObject                   _go;
+        readonly static ThreadSafeQueue<PausableTask> _newTaskRoutines = new ThreadSafeQueue<PausableTask>();
+        readonly static RunnerBehaviour               _runnerBehaviourForUnityCoroutine;
+        readonly static FlushingOperation             _flushingOperation = new FlushingOperation();
+        readonly static RunningTasksInfo              _info = new RunningTasksInfo();
+                
+        protected static GameObject                   _go;
 
-        static bool                                  _stopped;
-        static bool                                  _waitForflush;
+        protected class FlushingOperation
+        {
+            public bool stopped;
+            public bool waitForflush;
+        }
+
+        protected class RunningTasksInfo
+        {
+            public int count;
+        }
 
         const int   NUMBER_OF_INITIAL_COROUTINE = 3;
     }
