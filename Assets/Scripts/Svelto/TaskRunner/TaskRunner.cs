@@ -113,12 +113,12 @@ public class TaskRunner
 
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
         var debugTasksObject = GameObject.Find("Svelto.Tasks.Profiler");
-        if (debugTasksObject == null)        
+        if (debugTasksObject == null)
+        {
             debugTasksObject = new GameObject("Svelto.Tasks.Profiler");
-
-        debugTasksObject.gameObject.AddComponent<Svelto.Tasks.Profiler.TasksProfilerBehaviour>();
-
-        Object.DontDestroyOnLoad(debugTasksObject);
+            debugTasksObject.gameObject.AddComponent<Svelto.Tasks.Profiler.TasksProfilerBehaviour>();
+            Object.DontDestroyOnLoad(debugTasksObject);
+        }
 #endif
     }
 
