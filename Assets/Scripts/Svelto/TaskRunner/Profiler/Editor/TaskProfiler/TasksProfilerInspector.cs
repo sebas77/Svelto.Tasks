@@ -20,7 +20,6 @@ namespace Svelto.Tasks.Profiler
             NONE
         }
 
-        static bool _hideEmptyTasks = true;
         static bool _showTickTasks;
         static bool _showAddTasks;
         static bool _showRemoveTasks;
@@ -44,7 +43,6 @@ namespace Svelto.Tasks.Profiler
         public override void OnInspectorGUI()
         {
             var taskProfilerBehaviour = (TasksProfilerBehaviour) target;
-
             var tasksV = taskProfilerBehaviour.tasks;
 
             if (tasks.Length != tasksV.Count)
@@ -72,7 +70,6 @@ namespace Svelto.Tasks.Profiler
                 ProfilerEditorLayout.EndHorizontal();
 
                 _sortingOption = (SORTING_OPTIONS) EditorGUILayout.EnumPopup("Sort By:", _sortingOption);
-                _hideEmptyTasks = EditorGUILayout.Toggle("Hide empty systems", _hideEmptyTasks);
 
                 EditorGUILayout.Space();
 

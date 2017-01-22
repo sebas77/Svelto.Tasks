@@ -16,9 +16,6 @@ namespace Svelto.Tasks
             _parameter = parameter;
         }
 
-        Action<T> _action;
-        T _parameter;
-
         public object Current
         {
             get { return null; }
@@ -34,6 +31,16 @@ namespace Svelto.Tasks
         {
             throw new NotImplementedException();
         }
+
+        public override string ToString()
+        {
+            var method = _action.Method;
+
+            return method.ReflectedType.Name + "." + method.Name;
+        }
+
+        Action<T> _action;
+        T _parameter;
     }
 
     public class LoopActionEnumerator:IEnumerator
@@ -42,8 +49,6 @@ namespace Svelto.Tasks
         {
             _action = action;
         }
-
-        Action _action;
 
         public object Current
         {
@@ -60,5 +65,50 @@ namespace Svelto.Tasks
         {
             throw new NotImplementedException();
         }
+
+        public override string ToString()
+        {
+            var method = _action.Method;
+
+            return method.ReflectedType.Name + "." + method.Name;
+        }
+
+        Action _action;
+    }
+
+    public class TimedLoopActionEnumerator:IEnumerator
+    {
+        public TimedLoopActionEnumerator(Action<float> action)
+        {
+            _action = action;
+        }
+
+        public object Current
+        {
+            get { return null; }
+        }
+
+        public bool MoveNext()
+        {
+            float lapse = Math.Max(0, (float)(DateTime.UtcNow - _then).TotalSeconds);
+            _action(lapse);
+            _then = DateTime.UtcNow;
+            return true;
+        }
+
+        public override string ToString()
+        {
+            var method = _action.Method;
+
+            return method.ReflectedType.Name + "." + method.Name;
+        }
+
+        public void Reset()
+        {
+            throw new NotImplementedException();
+        }
+
+        Action<float>   _action;
+        DateTime        _then = DateTime.MaxValue;
     }
 }

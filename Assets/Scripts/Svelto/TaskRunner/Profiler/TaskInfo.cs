@@ -13,18 +13,15 @@ namespace Svelto.Tasks.Profiler
         const int NUM_FRAMES_TO_AVERAGE = 10;
 
         public string taskName { get { return _taskName; } }
-
         public double lastUpdateDuration { get { return _lastUpdateDuration; } }
-
         public double minUpdateDuration { get { return _minUpdateDuration; } }
-
         public double maxUpdateDuration { get { return _maxUpdateDuration; } }
-
         public double averageUpdateDuration { get { return _updateFrameTimes.Count == 0 ? 0 : _accumulatedUpdateDuration / _updateFrameTimes.Count; } }
 
         public TaskInfo(IEnumerator task)
         {
-            _taskName = task.GetHashCode().ToString("x8");
+            //_taskName = task.GetHashCode().ToString("x8");
+            _taskName = task.ToString();
 
             _updateFrameTimes = new Queue<double>();
 

@@ -62,6 +62,17 @@ namespace Svelto.Tasks
             return this;
         }
 
+        public override string ToString()
+        {
+            if (_taskGenerator == null && _taskEnumerator == null)
+                return base.ToString();
+
+            if (_taskEnumerator != null)
+                return _taskEnumerator.ToString();
+            else
+                return _taskGenerator.Method.ReflectedType + "." + _taskGenerator.Method.Name.ToString();
+        }
+
         public bool MoveNext()
         {
             if (_stopped == true || _runner.stopped == true)

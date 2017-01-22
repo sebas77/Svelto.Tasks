@@ -13,7 +13,13 @@ namespace Svelto.Tasks
 
         public bool MoveNext()
         {
-            return _future >= DateTime.UtcNow;
+            if (_future <= DateTime.UtcNow)
+            {
+                Reset();
+                return false;
+            }
+
+            return true;
         }
 
         public void Reset()
