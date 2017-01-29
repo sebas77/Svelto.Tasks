@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Threading;
 using Svelto.DataStructures;
+#if NETFX_CORE
+using System.Threading.Tasks;
+#endif
 
 namespace Svelto.Tasks
 {
@@ -24,24 +27,37 @@ namespace Svelto.Tasks
         {
             paused = false;
 
-            //Task.Factory.StartNew(() => {}, TaskCreationOptions.LongRunning); for WSA
-
             _newTaskRoutines.Enqueue(task);
 
-            Thread.MemoryBarrier();
+            MemoryBarrier();            
+
             if (_isAlive == false)
             {
                 _isAlive = true;
-                Thread.MemoryBarrier();
+                MemoryBarrier();            
 
+#if NETFX_CORE
+            Task.Run
+                (() =>
+                {
+                    RunCoroutineFiber();
+
+                    _isAlive = false;
+                    stopped = false;
+                    Interlocked.MemoryBarrier();         
+                }
+                );
+
+#else
                 ThreadPool.QueueUserWorkItem((stateInfo) => //creates a new thread only if there isn't any running. It's always unique
                 {
                     RunCoroutineFiber();
 
                     _isAlive = false;
                     stopped = false;
-                    Thread.MemoryBarrier();
+                    MemoryBarrier();            
                 });
+#endif
             }
         }
 
@@ -77,7 +93,7 @@ namespace Svelto.Tasks
                     }
                 }
 
-                Thread.MemoryBarrier();
+                MemoryBarrier();            
                 if (_waitForflush == true && _coroutines.Count == 0)
                     break; //kill the thread
             }
@@ -91,11 +107,21 @@ namespace Svelto.Tasks
 
             stopped = true;
             _waitForflush = true;
-            Thread.MemoryBarrier();
+            MemoryBarrier();            
         }
 
-        public bool paused { set { _paused = value; Thread.MemoryBarrier(); } get { Thread.MemoryBarrier(); return _paused; } }
-        public bool stopped { private set { _stopped = value; Thread.MemoryBarrier(); } get { Thread.MemoryBarrier(); return _stopped; } }
+        public bool paused { set { _paused = value; MemoryBarrier(); } get { MemoryBarrier(); return _paused; } }
+
+        private void MemoryBarrier()
+        {
+#if NETFX_CORE
+            Interlocked.MemoryBarrier();
+#else
+            Thread.MemoryBarrier();
+#endif
+        }
+
+        public bool stopped { private set { _stopped = value; MemoryBarrier(); } get {MemoryBarrier(); return _stopped; } }
         public int numberOfRunningTasks { get { return _coroutines.Count; } }
 
         FasterList<IEnumerator>         _coroutines = new FasterList<IEnumerator>();

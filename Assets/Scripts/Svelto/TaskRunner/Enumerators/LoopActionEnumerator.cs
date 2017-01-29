@@ -34,9 +34,10 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
-            var method = _action.Method;
+            return String.Empty;
+   /*         var method = _action.Method;
 
-            return method.ReflectedType.Name + "." + method.Name;
+            return method.ReflectedType.Name + "." + method.Name;*/
         }
 
         Action<T> _action;
@@ -68,9 +69,10 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
-            var method = _action.Method;
+return String.Empty;
+       /*     var method = _action.Method;
 
-            return method.ReflectedType.Name + "." + method.Name;
+            return method.ReflectedType.Name + "." + method.Name;*/
         }
 
         Action _action;
@@ -98,9 +100,10 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
-            var method = _action.Method;
+return String.Empty;
+         /*   var method = _action.Method;
 
-            return method.ReflectedType.Name + "." + method.Name;
+            return method.ReflectedType.Name + "." + method.Name;*/
         }
 
         public void Reset()

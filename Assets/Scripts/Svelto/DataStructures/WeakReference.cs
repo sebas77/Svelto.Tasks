@@ -50,10 +50,11 @@ namespace Svelto.DataStructures
         public WeakReference(T target, bool trackResurrection)
             : base(target, trackResurrection)
         { }
-
+#if !UNITY_WSA_10_0
         protected WeakReference(SerializationInfo info, StreamingContext context)
             : base(info, context)
         { }
+#endif
     }
 
     public static class WeakReferenceUtility

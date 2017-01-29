@@ -1,4 +1,3 @@
-#if UNITY_STANDALONE || UNITY_WEBPLAYER || UNITY_IPHONE || UNITY_ANDROID || UNITY_EDITOR
 using System.Collections;
 using UnityEngine;
 
@@ -23,4 +22,3 @@ namespace Svelto.Tasks.Internal
         IEnumerator _mainRoutine;
     }
 }
-#endif

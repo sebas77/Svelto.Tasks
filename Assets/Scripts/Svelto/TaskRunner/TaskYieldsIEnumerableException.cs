@@ -17,9 +17,10 @@ namespace Svelto.Tasks
         public TaskYieldsIEnumerableException(string message, Exception innerException) : base(message, innerException)
         {
         }
-
+#if !UNITY_WSA_10_0
         protected TaskYieldsIEnumerableException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
+#endif
     }
 }

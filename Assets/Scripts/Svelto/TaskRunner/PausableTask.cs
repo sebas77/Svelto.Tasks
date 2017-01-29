@@ -69,8 +69,9 @@ namespace Svelto.Tasks
 
             if (_taskEnumerator != null)
                 return _taskEnumerator.ToString();
-            else
-                return _taskGenerator.Method.ReflectedType + "." + _taskGenerator.Method.Name.ToString();
+         //   else
+         //       return _taskGenerator.Method.ReflectedType + "." + _taskGenerator.Method.Name.ToString();
+return String.Empty;
         }
 
         public bool MoveNext()

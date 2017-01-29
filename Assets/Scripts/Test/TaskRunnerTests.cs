@@ -1,4 +1,4 @@
-#region Usings
+#if !NETFX_CORE
 
 using System;
 using System.Collections;
@@ -6,11 +6,9 @@ using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Experimental;
 
-#endregion
 
 //Note: RunSync is used only for testing purposes
 //Real scenarios should use Run or RunManaged
-
 namespace Test
 {
     [TestFixture]
@@ -475,3 +473,4 @@ namespace Test
         }
     }
 }
+#endif

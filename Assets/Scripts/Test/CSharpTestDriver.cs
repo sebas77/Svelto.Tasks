@@ -1,7 +1,5 @@
-#region Usings
+#if !NETFX_CORE
 using UnityEngine;
-
-#endregion
 
 public class CSharpTestDriver : MonoBehaviour
 {
@@ -13,3 +11,4 @@ public class CSharpTestDriver : MonoBehaviour
 			NUnitLiteUnityRunner.RunTests ();
 	}
 }
+#endif
