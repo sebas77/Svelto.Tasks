@@ -161,7 +161,7 @@ namespace DesignByContract
 			}
 			else
 			{
-			//	Trace.Assert(assertion, "Postcondition: " + message);
+				Trace.Assert(assertion, "Postcondition: " + message);
 			}
 		}
 
