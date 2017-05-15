@@ -10,6 +10,8 @@ using Object = UnityEngine.Object;
 
 public class SpawnObjects : MonoBehaviour 
 {
+    [TextArea]
+    public string Notes = "This example shows the difference between using the TaskRunner and the Monobehaviour StartCoroutine. Press a key to switch between the two.";
     // Use this for initialization
     void Start () 
     {

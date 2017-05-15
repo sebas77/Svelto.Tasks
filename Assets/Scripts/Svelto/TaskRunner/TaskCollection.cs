@@ -89,7 +89,6 @@ namespace Svelto.Tasks
 
                 return enumerator;
             }
-
             ///
             /// Careful an array is an IEnumerable!!!
             /// 

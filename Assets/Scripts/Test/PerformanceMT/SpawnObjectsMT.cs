@@ -4,9 +4,14 @@ namespace PerformanceMT
 {
     public class SpawnObjectsMT : MonoBehaviour
     {
+        [TextArea]
+        public string Notes = "Enable this to run the example on another thread.";
+        
         // Use this for initialization
         void OnEnable()
         {
+            GetComponent<SpawnObjects>().enabled = false;
+
             Application.targetFrameRate = -1;
             QualitySettings.vSyncCount = 0;
 
@@ -20,7 +25,7 @@ namespace PerformanceMT
             }
         }
 
-        private void OnDisable()
+        void OnDisable()
         {
             foreach (Transform trans in transform)
             {

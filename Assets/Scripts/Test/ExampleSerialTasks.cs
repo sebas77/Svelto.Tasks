@@ -4,7 +4,10 @@ using UnityEngine;
 
 public class ExampleSerialTasks : MonoBehaviour 
 {
-	void Start () 
+    [TextArea]
+    public string Notes = "This example shows how to run different types of tasks in Serial with the TaskRunner";
+
+    void Start () 
 	{
 		SerialTaskCollection st = new SerialTaskCollection();
 		
@@ -17,8 +20,8 @@ public class ExampleSerialTasks : MonoBehaviour
 		st.Add(WWWTest ());
 		st.Add(Print(5));
 		st.Add(Print(6));
-		
-		StartCoroutine(st);
+
+        TaskRunner.Instance.Run(st);
 	}
 	
 	IEnumerator Print(int i)
