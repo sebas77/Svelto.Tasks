@@ -1,4 +1,3 @@
-#if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
 using UnityEditor;
@@ -22,8 +21,6 @@ namespace Svelto.Tasks.Profiler
         }
 
         static bool _showTickTasks;
-        static bool _showAddTasks;
-        static bool _showRemoveTasks;
 
         static string _systemNameSearchTerm = string.Empty;
 
@@ -233,4 +230,3 @@ namespace Svelto.Tasks.Profiler
     }
 #endregion
 }
-#endif

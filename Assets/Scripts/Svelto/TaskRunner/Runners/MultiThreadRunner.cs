@@ -37,16 +37,15 @@ namespace Svelto.Tasks
                 MemoryBarrier();            
 
 #if NETFX_CORE
-            Task.Run
-                (() =>
-                {
-                    RunCoroutineFiber();
+                IAsyncAction asyncAction = ThreadPool.RunAsync
+                    ((workItem) =>
+                    {
+                        RunCoroutineFiber();
 
-                    _isAlive = false;
-                    stopped = false;
-                    Interlocked.MemoryBarrier();         
-                }
-                );
+                         _isAlive = false;
+                        stopped = false;
+                        Interlocked.MemoryBarrier();
+                    });
 
 #else
                 ThreadPool.QueueUserWorkItem((stateInfo) => //creates a new thread only if there isn't any running. It's always unique

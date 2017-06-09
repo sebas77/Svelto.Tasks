@@ -1,5 +1,4 @@
-﻿#if UNITY_5 || UNITY_5_3_OR_NEWER
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,4 +17,3 @@ namespace Svelto.Tasks.Profiler
         }
     }
 }
-#endif

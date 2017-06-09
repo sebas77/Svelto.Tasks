@@ -81,6 +81,7 @@ public class TaskRunner
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
     }
 
+
     public void StopDefaultSchedulerTasks()
     {
         StandardSchedulers.StopSchedulers();
@@ -103,7 +104,7 @@ public class TaskRunner
     static void InitInstance()
     {
         _instance = new TaskRunner();
-#if UNITY_4 || UNITY_5 || UNITY_5_3_OR_NEWER || UNITY_EDITOR
+#if UNITY_4 || UNITY_5 || UNITY_EDITOR
         _instance._runner = StandardSchedulers.mainThreadScheduler;
 #else
         _instance._runner = new MultiThreadRunner();

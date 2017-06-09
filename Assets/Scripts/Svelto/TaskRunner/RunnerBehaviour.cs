@@ -1,4 +1,4 @@
-#if UNITY_5 || UNITY_5_3_OR_NEWER
+#if UNITY_5
 using System.Collections;
 using UnityEngine;
 
@@ -15,7 +15,7 @@ namespace Svelto.Tasks.Internal
                 _mainRoutine.MoveNext();
         }
 
-        public void StartCoroutinePhysic(IEnumerator enumerator)
+        public void StartPhysicCoroutine(IEnumerator enumerator)
         {
             _mainRoutine = enumerator;
         }

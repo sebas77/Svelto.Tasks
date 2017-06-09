@@ -1,4 +1,4 @@
-#if UNITY_STANDALONE || UNITY_WEBPLAYER || UNITY_IPHONE || UNITY_ANDROID || UNITY_EDITOR
+#if UNITY_5
 using System;
 using System.Collections;
 using System.Collections.Generic;

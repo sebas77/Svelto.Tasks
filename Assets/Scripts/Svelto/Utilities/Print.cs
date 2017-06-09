@@ -94,3 +94,153 @@ public static class FastConcatUtility
         }
     }
 }
+
+namespace Utility
+{
+    public interface ILogger
+    {
+        void Log (string txt, string stack = null, LogType type = LogType.Log);
+    }
+
+    public class SlowLogger : ILogger
+    {
+        public void Log(string txt, string stack = null, LogType type = LogType.Log)
+        {
+            switch (type)
+            {
+                case LogType.Log:
+                    UnityEngine.Debug.Log(stack != null ? txt.FastConcat(stack) : txt);
+                break;
+                case LogType.Exception:
+                    UnityEngine.Debug.LogError("Log of exceptions not supported");
+                break;
+                case LogType.Warning:
+                    UnityEngine.Debug.LogWarning(stack != null ? txt.FastConcat(stack) : txt);
+                break;
+                case LogType.Error:
+                    UnityEngine.Debug.LogError(stack != null ? txt.FastConcat(stack) : txt);
+                break;
+            }
+        }
+    }
+
+    public static class Console
+    {
+        static StringBuilder _stringBuilder = new StringBuilder(256);
+
+        public static ILogger logger = new SlowLogger();
+        public static volatile bool BatchLog = false;
+
+        public static void Log(string txt)
+        {
+            logger.Log(txt);
+        }
+
+        public static void LogError(string txt, bool showCurrentStack = true)
+        {
+            string toPrint;
+        
+            lock (_stringBuilder)
+            {
+                _stringBuilder.Length = 0;
+                _stringBuilder.Append("-!!!!!!-> ");
+                _stringBuilder.Append(txt);
+
+                toPrint = _stringBuilder.ToString();
+            }
+
+            logger.Log(toPrint, showCurrentStack == true ? new StackTrace().ToString() : null, LogType.Error);
+        }
+
+        public static void LogError(string txt, string stack)
+        {
+            string toPrint;
+
+            lock (_stringBuilder)
+            {
+                _stringBuilder.Length = 0;
+                _stringBuilder.Append("-!!!!!!-> ");
+                _stringBuilder.Append(txt);
+
+                toPrint = _stringBuilder.ToString();
+            }
+
+            logger.Log(toPrint, stack, LogType.Error);
+        }
+
+        public static void LogException(Exception e)
+        {
+            LogException(e, null);
+        }
+
+        public static void LogException(Exception e, UnityEngine.Object obj)
+        {
+            string toPrint;
+            string stackTrace;
+
+            lock (_stringBuilder)
+            {
+                _stringBuilder.Length = 0;
+                _stringBuilder.Append("-!!!!!!-> ").Append(e.Message);
+
+                stackTrace = e.StackTrace;
+
+                if (e.InnerException != null)
+                {
+                    _stringBuilder.Append(" Inner Message: ").Append(e.InnerException.Message).Append(" Inner Stacktrace:")
+                        .Append(e.InnerException.StackTrace);
+                }
+
+                toPrint = _stringBuilder.ToString();
+                
+            }
+
+            UnityEngine.Debug.LogException(e, obj);
+        }
+
+        public static void LogWarning(string txt)
+        {
+            string toPrint;
+
+            lock (_stringBuilder)
+            {
+                _stringBuilder.Length = 0;
+                _stringBuilder.Append("------> ");
+                _stringBuilder.Append(txt);
+
+                toPrint = _stringBuilder.ToString();
+            }
+
+            logger.Log(toPrint, null, LogType.Warning);
+        }
+
+        /// <summary>
+        /// Use this function if you don't want the message to be batched
+        /// </summary>
+        /// <param name="txt"></param>
+        public static void SystemLog(string txt)
+        {
+            string toPrint;
+
+            lock (_stringBuilder)
+            {
+                string currentTimeString = DateTime.UtcNow.ToLongTimeString(); //ensure includes seconds
+                string processTimeString = (DateTime.Now - Process.GetCurrentProcess().StartTime).ToString();
+
+                _stringBuilder.Length = 0;
+                _stringBuilder.Append("[").Append(currentTimeString);
+                _stringBuilder.Append("][").Append(processTimeString);
+                _stringBuilder.Length = _stringBuilder.Length - 3; //remove some precision that we don't need
+                _stringBuilder.Append("] ").AppendLine(txt);
+
+                toPrint = _stringBuilder.ToString();
+            }
+
+#if !UNITY_EDITOR
+            System.Console.WriteLine(toPrint);
+#else
+            UnityEngine.Debug.Log(toPrint);
+#endif
+        }
+    }
+}
