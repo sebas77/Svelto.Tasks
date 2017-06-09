@@ -5,7 +5,7 @@ using System.Collections;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Experimental;
-
+using UnityEditor;
 
 //Note: RunSync is used only for testing purposes
 //Real scenarios should use Run or RunManaged
@@ -35,7 +35,6 @@ namespace Test
             iterableWithException = new Enumerable(-5);
             
             _taskRunner = TaskRunner.Instance;
-
             _reusableTaskRoutine = TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(StandardSchedulers.syncScheduler); //the taskroutine will stall the thread because it runs on the SyncScheduler
         }
 

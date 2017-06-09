@@ -5,6 +5,9 @@ using System;
 
 public class ExamplePhysicTasks : MonoBehaviour 
 {
+    [TextArea]
+    public string Notes = "This example shows how to run a task on the physic scheduler.";
+
     void OnEnable () 
 	{
         Time.fixedDeltaTime = 0.5f;

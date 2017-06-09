@@ -4,7 +4,7 @@ using System.Runtime.Serialization;
 namespace Svelto.Tasks
 {
     [Serializable]
-    internal class TaskYieldsIEnumerableException : Exception
+    class TaskYieldsIEnumerableException : Exception
     {
         public TaskYieldsIEnumerableException()
         {

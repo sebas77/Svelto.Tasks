@@ -36,6 +36,8 @@ class LoadSomething : IEnumerable, IChainLink<SomeData>
 
 public class ExampleParallelTasksManaged : MonoBehaviour 
 {
+    [TextArea]
+    public string Notes = "This example shows how to run different types of tasks in Parallel with the TaskRunner (using time-spliting technique)";
     // Use this for initialization
     void Start () 
     {

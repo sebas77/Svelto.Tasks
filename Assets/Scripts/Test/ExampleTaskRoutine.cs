@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class ExampleTaskRoutine : MonoBehaviour 
 {
+    [TextArea]
+    public string Notes = "This example shows how to use the ITaskRoutine feature";
+
     int i;
     
     ITaskRoutine _taskRountine;

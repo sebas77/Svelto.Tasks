@@ -6,6 +6,8 @@ namespace Test.MultiThread
 {
     public class ExampleParallelTasksManagedMT : MonoBehaviour 
     {
+        [TextArea]
+        public string Notes = "This example shows how to run a collection of tasks on another thread. Some tasks exploit continuation to wait the main thread execution.";
         // Use this for initialization
         void Start () 
         {
@@ -24,7 +26,7 @@ namespace Test.MultiThread
 
             pt.Add(Print("p3")).Add(Print("p4")).Add(st).Add(Print("p5")).Add(Print("p6")).Add(Print("p7"));
 
-            TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(MTRunner).SetEnumerator(pt).Start(); //running on another thread!
+            TaskRunner.Instance.RunOnSchedule(MTRunner, pt); //running on another thread!
         }
 
         void Update()

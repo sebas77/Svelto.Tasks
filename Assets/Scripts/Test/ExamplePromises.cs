@@ -5,6 +5,9 @@ using UnityEngine;
 
 public class ExamplePromises : MonoBehaviour
 {
+    [TextArea]
+    public string Notes = "This example shows how to use the promises-like features.";
+
     class ValueObject<T>
     {
         public ValueObject(T par)

@@ -110,9 +110,7 @@ namespace Svelto.Tasks
             MemoryBarrier();            
         }
 
-        public bool paused { set { _paused = value; MemoryBarrier(); } get { MemoryBarrier(); return _paused; } }
-
-        private void MemoryBarrier()
+        void MemoryBarrier()
         {
 #if NETFX_CORE
             Interlocked.MemoryBarrier();
@@ -121,7 +119,8 @@ namespace Svelto.Tasks
 #endif
         }
 
-        public bool stopped { private set { _stopped = value; MemoryBarrier(); } get {MemoryBarrier(); return _stopped; } }
+        public bool paused { set { _paused = value; MemoryBarrier(); } get { MemoryBarrier(); return _paused; } }
+        public bool stopped { private set { _stopped = value; MemoryBarrier(); } get { MemoryBarrier(); return _stopped; } }
         public int numberOfRunningTasks { get { return _coroutines.Count; } }
 
         FasterList<IEnumerator>         _coroutines = new FasterList<IEnumerator>();

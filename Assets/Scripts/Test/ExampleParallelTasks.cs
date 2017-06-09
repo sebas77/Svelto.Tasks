@@ -5,9 +5,12 @@ using UnityEngine;
 public class ExampleParallelTasks : MonoBehaviour 
 {
 	int i;
-	
-	// Use this for initialization
-	void Start () 
+
+    [TextArea]
+    public string Notes = "This example shows how to run different types of tasks in Parallel (using time-spliting technique)";
+    
+    // Use this for initialization
+    void Start () 
 	{
 		Application.targetFrameRate = 60;
 

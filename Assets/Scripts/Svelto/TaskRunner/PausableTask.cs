@@ -8,7 +8,7 @@ namespace Svelto.Tasks
     {
         public PausableTaskException(Exception e)
             : base(e.ToString(), e)
-        {}
+        { }
     }
 }
 
@@ -16,7 +16,7 @@ namespace Svelto.Tasks
 {
     public class PausableTask : ITaskRoutine, IEnumerator
     {
-        internal PausableTask(IPausableTaskPool pool):this()
+        internal PausableTask(IPausableTaskPool pool) : this()
         {
             _pool = pool;
         }
@@ -48,7 +48,7 @@ namespace Svelto.Tasks
 
         public ITaskRoutine SetEnumeratorProvider(Func<IEnumerator> taskGenerator)
         {
-            _taskEnumerator = null; 
+            _taskEnumerator = null;
             _taskGenerator = taskGenerator;
 
             return this;
@@ -62,7 +62,6 @@ namespace Svelto.Tasks
             return this;
         }
 
-#if UNITY_EDITOR
         public override string ToString()
         {
             if (_taskGenerator == null && _taskEnumerator == null)
@@ -70,10 +69,9 @@ namespace Svelto.Tasks
 
             if (_taskEnumerator != null)
                 return _taskEnumerator.ToString();
-
+            
             return _taskGenerator.Method.ReflectedType + "." + _taskGenerator.Method.Name.ToString();
         }
-#endif
 
         public bool MoveNext()
         {
@@ -95,7 +93,7 @@ namespace Svelto.Tasks
                 if (_onStop != null)
                     _onStop();
             }
-            else    
+            else
             if (_runner.paused == false && _paused == false)
             {
                 try
@@ -125,7 +123,7 @@ namespace Svelto.Tasks
                     }
                 }
             }
-            
+
             if (_completed == true && _pool != null)
                 _pool.PushTaskBack(this);
 
@@ -198,6 +196,9 @@ namespace Svelto.Tasks
 
             if (_completed == false)
             {
+                if (_stopped == true && _taskEnumerator != null)
+                    enumerator.Reset();
+
                 _stopped = true; //if it's reused, must stop naturally
                 _pendingEnumerator = enumerator;
                 _pendingRestart = true;
