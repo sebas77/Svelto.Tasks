@@ -81,7 +81,6 @@ public class TaskRunner
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
     }
 
-
     public void StopDefaultSchedulerTasks()
     {
         StandardSchedulers.StopSchedulers();

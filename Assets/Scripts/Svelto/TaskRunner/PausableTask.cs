@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Runtime.CompilerServices;
 using Svelto.Tasks.Internal;
 #if NETFX_CORE
 using System.Reflection;
@@ -62,7 +63,16 @@ namespace Svelto.Tasks
             _taskGenerator = null;
             _taskEnumerator = taskEnumerator;
 
+            _compilerGenerated = IsCompilerGenerated(taskEnumerator.GetType());
+
             return this;
+        }
+
+        bool IsCompilerGenerated(Type t)
+        {
+            var attr = Attribute.GetCustomAttribute(t, typeof(CompilerGeneratedAttribute));
+
+            return attr != null;
         }
 
         public override string ToString()
@@ -203,7 +213,7 @@ namespace Svelto.Tasks
 
             if (_completed == false)
             {
-                if (_stopped == true && _taskEnumerator != null)
+                if (_stopped == true && _taskEnumerator != null && _compilerGenerated == false)
                     enumerator.Reset();
 
                 _stopped = true; //if it's reused, must stop naturally
@@ -248,18 +258,24 @@ namespace Svelto.Tasks
 
         IRunner                         _runner;
         CoroutineEx                     _enumerator;
+
         bool                            _stopped;
         bool                            _paused;
-        volatile bool                   _completed = true;
+        bool                            _threadSafe;
+        bool                            _compilerGenerated;
         bool                            _pendingRestart;
+
         IEnumerator                     _pendingEnumerator;
+        IEnumerator                     _taskEnumerator;
+        IEnumerator                     _enumeratorWrap;
+
         IPausableTaskPool               _pool;
         Func<IEnumerator>               _taskGenerator;
-        IEnumerator                     _taskEnumerator;
+       
         Action<PausableTaskException>   _onFail;
         Action                          _onStop;
-        IEnumerator                     _enumeratorWrap;
-        bool                            _threadSafe;
+        
+        volatile bool                   _completed = true;
     }
 }
 
