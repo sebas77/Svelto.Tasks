@@ -1,24 +1,21 @@
-using System.Collections;
 using UnityEngine;
 
 namespace Assets
 {
-    sealed public class DoSomethingHeavy2 : MonoBehaviour
+    public class DoSomethingHeavyWithUnity:MonoBehaviour
     {
         void Awake()
         {
             _direction = new Vector2(Mathf.Cos(Random.Range(0, 3.14f)) / 1000, Mathf.Sin(Random.Range(0, 3.14f) / 1000));
-            _transform = this.transform;
-
-            _task = TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumeratorProvider(UpdateIt2);
+            _transform = transform;
         }
 
-        void OnEnable() 
+        void OnEnable()
         {
-            _task.Start();
+            StartCoroutine(UpdateIt2());
         }
-      
-        IEnumerator UpdateIt2()
+
+        System.Collections.IEnumerator UpdateIt2()
         {
             while (true) 
             {
@@ -30,11 +27,10 @@ namespace Assets
 
         void OnDisable()
         {
-            _task.Stop();
+            StopAllCoroutines();
         }
 
         Vector3 _direction;
         Transform _transform;
-        Svelto.Tasks.ITaskRoutine _task;
     }
 }

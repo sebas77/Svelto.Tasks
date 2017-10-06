@@ -38,6 +38,12 @@ public class ExampleParallelTasksManaged : MonoBehaviour
 {
     [TextArea]
     public string Notes = "This example shows how to run different types of tasks in Parallel with the TaskRunner (using time-spliting technique)";
+
+    void OnEnable()
+    {
+        UnityConsole.Clear();
+    }
+
     // Use this for initialization
     void Start () 
     {
@@ -54,7 +60,13 @@ public class ExampleParallelTasksManaged : MonoBehaviour
         
         pt.Add(Print("1"));
         pt.Add(Print("2"));
-        pt.Add(DoSomethingAsynchonously());
+
+        //only the task runner can actually handle parallel tasks
+        //that return Unity operations (when unity compatible
+        //schedulers are used)
+        pt.Add(UnityAsyncOperationsMustNotBreakTheParallelism());
+        pt.Add(UnityYieldInstructionsMustNotBreakTheParallelism());
+
         pt.Add(new LoadSomething(new WWW("www.google.com"))); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
         pt.Add(new LoadSomething(new WWW("http://download.thinkbroadband.com/5MB.zip")));
         pt.Add(new LoadSomething(new WWW("www.ebay.com")));
@@ -66,6 +78,21 @@ public class ExampleParallelTasksManaged : MonoBehaviour
         pt.Add(Print(someData.justForTest.ToString()));
             
         TaskRunner.Instance.Run(st);
+    }
+
+    IEnumerator UnityAsyncOperationsMustNotBreakTheParallelism()
+    {
+        Debug.Log("start async operation");
+        var res = Resources.LoadAsync("image.jpg");
+        yield return res;
+        Debug.Log("end async operation " + res.progress);
+    }
+
+    IEnumerator UnityYieldInstructionsMustNotBreakTheParallelism()
+    {
+        Debug.Log("start yield instruction");
+        yield return new WaitForSeconds(2);
+        Debug.Log("end yield instruction");
     }
 
     void Update()
@@ -85,18 +112,11 @@ public class ExampleParallelTasksManaged : MonoBehaviour
             }
     }
 
-    IEnumerator DoSomethingAsynchonously() //this can be awfully slow, since it is synched with the framerate
-    {
-        //try this in place of the next one to see how default unity yields (all of them including www) will break the parallelism      
-        //yield return new WaitForSeconds(5);
-        yield return new WaitForSecondsEnumerator(5);
-    }
-
     IEnumerator Print(string i)
     {
         Debug.Log(i);
 
-        yield return null;
+        yield break;
     }
 
     bool _paused;

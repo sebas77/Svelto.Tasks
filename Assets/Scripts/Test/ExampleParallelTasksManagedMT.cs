@@ -9,6 +9,12 @@ namespace Test.MultiThread
         [TextArea]
         public string Notes = "This example shows how to run a collection of tasks on another thread. Some tasks exploit continuation to wait the main thread execution.";
         // Use this for initialization
+
+        void OnEnable()
+        {
+            UnityConsole.Clear();
+        }
+
         void Start () 
         {
             ParallelTaskCollection pt = new ParallelTaskCollection();
@@ -70,7 +76,7 @@ namespace Test.MultiThread
         {
             this.wWW = wWW;
             task = TaskRunner.Instance.AllocateNewTaskRoutine();
-            task.SetScheduler(StandardSchedulers.mainThreadScheduler).SetEnumeratorProvider(DoIt);
+            task.SetEnumeratorProvider(DoIt);
         }
 
         public IEnumerator GetEnumerator()

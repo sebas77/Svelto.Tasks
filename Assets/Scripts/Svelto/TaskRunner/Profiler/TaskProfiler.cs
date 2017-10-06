@@ -1,6 +1,6 @@
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
+using Svelto.DataStructures;
 
 //This profiler is based on the Entitas Visual Debugging tool 
 //https://github.com/sschmid/Entitas-CSharp
@@ -11,27 +11,21 @@ namespace Svelto.Tasks.Profiler
     {
         static readonly Stopwatch _stopwatch = new Stopwatch();
 
+        internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
+            new ThreadSafeDictionary<string, TaskInfo>();
+
+        public static bool MonitorUpdateDuration(IEnumerator tickable, int threadID)
+        {
+            bool value = MonitorUpdateDuration(tickable, " ThreadID: ".FastConcat(threadID));
+
+            return value;
+        }
+
         public static bool MonitorUpdateDuration(IEnumerator tickable)
         {
-            TaskInfo info;
+            bool value = MonitorUpdateDuration(tickable, " MainThread: ");
 
-            bool result;
-
-            if (taskInfos.TryGetValue(tickable, out info) == false)
-            {
-                info = new TaskInfo(tickable);
-
-                taskInfos.Add(tickable, info);
-            }
-
-            _stopwatch.Reset();
-            _stopwatch.Start();
-            result = tickable.MoveNext();
-            _stopwatch.Stop();
-
-            info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
-
-            return result;
+            return value;
         }
 
         public static void ResetDurations()
@@ -39,6 +33,35 @@ namespace Svelto.Tasks.Profiler
             taskInfos.Clear();
         }
 
-        internal static readonly Dictionary<IEnumerator, TaskInfo> taskInfos = new Dictionary<IEnumerator, TaskInfo>();
+        static bool MonitorUpdateDuration(IEnumerator tickable, string threadInfo)
+        {
+            TaskInfo info;
+
+            bool result;
+
+            if (taskInfos.TryGetValue(tickable.ToString(), out info) == false)
+            {
+                info = new TaskInfo(tickable);
+
+                info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
+
+                info.AddThreadInfo(threadInfo);
+
+                taskInfos.Add(tickable.ToString(), info);
+            }
+            else
+            {
+                info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
+
+                info.AddThreadInfo(threadInfo);
+            }
+
+            _stopwatch.Reset();
+            _stopwatch.Start();
+            result = tickable.MoveNext();
+            _stopwatch.Stop();
+
+            return result;
+        }
     }
 }

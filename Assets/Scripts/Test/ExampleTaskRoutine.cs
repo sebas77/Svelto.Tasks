@@ -15,6 +15,11 @@ public class ExampleTaskRoutine : MonoBehaviour
     ParallelTaskCollection pt = new ParallelTaskCollection();
     SerialTaskCollection   st = new SerialTaskCollection();
 
+    void OnEnable()
+    {
+        UnityConsole.Clear();
+    }
+
     // Use this for initialization
     void Start () 
     {
@@ -24,8 +29,8 @@ public class ExampleTaskRoutine : MonoBehaviour
 
     IEnumerator ResetTaskAndRun() //this is the suggested why to reset complicated tasks
     {
-        st.Reset();
-        pt.Reset();
+        st.Clear();
+        pt.Clear();
 
         st.Add(Print("s1"));
         st.Add(Print("s2"));

@@ -1,12 +1,13 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Svelto.Tasks
 {
-    public class AsyncOperationEnumerator : IParallelEnumerator
+    class UnityAsyncOperationEnumerator: IEnumerator
     {
         AsyncOperation _asyncOp;
 
-        public AsyncOperationEnumerator(AsyncOperation async)
+        public UnityAsyncOperationEnumerator(AsyncOperation async)
         {
             _asyncOp = async;
         }

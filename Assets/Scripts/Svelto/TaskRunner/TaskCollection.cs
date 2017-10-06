@@ -22,7 +22,7 @@ namespace Svelto.Tasks
             _listOfStacks = FasterList<Stack<IEnumerator>>.PreFill<Stack<IEnumerator>>(initialSize);
         }
 
-        public void Reset()
+        public void Clear()
         {
             _listOfStacks.Clear();
         }

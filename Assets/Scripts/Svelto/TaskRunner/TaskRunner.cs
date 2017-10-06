@@ -20,7 +20,7 @@ public class TaskRunner
         }
     }
 
-    /// <summary>
+/// <summary>
 /// Use this function only to preallocate TaskRoutine that can be reused. this minimize run-time allocations
 /// </summary>
 /// <returns>
@@ -81,7 +81,7 @@ public class TaskRunner
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
     }
 
-    public void StopDefaultSchedulerTasks()
+    public static void StopDefaultSchedulerTasks()
     {
         StandardSchedulers.StopSchedulers();
     }
@@ -103,8 +103,8 @@ public class TaskRunner
     static void InitInstance()
     {
         _instance = new TaskRunner();
-#if UNITY_4 || UNITY_5 || UNITY_EDITOR
-        _instance._runner = StandardSchedulers.mainThreadScheduler;
+#if UNITY_5_3_OR_NEWER || UNITY_5
+        _instance._runner = StandardSchedulers.coroutineScheduler;
 #else
         _instance._runner = new MultiThreadRunner();
 #endif

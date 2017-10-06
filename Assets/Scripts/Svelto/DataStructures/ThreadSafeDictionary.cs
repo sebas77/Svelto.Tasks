@@ -1,6 +1,9 @@
+
 using System;
 using System.Collections.Generic;
 using System.Threading;
+
+//note, rewrite like ThreadSafeQueue
 
 namespace Svelto.DataStructures
 {
@@ -13,14 +16,29 @@ namespace Svelto.DataStructures
     [Serializable]
     public class ThreadSafeDictionary<TKey, TValue>
     {
+        public ThreadSafeDictionary(int v)
+        {
+            dict = new Dictionary<TKey, TValue>(v);
+        }
+
+        public ThreadSafeDictionary()
+        {
+            dict = new Dictionary<TKey, TValue>();
+        }
+
         // setup the lock;
         public virtual int Count
         {
             get
             {
-                using (new ReadOnlyLock(dictionaryLock))
+                LockQ.EnterReadLock();
+                try
                 {
                     return dict.Count;
+                }
+                finally
+                {
+                    LockQ.ExitReadLock();
                 }
             }
         }
@@ -29,9 +47,14 @@ namespace Svelto.DataStructures
         {
             get
             {
-                using (new ReadOnlyLock(dictionaryLock))
+                LockQ.EnterReadLock();
+                try
                 {
                     return dict.IsReadOnly;
+                }
+                finally
+                {
+                    LockQ.ExitReadLock();
                 }
             }
         }
@@ -40,9 +63,14 @@ namespace Svelto.DataStructures
         {
             get
             {
-                using (new ReadOnlyLock(dictionaryLock))
+                LockQ.EnterReadLock();
+                try
                 {
                     return new FasterList<TKey>(dict.Keys);
+                }
+                finally
+                {
+                    LockQ.ExitReadLock();
                 }
             }
         }
@@ -51,9 +79,14 @@ namespace Svelto.DataStructures
         {
             get
             {
-                using (new ReadOnlyLock(dictionaryLock))
+                LockQ.EnterReadLock();
+                try
                 {
                     return new FasterList<TValue>(dict.Values);
+                }
+                finally
+                {
+                    LockQ.ExitReadLock();
                 }
             }
         }
@@ -62,90 +95,145 @@ namespace Svelto.DataStructures
         {
             get
             {
-                using (new ReadOnlyLock(dictionaryLock))
+                LockQ.EnterReadLock();
+                try
                 {
                     return dict[key];
+                }
+                finally
+                {
+                    LockQ.ExitReadLock();
                 }
             }
 
             set
             {
-                using (new WriteLock(dictionaryLock))
+                LockQ.EnterWriteLock();
+                try
                 {
                     dict[key] = value;
+                }
+                finally
+                {
+                    LockQ.ExitWriteLock();
                 }
             }
         }
 
         public virtual void Add(KeyValuePair<TKey, TValue> item)
         {
-            using (new WriteLock(dictionaryLock))
+            LockQ.EnterWriteLock();
+            try
             {
                 dict.Add(item);
+            }
+            finally
+            {
+                LockQ.ExitWriteLock();
             }
         }
 
         public virtual void Clear()
         {
-            using (new WriteLock(dictionaryLock))
+            LockQ.EnterWriteLock();
+            try
             {
                 dict.Clear();
+            }
+            finally
+            {
+                LockQ.ExitWriteLock();
             }
         }
 
         public virtual bool Contains(KeyValuePair<TKey, TValue> item)
         {
-            using (new ReadOnlyLock(dictionaryLock))
+            LockQ.EnterReadLock();
+            try
             {
                 return dict.Contains(item);
+            }
+            finally
+            {
+                LockQ.ExitReadLock();
             }
         }
 
         public virtual void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
-            using (new ReadOnlyLock(dictionaryLock))
+            LockQ.EnterReadLock();
+            try
             {
                 dict.CopyTo(array, arrayIndex);
+            }
+            finally
+            {
+                LockQ.ExitReadLock();
             }
         }
 
         public virtual bool Remove(KeyValuePair<TKey, TValue> item)
         {
-            using (new WriteLock(dictionaryLock))
+            LockQ.EnterWriteLock();
+            try
             {
                 return dict.Remove(item);
+            }
+            finally
+            {
+                LockQ.ExitWriteLock();
             }
         }
 
         public virtual void Add(TKey key, TValue value)
         {
-            using (new WriteLock(dictionaryLock))
+            LockQ.EnterWriteLock();
+            try
             {
                 dict.Add(key, value);
+            }
+            finally
+            {
+                LockQ.ExitWriteLock();
             }
         }
 
         public virtual bool ContainsKey(TKey key)
         {
-            using (new ReadOnlyLock(dictionaryLock))
+            LockQ.EnterReadLock();
+            try
             {
                 return dict.ContainsKey(key);
+            }
+            finally
+            {
+                LockQ.ExitReadLock();
             }
         }
 
         public virtual bool Remove(TKey key)
         {
-            using (new WriteLock(dictionaryLock))
+            LockQ.EnterWriteLock();
+            try
             {
                 return dict.Remove(key);
+            }
+            finally
+            {
+                LockQ.ExitWriteLock();
             }
         }
 
         public virtual bool TryGetValue(TKey key, out TValue value)
         {
-            using (new ReadOnlyLock(dictionaryLock))
+            LockQ.EnterReadLock();
+            try
             {
                 return dict.TryGetValue(key, out value);
+            }
+            finally
+            {
+                LockQ.ExitReadLock();
             }
         }
 
@@ -156,13 +244,18 @@ namespace Svelto.DataStructures
         /// <param name = "newValue">New Value</param>
         public void MergeSafe(TKey key, TValue newValue)
         {
-            using (new WriteLock(dictionaryLock))
+            LockQ.EnterWriteLock();
+            try
             {
                 // take a writelock immediately since we will always be writing
                 if (dict.ContainsKey(key))
                     dict.Remove(key);
 
                 dict.Add(key, newValue);
+            }
+            finally
+            {
+                LockQ.ExitWriteLock();
             }
         }
 
@@ -172,132 +265,29 @@ namespace Svelto.DataStructures
         /// <param name = "key">Key to remove</param>
         public void RemoveSafe(TKey key)
         {
-            using (new ReadLock(dictionaryLock))
+            LockQ.EnterReadLock();
+            try
             {
                 if (dict.ContainsKey(key))
-                    using (new WriteLock(dictionaryLock))
-                    {
-                        dict.Remove(key);
-                    }
+                    LockQ.EnterWriteLock();
+                try
+                {
+                    dict.Remove(key);
+                }
+                finally
+                {
+                    LockQ.ExitWriteLock();
+                }
+            }
+            finally
+            {
+                LockQ.ExitReadLock();
             }
         }
 
         // This is the internal dictionary that we are wrapping
-        readonly IDictionary<TKey, TValue> dict = new Dictionary<TKey, TValue>();
+        readonly IDictionary<TKey, TValue> dict;
 
-        [NonSerialized] readonly ReaderWriterLockSlim dictionaryLock = Locks.GetLockInstance(LockRecursionPolicy.NoRecursion);
-    }
-
-    public static class Locks
-    {
-        public static ReaderWriterLockSlim GetLockInstance()
-        {
-            return GetLockInstance(LockRecursionPolicy.SupportsRecursion);
-        }
-
-        public static ReaderWriterLockSlim GetLockInstance(LockRecursionPolicy recursionPolicy)
-        {
-            return new ReaderWriterLockSlim(recursionPolicy);
-        }
-
-        public static void GetReadLock(ReaderWriterLockSlim locks)
-        {
-            var lockAcquired = false;
-            while (!lockAcquired)
-                lockAcquired = locks.TryEnterUpgradeableReadLock(1);
-        }
-
-        public static void GetReadOnlyLock(ReaderWriterLockSlim locks)
-        {
-            var lockAcquired = false;
-            while (!lockAcquired)
-                lockAcquired = locks.TryEnterReadLock(1);
-        }
-
-        public static void GetWriteLock(ReaderWriterLockSlim locks)
-        {
-            var lockAcquired = false;
-            while (!lockAcquired)
-                lockAcquired = locks.TryEnterWriteLock(1);
-        }
-
-        public static void ReleaseLock(ReaderWriterLockSlim locks)
-        {
-            ReleaseWriteLock(locks);
-            ReleaseReadLock(locks);
-            ReleaseReadOnlyLock(locks);
-        }
-
-        public static void ReleaseReadLock(ReaderWriterLockSlim locks)
-        {
-            if (locks.IsUpgradeableReadLockHeld)
-                locks.ExitUpgradeableReadLock();
-        }
-
-        public static void ReleaseReadOnlyLock(ReaderWriterLockSlim locks)
-        {
-            if (locks.IsReadLockHeld)
-                locks.ExitReadLock();
-        }
-
-        public static void ReleaseWriteLock(ReaderWriterLockSlim locks)
-        {
-            if (locks.IsWriteLockHeld)
-                locks.ExitWriteLock();
-        }
-    }
-
-    public abstract class BaseLock : IDisposable
-    {
-        protected ReaderWriterLockSlim _Locks;
-
-        public BaseLock(ReaderWriterLockSlim locks)
-        {
-            _Locks = locks;
-        }
-
-        public abstract void Dispose();
-    }
-
-    public class ReadLock : BaseLock
-    {
-        public ReadLock(ReaderWriterLockSlim locks)
-            : base(locks)
-        {
-            Locks.GetReadLock(_Locks);
-        }
-
-        public override void Dispose()
-        {
-            Locks.ReleaseReadLock(_Locks);
-        }
-    }
-
-    public class ReadOnlyLock : BaseLock
-    {
-        public ReadOnlyLock(ReaderWriterLockSlim locks)
-            : base(locks)
-        {
-            Locks.GetReadOnlyLock(_Locks);
-        }
-
-        public override void Dispose()
-        {
-            Locks.ReleaseReadOnlyLock(_Locks);
-        }
-    }
-
-    public class WriteLock : BaseLock
-    {
-        public WriteLock(ReaderWriterLockSlim locks)
-            : base(locks)
-        {
-            Locks.GetWriteLock(_Locks);
-        }
-
-        public override void Dispose()
-        {
-            Locks.ReleaseWriteLock(_Locks);
-        }
+        readonly ReaderWriterLockSlim LockQ = new ReaderWriterLockSlim();
     }
 }

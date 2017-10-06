@@ -22,9 +22,14 @@ namespace Svelto.Tasks
             _subProgress = 0.0f;
         }
 #endif
-        new public void Reset()
+        public void Reset()
         {
-            base.Reset();
+            _index = 0;
+        }
+
+        public new void Clear()
+        {
+            base.Clear();
             _index = 0;
         }
 
@@ -70,7 +75,7 @@ namespace Svelto.Tasks
                         if (_current == ce)
                             throw new Exception("An enumerator returning itself is not supported");
 
-                        if (_current != null && _current != Break.It)
+                        if ((ce is TaskCollection == false) && _current != null && _current != Break.It)
                         {
                            IEnumerator result = StandardEnumeratorCheck(_current);
                            if (result != null)

@@ -1,4 +1,4 @@
-﻿namespace Svelto.Tasks.Experimental
+namespace Svelto.Tasks.Experimental
 {
     public class TaskWrapper<Token> : TaskWrapper
     {

@@ -1,26 +1,9 @@
-#if UNITY_5
-using System.Collections;
+#if UNITY_5 || UNITY_5_3_OR_NEWER
 using UnityEngine;
 
 namespace Svelto.Tasks.Internal
 {
-    class RunnerBehaviour : MonoBehaviour
+    public class RunnerBehaviour : MonoBehaviour
     {}
-
-    class RunnerBehaviourPhysic : MonoBehaviour
-    {
-        void FixedUpdate()
-        {
-            if (_mainRoutine != null)
-                _mainRoutine.MoveNext();
-        }
-
-        public void StartPhysicCoroutine(IEnumerator enumerator)
-        {
-            _mainRoutine = enumerator;
-        }
-
-        IEnumerator _mainRoutine;
-    }
 }
 #endif

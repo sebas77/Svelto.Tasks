@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Runtime.Serialization;
 
 namespace Svelto.Tasks
 {
     [Serializable]
-    class TaskYieldsIEnumerableException : Exception
+    public class TaskYieldsIEnumerableException : Exception
     {
         public TaskYieldsIEnumerableException()
         {

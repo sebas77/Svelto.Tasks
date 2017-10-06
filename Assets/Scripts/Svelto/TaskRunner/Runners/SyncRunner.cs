@@ -6,12 +6,12 @@ namespace Svelto.Tasks.Internal
         public bool paused { set; get; }
         public bool stopped { private set; get; }
 
-        public void StartCoroutineThreadSafe(PausableTask task)
+        public void StartCoroutineThreadSafe(IPausableTask task)
         {
             StartCoroutine(task);
         }
 
-        public void StartCoroutine(PausableTask task)
+        public void StartCoroutine(IPausableTask task)
         {
             while (task.MoveNext() == true);
         }

@@ -1,35 +1,41 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Assets
 {
-    public class DoSomethingHeavy:MonoBehaviour
+    public sealed class DoSomethingHeavyWithTaskRunner : MonoBehaviour
     {
         void Awake()
         {
             _direction = new Vector2(Mathf.Cos(Random.Range(0, 3.14f)) / 1000, Mathf.Sin(Random.Range(0, 3.14f) / 1000));
-            _transform = transform;
+            _transform = this.transform;
+
+            _task = TaskRunner.Instance.AllocateNewTaskRoutine().
+                SetEnumeratorProvider(UpdateIt2);
         }
 
-        void OnEnable()
+        void OnEnable() 
         {
-            StartCoroutine(UpdateIt2());
+            _task.Start();
         }
-
-        System.Collections.IEnumerator UpdateIt2()
+      
+        IEnumerator UpdateIt2()
         {
             while (true) 
             {
                 _transform.Translate(_direction);
+
                 yield return null;
             }
         }
 
         void OnDisable()
         {
-            StopAllCoroutines();
+            _task.Stop();
         }
 
         Vector3 _direction;
         Transform _transform;
+        Svelto.Tasks.ITaskRoutine _task;
     }
 }

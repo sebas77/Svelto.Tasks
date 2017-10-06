@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 
 //This profiler is based on the Entitas Visual Debugging tool 

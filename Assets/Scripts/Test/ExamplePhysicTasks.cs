@@ -10,6 +10,8 @@ public class ExamplePhysicTasks : MonoBehaviour
 
     void OnEnable () 
 	{
+        UnityConsole.Clear();
+
         Time.fixedDeltaTime = 0.5f;
 
         TaskRunner.Instance.RunOnSchedule(StandardSchedulers.physicScheduler, PrintTime);

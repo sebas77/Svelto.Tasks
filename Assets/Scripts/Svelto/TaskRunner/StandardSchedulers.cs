@@ -6,23 +6,31 @@ namespace Svelto.Tasks
     public static class StandardSchedulers
     {
         public static IRunner multiThreadScheduler { get; private set; }
-        public static IRunner mainThreadScheduler { get; private set; }
+        public static IRunner coroutineScheduler { get; private set; }
         public static IRunner physicScheduler { get; private set; }
         public static IRunner syncScheduler { get; private set; }
+        public static IRunner lateScheduler { get; private set; }
+        public static IRunner updateScheduler { get; private set; }
+
+        //physicScheduler -> updateScheduler -> coroutineScheduler -> lateScheduler
 
         static StandardSchedulers()
         {
-            mainThreadScheduler = new MonoRunner();
+            coroutineScheduler = new CoroutineMonoRunner("StandardCoroutineRunner");
             syncScheduler = new SyncRunner();
             multiThreadScheduler = new MultiThreadRunner();
-            physicScheduler = new PhysicMonoRunner();
+            physicScheduler = new PhysicMonoRunner("StandardPhysicRunner");
+            lateScheduler = new LateMonoRunner("StandardLateRunner");
+            updateScheduler = new StandardMonoRunner("StandardMonoRunner");
         }
 
         public static void StopSchedulers()
         {
-            mainThreadScheduler.StopAllCoroutines();
+            coroutineScheduler.StopAllCoroutines();
             multiThreadScheduler.StopAllCoroutines();
             physicScheduler.StopAllCoroutines();
+            lateScheduler.StopAllCoroutines();
+            updateScheduler.StopAllCoroutines();
         }
     }
 }

@@ -17,17 +17,24 @@ public class ExamplePromises : MonoBehaviour
 
         public object target;
     }
+
+    void OnEnable()
+    {
+        UnityConsole.Clear();
+    }
     // Use this for initialization
     void Start()
     {
-        TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumerator(RunTasks(2)).Start(onStop: OnStop);
+        TaskRunner.Instance.AllocateNewTaskRoutine().
+            SetEnumerator(RunTasks(2)).Start(onStop: OnStop);
     }
 
     void OnStop()
     {
         Debug.LogWarning("oh oh, did't happen on time, let's try again");
 
-        TaskRunner.Instance.AllocateNewTaskRoutine().SetEnumerator(RunTasks(1000)).Start(OnFail);
+        TaskRunner.Instance.AllocateNewTaskRoutine().
+            SetEnumerator(RunTasks(1000)).Start(OnFail);
     }
 
     void OnFail(PausableTaskException obj)
@@ -40,9 +47,13 @@ public class ExamplePromises : MonoBehaviour
         var enumerator = GetURLAsynchronously();
         yield return enumerator;
         
-        string url = enumerator.Current as string;
+        string url = (enumerator.Current as ValueObject<string>).target as string;
 
-        yield return new[] { BreakOnTimeOut(timeout), new LoadSomething(new WWW(url)).GetEnumerator() }; //yep it will be converted to a Parallel task
+        yield return new[]
+        {
+            BreakOnTimeOut(timeout),
+            new LoadSomething(new WWW(url)).GetEnumerator()
+        }; //yep it will be converted to a Parallel task
     }
 
     IEnumerator GetURLAsynchronously()
@@ -87,6 +98,7 @@ public class ExamplePromises : MonoBehaviour
             while (wWW.isDone == false)
             {
                 Debug.Log(wWW.progress);
+
                 yield return null;
             }
         }

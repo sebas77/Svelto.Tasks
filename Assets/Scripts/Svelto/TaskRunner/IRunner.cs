@@ -1,4 +1,3 @@
-
 namespace Svelto.Tasks
 {
     public interface IRunner
@@ -6,8 +5,8 @@ namespace Svelto.Tasks
         bool    paused { get; set; }
         bool    stopped { get; }
 
-        void	StartCoroutine(PausableTask task);
-        void    StartCoroutineThreadSafe(PausableTask task);
+        void	StartCoroutine(IPausableTask task);
+        void  StartCoroutineThreadSafe(IPausableTask task);
         void 	StopAllCoroutines();
 
         int numberOfRunningTasks { get; }

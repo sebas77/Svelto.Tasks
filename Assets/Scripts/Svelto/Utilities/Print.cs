@@ -7,7 +7,7 @@ public static class FastConcatUtility
 {
     static readonly StringBuilder _stringBuilder = new StringBuilder(256);
 
-    public static string FastConcat(this string str1, string str2)
+    public static string FastConcat<T>(this string str1, T str2)
     {
         lock (_stringBuilder)
         {
@@ -136,7 +136,7 @@ namespace Utility
             logger.Log(txt);
         }
 
-        public static void LogError(string txt, bool showCurrentStack = true)
+        public static void LogError(string txt)
         {
             string toPrint;
         
@@ -149,7 +149,7 @@ namespace Utility
                 toPrint = _stringBuilder.ToString();
             }
 
-            logger.Log(toPrint, showCurrentStack == true ? new StackTrace().ToString() : null, LogType.Error);
+            logger.Log(toPrint, null, LogType.Error);
         }
 
         public static void LogError(string txt, string stack)
@@ -175,26 +175,6 @@ namespace Utility
 
         public static void LogException(Exception e, UnityEngine.Object obj)
         {
-            string toPrint;
-            string stackTrace;
-
-            lock (_stringBuilder)
-            {
-                _stringBuilder.Length = 0;
-                _stringBuilder.Append("-!!!!!!-> ").Append(e.Message);
-
-                stackTrace = e.StackTrace;
-
-                if (e.InnerException != null)
-                {
-                    _stringBuilder.Append(" Inner Message: ").Append(e.InnerException.Message).Append(" Inner Stacktrace:")
-                        .Append(e.InnerException.StackTrace);
-                }
-
-                toPrint = _stringBuilder.ToString();
-                
-            }
-
             UnityEngine.Debug.LogException(e, obj);
         }
 
@@ -220,12 +200,13 @@ namespace Utility
         /// <param name="txt"></param>
         public static void SystemLog(string txt)
         {
+#if !NETFX_CORE
             string toPrint;
 
             lock (_stringBuilder)
             {
                 string currentTimeString = DateTime.UtcNow.ToLongTimeString(); //ensure includes seconds
-                string processTimeString = (DateTime.Now - Process.GetCurrentProcess().StartTime).ToString();
+                string processTimeString = (DateTime.UtcNow - Process.GetCurrentProcess().StartTime).ToString();
 
                 _stringBuilder.Length = 0;
                 _stringBuilder.Append("[").Append(currentTimeString);
@@ -236,10 +217,13 @@ namespace Utility
                 toPrint = _stringBuilder.ToString();
             }
 
-#if !UNITY_EDITOR
+#if !UNITY_EDITOR 
             System.Console.WriteLine(toPrint);
 #else
             UnityEngine.Debug.Log(toPrint);
+#endif
+#else
+            UnityEngine.Debug.Log(txt);
 #endif
         }
     }

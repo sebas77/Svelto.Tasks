@@ -30,9 +30,7 @@ namespace Svelto.Tasks
         }
 
         public void Reset()
-        {
-            throw new NotImplementedException();
-        }
+        {}
 
         public override string ToString()
         {
@@ -70,9 +68,7 @@ namespace Svelto.Tasks
         }
 
         public void Reset()
-        {
-            throw new NotImplementedException();
-        }
+        {}
 
         public override string ToString()
         {
@@ -124,9 +120,7 @@ namespace Svelto.Tasks
         }
 
         public void Reset()
-        {
-            throw new NotImplementedException();
-        }
+        {}
 
         Action<float>   _action;
         DateTime        _then = DateTime.MaxValue;
@@ -160,14 +154,20 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
+#if NETFX_CORE
+            var method = _action.GetMethodInfo();
+
+            return method.DeclaringType.Name + "." + method.Name;
+#else
             var method = _action.Method;
 
             return method.ReflectedType.Name + "." + method.Name;
+#endif
         }
 
         public void Reset()
         {
-            throw new NotImplementedException();
+            _then = DateTime.UtcNow.AddMilliseconds(_interval);
         }
 
         Action     _action;

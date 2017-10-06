@@ -1,6 +1,5 @@
 using Assets;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 //I decided to not talk about this example in the article
 //because I can't get any conclusive data from Unity
@@ -15,6 +14,8 @@ public class SpawnObjects : MonoBehaviour
     // Use this for initialization
     void Start () 
     {
+        TaskRunner.Instance.StopAndCleanupAllDefaultSchedulerTasks();
+
         Application.targetFrameRate = -1;
         QualitySettings.vSyncCount = 0;
         
@@ -32,27 +33,26 @@ public class SpawnObjects : MonoBehaviour
         {
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 
-            sphere.AddComponent<DoSomethingHeavy>();
-            sphere.GetComponent<Renderer>().material = new Material(matYellow);
-
             sphere.transform.parent = parent1.transform;
+            Destroy(sphere.GetComponent<SphereCollider>());
+
+            sphere.AddComponent<DoSomethingHeavyWithUnity>();
+            sphere.GetComponent<Renderer>().material = new Material(matYellow);
         }
 
         parent2 = new GameObject();
         parent2.transform.parent = this.transform;
-        parent2.SetActive(false);
         
         for (int i = 0; i < 15000; i++)
         {
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 
-            sphere.AddComponent<DoSomethingHeavy2>();
-            sphere.GetComponent<Renderer>().material = new Material(matRed);
-
             sphere.transform.parent = parent2.transform;
-        }
+            Destroy(sphere.GetComponent<SphereCollider>());
 
-        parent2.SetActive(true);
+            sphere.AddComponent<DoSomethingHeavyWithTaskRunner>();
+            sphere.GetComponent<Renderer>().material = new Material(matRed);
+        }
 
         var texts = GetComponentsInChildren<UnityEngine.UI.Text>();
         text = texts[0];
@@ -74,7 +74,9 @@ public class SpawnObjects : MonoBehaviour
                 text.text = "TaskRunner coroutine Enabled";
         }
 
-        text2.text = Svelto.Tasks.StandardSchedulers.mainThreadScheduler.numberOfRunningTasks.ToString();
+        text2.text =
+            Svelto.Tasks.StandardSchedulers.coroutineScheduler.numberOfRunningTasks.
+            ToString();
     }
 
     GameObject parent1;

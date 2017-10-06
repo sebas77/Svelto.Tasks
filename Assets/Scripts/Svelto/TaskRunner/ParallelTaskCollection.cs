@@ -1,8 +1,6 @@
-#if UNITY_5
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
@@ -11,22 +9,32 @@ namespace Svelto.Tasks
         public event Action		onComplete;
 #if TO_IMPLEMENT_PROPERLY
         override public float progress { get { return _progress + _subprogress; } }
-#endif 
+#endif
+
         public ParallelTaskCollection()
-        {}
+        {
+            _parallelTask = new ParallelTask(_current, this);
+        }
 
-        public ParallelTaskCollection(int initialSize):base(initialSize)
-        { }
+        public ParallelTaskCollection(int initialSize) : base(initialSize)
+        {
+            _parallelTask = new ParallelTask(_current, this);
+        }
 
-        public ParallelTaskCollection(IEnumerator[] ptasks)
+        public ParallelTaskCollection(IEnumerator[] ptasks) : this()
         {
             for (int i = 0; i < ptasks.Length; i++)
                 Add(ptasks[i]);
         }
 
-        new public void Reset()
+        public void Reset()
         {
-            base.Reset();
+            _index = 0;
+        }
+
+        public new void Clear()
+        {
+            base.Clear();
             _index = 0;
         }
 
@@ -83,9 +91,11 @@ namespace Svelto.Tasks
                             _current = ce.Current;
 
                             if (_current == ce)
-                                throw new Exception("An enumerator returning itself is not supported");
+                                throw new Exception
+                            ("An enumerator returning itself is not supported");
 
-                            if (_current != null && _current != Break.It)
+                            if ((ce is TaskCollection == false) && 
+                                _current != null && _current != Break.It)
                             {
                                 IEnumerator result = StandardEnumeratorCheck(_current);
                                 if (result != null)
@@ -94,24 +104,11 @@ namespace Svelto.Tasks
 
                                     continue;
                                 }
-                                    
                                 //in all the cases above, the task collection is not meant to yield
                             }
                             else 
                             if (_current == Break.It)
                                 return false;
-                            else
-                            //an Enumerator that must be handled by Unity
-                            //(www, asyncOp) inherits from ParalleEnumerator
-                            //to instruct the runners that it doesn't have
-                            //to wait for unity to finish does instructions.
-                            //It makes sense only for runners that support
-                            //unity operations, otherwise it will be ignored
-                            if (ce is IParallelEnumerator)
-                            {
-                                _markUP.Current = _current;
-                                _current = _markUP;
-                            }
 
                             _index = index + 1;
 
@@ -120,7 +117,7 @@ namespace Svelto.Tasks
                     }
                     else
                     {
-                        _listOfStacks.UnorderredRemoveAt(index--);
+                        _listOfStacks.UnorderedRemoveAt(index--);
 #if TO_IMPLEMENT_PROPERLY
                         _progress = (registeredEnumerators.Count - _listOfStacks.Count) / (float)registeredEnumerators.Count;
                         _subprogress = 0.0f;
@@ -135,17 +132,35 @@ namespace Svelto.Tasks
 
         public object Current
         {
-            get { return _current; }
+            get { return _parallelTask; }
         }
 
-        ParallelYield   _markUP = new ParallelYield(); 
-
         object          _current;
-        int             _index; 
+        int             _index;
+
+        readonly ParallelTask    _parallelTask;
 #if TO_IMPLEMENT_PROPERLY
         float 			_progress;
         float           _subprogress;
 #endif
+        internal class ParallelTask
+        {
+            public object current {  get {  return _current;} }
+
+            public ParallelTask(object current, ParallelTaskCollection parent)
+            {
+                _current = current;
+                _parent = parent;
+            }
+
+            public void Add(IEnumerator task)
+            {
+                _parent.Add(task);
+            }
+
+            readonly object _current;
+            readonly ParallelTaskCollection _parent;
+        }
     }
 }
-#endif
+

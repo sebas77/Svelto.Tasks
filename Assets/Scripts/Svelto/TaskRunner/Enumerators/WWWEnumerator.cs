@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Svelto.Tasks
 {
@@ -48,6 +49,44 @@ namespace Svelto.Tasks
         WWW     _www;
         float   _timeOut;
         float   _timePassed;
+    }
+
+    public class UnityWebRequestEnumerator : IEnumerator<UnityWebRequest>
+    {
+        public UnityWebRequestEnumerator(UnityWebRequest www, int timeOut = -1)
+        {
+            _www = www;
+            _www.timeout = timeOut;
+
+            _www.Send();
+        }
+
+        public bool MoveNext()
+        {
+            return _www.isDone == false;
+        }
+
+        public void Reset()
+        { }
+
+        object IEnumerator.Current
+        {
+            get { return _www; }
+        }
+
+        public UnityWebRequest Current
+        {
+            get { return _www; }
+        }
+
+        public void Dispose()
+        {
+            _www.Dispose();
+        }
+
+        public UnityWebRequest www { get { return _www; } }
+
+        UnityWebRequest _www;
     }
 }
     

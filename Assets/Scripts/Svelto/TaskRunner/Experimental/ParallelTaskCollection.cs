@@ -16,7 +16,7 @@ namespace Svelto.Tasks.Experimental
 
         public ParallelTaskCollection(Token token) { _token = token; }
 
-        override protected void CheckForToken(object current)
+        protected override void CheckForToken(object current)
         {
             var task = current as IChainLink<Token>;
             if (task != null)

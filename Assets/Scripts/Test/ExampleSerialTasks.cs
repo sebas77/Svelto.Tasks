@@ -7,9 +7,14 @@ public class ExampleSerialTasks : MonoBehaviour
     [TextArea]
     public string Notes = "This example shows how to run different types of tasks in Serial with the TaskRunner";
 
+    void OnEnable()
+    {
+        UnityConsole.Clear();
+    }
+
     void Start () 
 	{
-		SerialTaskCollection st = new SerialTaskCollection();
+        SerialTaskCollection st = new SerialTaskCollection();
 		
 		st.Add(Print(1));
 		st.Add(Print(2));

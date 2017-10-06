@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 namespace Svelto.DataStructures
@@ -188,10 +189,199 @@ namespace Svelto.DataStructures
         readonly FasterList<T> _list;
     }
 
+    public struct FasterListThreadSafe<T> : IList<T>
+    {
+        public FasterListThreadSafe(FasterList<T> list)
+        {
+            if (list == null) throw new ArgumentException("invalid list");
+            _list = list; 
+            _lockQ = new ReaderWriterLockSlim();
+        }
+
+        public int Count
+        {
+            get
+            {
+                _lockQ.EnterReadLock();
+                try
+                {
+                    return _list.Count;
+                }
+                finally
+                {
+                    _lockQ.ExitReadLock();
+                }
+            }
+        }
+        public bool IsReadOnly { get { return false; } }
+
+        public T this[int index]
+        {
+            get
+            {
+                _lockQ.EnterReadLock();
+                try
+                {
+                    return _list[index];
+                }
+                finally
+                {
+                    _lockQ.ExitReadLock();
+                }
+            }
+            set
+            {
+                _lockQ.EnterWriteLock();
+                try
+                {
+                    _list[index] = value;
+                }
+                finally
+                {
+                    _lockQ.ExitWriteLock();
+                }
+            }
+        }
+
+        public FasterListEnumerator<T> GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Add(T item)
+        {
+            _lockQ.EnterWriteLock();
+            try
+            {
+                _list.Add(item);
+            }
+            finally
+            {
+                _lockQ.ExitWriteLock();
+            }
+        }
+
+        public void Clear()
+        {
+            _lockQ.EnterWriteLock();
+            try
+            {
+                _list.Clear();
+            }
+            finally
+            {
+                _lockQ.ExitWriteLock();
+            }
+        }
+
+        public bool Contains(T item)
+        {
+            _lockQ.EnterReadLock();
+            try
+            {
+                return _list.Contains(item);
+            }
+            finally
+            {
+                _lockQ.ExitReadLock();
+            }
+        }
+
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            _lockQ.EnterReadLock();
+            try
+            {
+                _list.CopyTo(array, arrayIndex);
+            }
+            finally
+            {
+                _lockQ.ExitReadLock();
+            }
+        }
+
+        public bool Remove(T item)
+        {
+            _lockQ.EnterWriteLock();
+            try
+            {
+                return _list.Remove(item);
+            }
+            finally
+            {
+                _lockQ.ExitWriteLock();
+            }
+        }
+
+        public int IndexOf(T item)
+        {
+            _lockQ.EnterReadLock();
+            try
+            {
+                return _list.IndexOf(item);
+            }
+            finally
+            {
+                _lockQ.ExitReadLock();
+            }
+        }
+
+        public void Insert(int index, T item)
+        {
+            _lockQ.EnterWriteLock();
+            try
+            {
+                _list.Insert(index, item);
+            }
+            finally
+            {
+                _lockQ.ExitWriteLock();
+            }
+        }
+
+        public void RemoveAt(int index)
+        {
+            _lockQ.EnterWriteLock();
+            try
+            {
+                _list.RemoveAt(index);
+            }
+            finally
+            {
+                _lockQ.ExitWriteLock();
+            }
+        }
+
+        public void UnorderedRemoveAt(int index)
+        {
+            _lockQ.EnterWriteLock();
+            try
+            {
+                _list.UnorderedRemoveAt(index);
+            }
+            finally
+            {
+                _lockQ.ExitWriteLock();
+            }
+        }
+
+        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotImplementedException();
+        }
+
+        readonly FasterList<T> _list;
+       
+        readonly ReaderWriterLockSlim _lockQ;
+    }
+
     public struct FasterReadOnlyListCast<T, U> : IList<U> where U:T
     {
-        public static FasterList<T> DefaultList = new FasterList<T>();
-
         public int Count { get { return _list.Count; } }
         public bool IsReadOnly { get { return true; } }
 
@@ -224,7 +414,7 @@ namespace Svelto.DataStructures
 
         public void CopyTo(U[] array, int arrayIndex)
         {
-            throw new NotImplementedException();
+            Array.Copy(_list.ToArrayFast(), 0, array, arrayIndex, _list.Count);
         }
 
         public bool Remove(U item)
@@ -260,8 +450,12 @@ namespace Svelto.DataStructures
         readonly FasterList<T> _list;
     }
 
-    public class FasterList<T> : IList<T>
+    public interface IFasterList
+    {}
+
+    public class FasterList<T> : IList<T>, IFasterList
     {
+        public static FasterList<T> DefaultList = new FasterList<T>();
         const int MIN_SIZE = 4;
 
         public int Count
@@ -320,6 +514,14 @@ namespace Svelto.DataStructures
             _buffer[_count++] = item;
         }
 
+
+        /// <summary>
+        /// this is a dirtish trick to be able to use the index operastor 
+        /// before adding the elements through the Add functions
+        /// </summary>
+        /// <typeparam name="U"></typeparam>
+        /// <param name="initialSize"></param>
+        /// <returns></returns>
         public static FasterList<T> PreFill<U>(int initialSize) where U:T, new()
         {
             var list = new FasterList<T>(initialSize);
@@ -365,6 +567,11 @@ namespace Svelto.DataStructures
 
             Array.Copy(items, 0, _buffer, _count, count);
             _count += count;
+        }
+
+        public void AddRange(T[] items)
+        {
+            AddRange(items, items.Length);
         }
 
         public FasterReadOnlyList<T> AsReadOnly()
@@ -503,32 +710,30 @@ namespace Svelto.DataStructures
             return _buffer;
         }
 
-        public bool UnorderredRemove(T item)
+        public bool UnorderedRemove(T item)
         {
             var index = IndexOf(item);
 
             if (index == -1)
                 return false;
 
-            UnorderredRemoveAt(index);
+            UnorderedRemoveAt(index);
 
             return true;
         }
 
-        public T UnorderredRemoveAt(int index)
+        public bool UnorderedRemoveAt(int index)
         {
             DesignByContract.Check.Require(index < _count && _count > 0, "out of bound index");
 
-            T item = _buffer[index];
-
             if (index == --_count)
-                return item;
+                return false;
 
             T swap = _buffer[index];
             _buffer[index] = _buffer[_count];
             _buffer[_count] = swap;
 
-            return item;
+            return true;
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -566,14 +771,15 @@ namespace Svelto.DataStructures
                 Resize(_count);
         }
 
-        public bool Reuse(int index, out T result)
+        public bool Reuse<U>(int index, out U result)
+            where U:class, T
         {
-            result = default(T);
+            result = default(U);
 
             if (index >= _buffer.Length)
                 return false;
 
-            result = _buffer[index];
+            result = (U)_buffer[index];
 
             return result != null;
         }

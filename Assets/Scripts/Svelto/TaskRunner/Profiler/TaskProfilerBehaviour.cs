@@ -1,5 +1,6 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
+using Svelto.DataStructures;
 using UnityEngine;
 
 //This profiler is based on the Entitas Visual Debugging tool 
@@ -9,7 +10,7 @@ namespace Svelto.Tasks.Profiler
 {
     public class TasksProfilerBehaviour : MonoBehaviour
     {
-        public Dictionary<IEnumerator, TaskInfo>.ValueCollection tasks { get { return TaskProfiler.taskInfos.Values; } }
+        public FasterList<TaskInfo>  tasks { get { return TaskProfiler.taskInfos.Values; } }
 
         public void ResetDurations()
         {

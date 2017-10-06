@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Svelto.Tasks.Experimental
 {

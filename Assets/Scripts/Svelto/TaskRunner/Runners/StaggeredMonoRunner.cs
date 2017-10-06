@@ -1,59 +1,71 @@
+#if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.DataStructures;
+using Svelto.Tasks.Internal;
 using UnityEngine;
 
-//
-//it doesn't make any sense to have more than one MonoRunner active
-//that's why I eventually decided to keep it as a static class.
-//Only downside is that I assume that the TaskRunner gameobject
-//is never destroyed after it's created.
-//
-namespace Svelto.Tasks.Internal
+//StaggeredMonoRunner doesn't flush all the tasks at once, but it spread
+//them over "framesToSpread" frames;
+
+namespace Svelto.Tasks
 {
-    class StaggeredMonoRunner : MonoRunner
+    public class StaggeredMonoRunner : MonoRunner
     {
-        static readonly RunnerBehaviour _runnerBehaviour;
-        public override int numberOfRunningTasks { get { return _info.count; } }
-
-        protected override ThreadSafeQueue<PausableTask> newTaskRoutines { get { return _newTaskRoutines; } }
-        protected override FlushingOperation flushingOperation { get { return _flushingOperation; } }
-
-        static StaggeredMonoRunner()
+        public StaggeredMonoRunner(string name, int maxTasksPerFrame)
         {
-            if (_go == null)
-            {
-                _go = new GameObject("TaskRunner");
+            _flushingOperation = new FlushingOperationStaggered(maxTasksPerFrame);
 
-                Object.DontDestroyOnLoad(_go);
-            }
+            var go = UnityCoroutineRunner.InitializeGameobject(name);
 
-            _runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
+            var coroutines = new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
+            var runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
+            var runnerBehaviourForUnityCoroutine = go.AddComponent<RunnerBehaviour>();
+
+            runnerBehaviour.StartUpdateCoroutine(UnityCoroutineRunner.Process
+                (_newTaskRoutines, coroutines, _flushingOperation, _info,
+                 StaggeredTasksFlushing,
+                 runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
 
-        public StaggeredMonoRunner(int maxQueueLength)
-        {
-            _flushingOperation.framesLength = maxQueueLength;
+        protected override UnityCoroutineRunner.RunningTasksInfo info
+        { get { return _info; } }
 
-            var coroutines = new FasterList<PausableTask>(NUMBER_OF_INITIAL_COROUTINE);
+        protected override ThreadSafeQueue<IPausableTask> newTaskRoutines
+        { get { return _newTaskRoutines; } }
 
-            _runnerBehaviour.StartCoroutine(CoroutinesRunner(_newTaskRoutines, coroutines, _flushingOperation, _info,
-                NewFlushTasks));
-        }
+        protected override UnityCoroutineRunner.FlushingOperation flushingOperation
+        { get { return _flushingOperation; } }
 
-        protected static void NewFlushTasks(
-            ThreadSafeQueue<PausableTask> newTaskRoutines, 
-            FasterList<PausableTask> coroutines, FlushingOperation flushingOperation)
+        static void StaggeredTasksFlushing(
+            ThreadSafeQueue<IPausableTask> newTaskRoutines, 
+            FasterList<IPausableTask> coroutines, 
+            UnityCoroutineRunner.FlushingOperation flushingOperation)
         {
             if (newTaskRoutines.Count > 0)
-                newTaskRoutines.DequeueInto(coroutines, Mathf.CeilToInt(newTaskRoutines.Count / ((FlushingOperationStaggered) flushingOperation).framesLength));
+                newTaskRoutines.DequeueInto(coroutines, ((FlushingOperationStaggered)flushingOperation).maxTasksPerFrame);
         }
 
-        protected class FlushingOperationStaggered:FlushingOperation
+        public override void StartCoroutine(IPausableTask task)
         {
-            public int framesLength;
+            paused = false;
+
+            newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
 
-        readonly FlushingOperationStaggered    _flushingOperation = new FlushingOperationStaggered();
-        readonly RunningTasksInfo              _info = new RunningTasksInfo();
-        readonly ThreadSafeQueue<PausableTask> _newTaskRoutines = new ThreadSafeQueue<PausableTask>();
+        class FlushingOperationStaggered:UnityCoroutineRunner.FlushingOperation
+        {
+            public readonly int maxTasksPerFrame;
+
+            public FlushingOperationStaggered(int maxTasksPerFrame)
+            {
+                this.maxTasksPerFrame = maxTasksPerFrame;
+            }
+        }
+
+        readonly FlushingOperationStaggered            _flushingOperation;
+        readonly UnityCoroutineRunner.RunningTasksInfo _info = new UnityCoroutineRunner.RunningTasksInfo();
+        readonly ThreadSafeQueue<IPausableTask>        _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
+
+        const int NUMBER_OF_INITIAL_COROUTINE = 3;
     }
 }
+#endif

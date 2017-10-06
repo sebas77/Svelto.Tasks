@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.DataStructures;
 
 //This profiler is based on the Entitas Visual Debugging tool 
 //https://github.com/sschmid/Entitas-CSharp
@@ -12,7 +13,7 @@ namespace Svelto.Tasks.Profiler
         const int NUM_UPDATE_TYPES = 3;
         const int NUM_FRAMES_TO_AVERAGE = 10;
 
-        public string taskName { get { return _taskName; } }
+        public string taskName { get { return _threadInfo.FastConcat(_taskName); } }
         public double lastUpdateDuration { get { return _lastUpdateDuration; } }
         public double minUpdateDuration { get { return _minUpdateDuration; } }
         public double maxUpdateDuration { get { return _maxUpdateDuration; } }
@@ -20,10 +21,9 @@ namespace Svelto.Tasks.Profiler
 
         public TaskInfo(IEnumerator task)
         {
-            //_taskName = task.GetHashCode().ToString("x8");
-            _taskName = task.ToString();
+            _taskName = " ".FastConcat(task.ToString());
 
-            _updateFrameTimes = new Queue<double>();
+            _updateFrameTimes = new ThreadSafeQueue<double>();
 
             ResetDurations();
         }
@@ -31,6 +31,11 @@ namespace Svelto.Tasks.Profiler
         public void AddUpdateDuration(double updateDuration)
         {
             AddUpdateDurationForType(updateDuration);
+        }
+
+        public void AddThreadInfo(string threadInfo)
+        {
+            _threadInfo = threadInfo;
         }
 
         public void AddAddDuration(double duration)
@@ -93,7 +98,9 @@ namespace Svelto.Tasks.Profiler
         double _minAddDuration;
         double _minRemoveDuration;
 
+        string _threadInfo;
+
         //use a queue to averave out the last 30 frames
-        Queue<double> _updateFrameTimes = new Queue<double>();
+        ThreadSafeQueue<double> _updateFrameTimes;
     }
 }

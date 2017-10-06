@@ -1,10 +1,8 @@
-#if _DEPRECATED
 //this was a good excercise, but with my current knowledge, I say that heavy parallelism
 //is useless for generic game features.
 using System;
 using System.Collections;
-using System.Threading;
-using Svelto.Tasks.Internal;
+using Svelto.DataStructures;
 
 namespace Svelto.Tasks
 {
@@ -12,132 +10,94 @@ namespace Svelto.Tasks
     /// a ParallelTaskCollection ran by MultiThreadRunner will run the tasks in a single thread
     /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
     /// </summary>
-    public class MultiThreadParallelTaskCollection : TaskCollection
+    public class MultiThreadParallelTaskCollection : IEnumerator
     {
-        const int MAX_CONCURRENT_TASK = 8;
-
         public event Action onComplete;
-#if TO_IMPLEMENT_PROPERLY
-        override public float progress { get { return _progress; } }
-#endif
-        public MultiThreadParallelTaskCollection(MultiThreadRunner runner) : base()
+
+        const int MAX_CONCURRENT_TASKS = 1024;
+
+        public MultiThreadParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS)
         {
-            _maxConcurrentTasks = uint.MaxValue;
-            _taskRoutinePool = new PausableTaskPoolThreadSafe();
-            _runner = runner;
+            _runners = new MultiThreadRunner[numberOfThreads];
+            _parallelTasks = new ParallelTaskCollection[numberOfThreads];
 
-            ComputeMaxConcurrentTasks();
-        }
-
-        public MultiThreadParallelTaskCollection(MultiThreadRunner runner, uint maxConcurrentTasks) : this(runner)
-        {
-            _maxConcurrentTasks = Math.Min(MAX_CONCURRENT_TASK, maxConcurrentTasks);
-        }
-
-        void ComputeMaxConcurrentTasks()
-        {
-            if (_maxConcurrentTasks != uint.MaxValue)
-                _maxConcurrentTasks = Math.Min(_maxConcurrentTasks, (uint)(registeredEnumerators.Count));
-        }
-
-        override public IEnumerator GetEnumerator()
-        {
-            _startingCount = registeredEnumerators.Count;
-
-            if (_startingCount > 0)
+            for (int i = 0; i < numberOfThreads; i++)
             {
-                isRunning = true;
-
-                RunMultiThreadParallelTasks();
-
-                isRunning = false;
+                _parallelTasks[i] = new ParallelTaskCollection();
+                _parallelTasks[i].onComplete += DecrementConcurrentOperationsCounter;
             }
+
+            for (int i = 0; i < numberOfThreads; i++) _runners[i] = new MultiThreadRunner();
+
+            _enumeratorCopy = new FasterList<IEnumerator>();
+        }
+
+        bool RunMultiThreadParallelTasks()
+        {
+            if (isRunning == false)
+            {
+                int concurrentOperations = _enumeratorCopy.Count;
+                for (int i = 0; i < concurrentOperations; i++)
+                {
+                    var yieldIT = _enumeratorCopy[i];
+
+                    ParallelTaskCollection parallelTaskCollection = _parallelTasks[i % _parallelTasks.Length];
+                    parallelTaskCollection.Add(yieldIT);
+                }
+
+                var numberOfConcurrentOperationsToRun = _counter = Math.Min(_parallelTasks.Length, concurrentOperations);
+
+                for (int i = 0; i < numberOfConcurrentOperationsToRun; i++)
+                    _parallelTasks[i].ThreadSafeRunOnSchedule(_runners[i]);
+            }
+#if NET_4_6
+            System.Threading.Interlocked.MemoryBarrier();
+#else
+            System.Threading.Thread.MemoryBarrier();
+#endif
+            isRunning = _counter > 0;
+
+            return isRunning;
+        }
+
+        public void Add(IEnumerator enumerator)
+        {
+            _enumeratorCopy.Add(enumerator);
+        }
+
+        void DecrementConcurrentOperationsCounter()
+        {
+            System.Threading.Interlocked.Decrement(ref _counter);
+        }   
+
+        public bool MoveNext()
+        {
+            if (RunMultiThreadParallelTasks()) return true;
 
             if (onComplete != null)
                 onComplete();
 
-            yield return null;
+            return false;
         }
 
-        void OnThreadedTaskDone()
+        public void Reset()
         {
-            lock (_locker)
+            _enumeratorCopy.Clear();
+        }
+
+        public object Current
+        {
+            get
             {
-                --_counter;
-#if TO_IMPLEMENT_PROPERLY
-               _progress = (float)(_startingCount - registeredEnumerators.Count) / (float)_startingCount;
-#endif
-
-                Monitor.Pulse(_locker);
-            }
-            
-            _countdown.Signal();
-        }
-
-        void RunMultiThreadParallelTasks()
-        {
-            _counter = 0;
-
-            _countdown.AddCount(registeredEnumerators.Count);
-
-            while (registeredEnumerators.Count > 0)
-            {
-                _taskRoutinePool.RetrieveTaskFromPool().SetScheduler(_runner).SetEnumeratorProvider(RunTask).Start();
-                                
-                lock (_locker)
-                    if (++_counter >= _maxConcurrentTasks)
-                        Monitor.Wait(_locker);
-            }
-
-            _countdown.Wait();
-        }
-
-        IEnumerator RunTask()
-        {
-            yield return registeredEnumerators.Dequeue();
-
-            OnThreadedTaskDone();
-        }
-#if TO_IMPLEMENT_PROPERLY
-        volatile float      _progress;
-        volatile float      _totalTasks;
-#endif
-        uint                _maxConcurrentTasks;
-        object              _locker = new object();
-        Countdown           _countdown = new Countdown();
-        volatile int        _counter = 0;
-        int                 _startingCount;
-
-        IPausableTaskPool   _taskRoutinePool;
-        MultiThreadRunner   _runner;
-    }
-
-    public class Countdown
-    {
-        object _locker = new object();
-        int _value;
-
-        public Countdown() { }
-        public Countdown(int initialCount) { _value = initialCount; }
-
-        public void Signal() { AddCount(-1); }
-
-        public void AddCount(int amount)
-        {
-            lock (_locker)
-            {
-                _value += amount;
-
-                if (_value <= 0) Monitor.PulseAll(_locker);
+                return null;
             }
         }
 
-        public void Wait()
-        {
-            lock (_locker)
-              while (_value > 0)
-                    Monitor.Wait(_locker);
-        }
+        public bool              isRunning       { protected set; get; }
+
+        MultiThreadRunner[]      _runners;
+        int                      _counter;
+        ParallelTaskCollection[] _parallelTasks;
+        FasterList<IEnumerator> _enumeratorCopy;
     }
 }
-#endif

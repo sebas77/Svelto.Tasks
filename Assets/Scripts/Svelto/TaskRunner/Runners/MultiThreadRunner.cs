@@ -1,115 +1,155 @@
 using System;
-using System.Collections;
 using System.Threading;
 using Svelto.DataStructures;
+using Console = Utility.Console;
+
 #if NETFX_CORE
 using System.Threading.Tasks;
+using Windows.Foundation;
+using Windows.System.Threading;
 #endif
 
 namespace Svelto.Tasks
 {
     //The multithread runner always uses just one thread to run all the couroutines
     //If you want to use a separate thread, you will need to create another MultiThreadRunner
-    public class MultiThreadRunner: IRunner
+    public class MultiThreadRunner : IRunner
     {
         public MultiThreadRunner()
         {
-            paused = false;	
-            stopped = false;
+            paused = false;
         }
 
-        public void StartCoroutineThreadSafe(PausableTask task)
+        public override string ToString()
+        {
+            return _name;
+        }
+
+        public void StartCoroutineThreadSafe(IPausableTask task)
         {
             StartCoroutine(task);
         }
 
-        public void StartCoroutine(PausableTask task)
+        public void StartCoroutine(IPausableTask task)
         {
             paused = false;
 
             _newTaskRoutines.Enqueue(task);
 
-            MemoryBarrier();            
-
+            MemoryBarrier();
             if (_isAlive == false)
             {
+                _waitForflush = false;
                 _isAlive = true;
-                MemoryBarrier();            
 
+                MemoryBarrier();
 #if NETFX_CORE
                 IAsyncAction asyncAction = ThreadPool.RunAsync
                     ((workItem) =>
                     {
-                        RunCoroutineFiber();
+                        _threadID = Thread.CurrentThread.ManagedThreadId;
 
-                         _isAlive = false;
-                        stopped = false;
-                        Interlocked.MemoryBarrier();
+                        RunCoroutineFiber();
                     });
 
 #else
-                ThreadPool.QueueUserWorkItem((stateInfo) => //creates a new thread only if there isn't any running. It's always unique
-                {
-                    RunCoroutineFiber();
+                ThreadPool.QueueUserWorkItem(
+                    stateInfo => //creates a new thread only if there isn't any running. It's always unique
+                    {
+                        _threadID = Thread.CurrentThread.ManagedThreadId;
 
-                    _isAlive = false;
-                    stopped = false;
-                    MemoryBarrier();            
-                });
+                        RunCoroutineFiber();
+                    });
 #endif
+                _name = _threadID.ToString();
             }
-        }
-
-        void RunCoroutineFiber()
-        {
-            while (_coroutines.Count > 0 || _newTaskRoutines.Count > 0)
-            {
-                if (_newTaskRoutines.Count > 0 && _waitForflush == false) //don't start anything while flushing
-                    _coroutines.AddRange(_newTaskRoutines.DequeueAll());
-
-                for (int i = 0; i < _coroutines.Count; i++)
-                {
-                    var enumerator = _coroutines[i];
-
-                    try
-                    {
-                        if (enumerator.MoveNext() == false)
-                        {
-                            var disposable = enumerator as IDisposable;
-                            if (disposable != null)
-                                disposable.Dispose(); 
-
-                            _coroutines.UnorderredRemoveAt(i--);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        string message = "Coroutine Exception: ";
-
-                        UnityEngine.Debug.LogException(new CoroutineException(message, e));
-
-                        _coroutines.UnorderredRemoveAt(i--);
-                    }
-                }
-
-                MemoryBarrier();            
-                if (_waitForflush == true && _coroutines.Count == 0)
-                    break; //kill the thread
-            }
-
-            _waitForflush = false;
         }
 
         public void StopAllCoroutines()
         {
             _newTaskRoutines.Clear();
 
-            stopped = true;
             _waitForflush = true;
-            MemoryBarrier();            
+            MemoryBarrier();
         }
 
-        void MemoryBarrier()
+        public bool paused
+        {
+            set
+            {
+                _paused = value;
+                MemoryBarrier();
+            }
+            get
+            {
+                MemoryBarrier();
+                return _paused;
+            }
+        }
+
+        public bool stopped
+        {
+            get
+            {
+                MemoryBarrier();
+                return _isAlive == false;
+            }
+        }
+
+        public int numberOfRunningTasks
+        {
+            get { return _coroutines.Count; }
+        }
+
+        void RunCoroutineFiber()
+        {
+            while (_coroutines.Count > 0 || _newTaskRoutines.Count > 0)
+            {
+                MemoryBarrier();
+                if (_waitForflush)
+                    break; //kill the thread
+
+                if (_newTaskRoutines.Count > 0) //don't start anything while flushing
+                    _coroutines.AddRange(_newTaskRoutines.DequeueAll());
+
+                for (var i = 0; i < _coroutines.Count; i++)
+                {
+                    var enumerator = _coroutines[i];
+
+                    try
+                    {
+#if TASKS_PROFILER_ENABLED
+                        bool result = Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _threadID);
+#else
+                        bool result = enumerator.MoveNext();
+#endif
+                        if (result == false)
+                        {
+                            var disposable = enumerator as IDisposable;
+                            if (disposable != null)
+                                disposable.Dispose();
+
+                            _coroutines.UnorderedRemoveAt(i--);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        if (e.InnerException != null)
+                            Console.LogException(e.InnerException);
+                        else
+                            Console.LogException(e);
+
+                        _coroutines.UnorderedRemoveAt(i--);
+                    }
+                }
+            }
+
+            _isAlive = false;
+            _waitForflush = false;
+            MemoryBarrier();
+        }
+
+        public static void MemoryBarrier()
         {
 #if NETFX_CORE
             Interlocked.MemoryBarrier();
@@ -118,17 +158,15 @@ namespace Svelto.Tasks
 #endif
         }
 
-        public bool paused { set { _paused = value; MemoryBarrier(); } get { MemoryBarrier(); return _paused; } }
-        public bool stopped { private set { _stopped = value; MemoryBarrier(); } get { MemoryBarrier(); return _stopped; } }
-        public int numberOfRunningTasks { get { return _coroutines.Count; } }
+        readonly FasterList<IPausableTask> _coroutines = new FasterList<IPausableTask>();
 
-        FasterList<IEnumerator>         _coroutines = new FasterList<IEnumerator>();
-        ThreadSafeQueue<IEnumerator>    _newTaskRoutines = new ThreadSafeQueue<IEnumerator>();
-
-        bool                            _paused;
-
-        volatile bool _stopped;
         volatile bool _isAlive;
+        readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
+
+        bool _paused;
+
+        volatile int  _threadID;
         volatile bool _waitForflush;
+        string _name;
     }
 }
