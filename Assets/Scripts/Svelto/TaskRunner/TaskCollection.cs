@@ -24,7 +24,7 @@ namespace Svelto.Tasks
 
         public void Clear()
         {
-            _listOfStacks.Clear();
+            _listOfStacks.FastClear();
         }
 
         public TaskCollection Add(ITask task)

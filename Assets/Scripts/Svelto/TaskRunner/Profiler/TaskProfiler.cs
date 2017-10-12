@@ -16,14 +16,14 @@ namespace Svelto.Tasks.Profiler
 
         public static bool MonitorUpdateDuration(IEnumerator tickable, int threadID)
         {
-            bool value = MonitorUpdateDuration(tickable, " ThreadID: ".FastConcat(threadID));
+            bool value = MonitorUpdateDurationInternal(tickable, " ThreadID: ".FastConcat(threadID));
 
             return value;
         }
 
-        public static bool MonitorUpdateDuration(IEnumerator tickable)
+        public static bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
         {
-            bool value = MonitorUpdateDuration(tickable, " MainThread: ");
+            bool value = MonitorUpdateDurationInternal(tickable, runnerName.FastConcat(": "));
 
             return value;
         }
@@ -33,7 +33,7 @@ namespace Svelto.Tasks.Profiler
             taskInfos.Clear();
         }
 
-        static bool MonitorUpdateDuration(IEnumerator tickable, string threadInfo)
+        static bool MonitorUpdateDurationInternal(IEnumerator tickable, string threadInfo)
         {
             TaskInfo info;
 

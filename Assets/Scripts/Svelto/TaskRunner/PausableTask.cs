@@ -164,7 +164,6 @@ namespace Svelto.Tasks.Internal
             _pendingEnumerator = null;
             _taskGenerator     = null;
             _taskEnumerator    = null;
-            _originalEnumerator = null;
 
             _runner            = null;
             _onFail            = null;
@@ -177,6 +176,7 @@ namespace Svelto.Tasks.Internal
             _completed         = false;
             _started           = false;
             _pendingRestart    = false;
+            _name = string.Empty;
         }
 
         public void Pause()
@@ -260,17 +260,17 @@ namespace Svelto.Tasks.Internal
                 if (_taskGenerator == null && _taskEnumerator == null)
                     throw new Exception("An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
 
-                _originalEnumerator = _taskEnumerator ?? _taskGenerator();
+                var originalEnumerator = _taskEnumerator ?? _taskGenerator();
                 
                 if (_started == true && _completed == false)
                 {
                     Stop(); //if it's reused, must stop naturally
 
-                    _pendingEnumerator = _originalEnumerator;
+                    _pendingEnumerator = originalEnumerator;
                     _pendingRestart = true;
                 }
                 else
-                    Restart(_originalEnumerator);
+                    Restart(originalEnumerator);
             }
         }
 
@@ -316,11 +316,6 @@ namespace Svelto.Tasks.Internal
                 _coroutine = taskc;
         }
 
-        internal IEnumerator originalEnumerator
-        {
-            get { return _originalEnumerator; }
-        }
-
         IRunner                       _runner;
         CoroutineEx                   _coroutine;
 
@@ -334,7 +329,6 @@ namespace Svelto.Tasks.Internal
         IEnumerator                   _pendingEnumerator;
         IEnumerator                   _taskEnumerator;
         IEnumerator                   _enumeratorWrap;
-        IEnumerator                   _originalEnumerator;
 
         readonly IPausableTaskPool    _pool;
         Func<IEnumerator>             _taskGenerator;

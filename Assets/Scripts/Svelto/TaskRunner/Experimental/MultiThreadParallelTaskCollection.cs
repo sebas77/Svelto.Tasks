@@ -82,7 +82,7 @@ namespace Svelto.Tasks
 
         public void Reset()
         {
-            _enumeratorCopy.Clear();
+            _enumeratorCopy.FastClear();
         }
 
         public object Current

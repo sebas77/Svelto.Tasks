@@ -47,12 +47,20 @@ namespace Svelto.Tasks
 
         bool ExecuteFirstTaskStep(IPausableTask task)
         {
-            if (task == null) return false;
+            if (task == null)
+                return false;
 
+            //if the runner is not ready to run new tasks, it
+            //cannot run immediatly but it must be saved
+            //in the newTaskRoutines to be executed once possible
             if (stopped == true)
                 return true;
-
+            
+#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
+            return Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(task, info.runnerName);
+#else
             return task.MoveNext();
+#endif
         }
     }
 }

@@ -27,7 +27,8 @@ namespace Svelto.Tasks.Internal
 
         internal static GameObject InitializeGameobject(string name)
         {
-            var go = GameObject.Find("TaskRunner." + name);
+            var taskRunnerName = "TaskRunner.".FastConcat(name);
+            var go = GameObject.Find(taskRunnerName);
 
             if (go != null)
             {
@@ -35,7 +36,7 @@ namespace Svelto.Tasks.Internal
                 Object.DestroyImmediate(go);
             }
 
-            go = new GameObject(name);
+            go = new GameObject(taskRunnerName);
 
             Object.DontDestroyOnLoad(go);
 
@@ -109,7 +110,7 @@ namespace Svelto.Tasks.Internal
                             if (current is YieldInstruction)
                             {
                                 var handItToUnity = new HandItToUnity
-                                    (current, enumerator, resumeOperation);
+                                    (current, enumerator, resumeOperation, flushingOperation);
 
                                 //remove the special instruction. it will
                                 //be added back once Unity completes.
@@ -140,7 +141,7 @@ namespace Svelto.Tasks.Internal
 
                         bool result;
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
-                        result = Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator);
+                        result = Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, info.runnerName);
 #else
 #if PROFILER
                         UnityEngine.Profiling.Profiler.BeginSample("TaskRunner".FastConcat(enumerator.ToString()));
@@ -185,6 +186,7 @@ namespace Svelto.Tasks.Internal
         public class RunningTasksInfo
         {
             public int count;
+            public string runnerName;
         }
 
         internal delegate void FlushTasksDel(ThreadSafeQueue<IPausableTask> 
@@ -200,12 +202,14 @@ namespace Svelto.Tasks.Internal
         {
             public HandItToUnity(object current,
                 IPausableTask task,
-                Action<IPausableTask> resumeOperation)
+                Action<IPausableTask> resumeOperation,
+                FlushingOperation flush)
             {
                 _current = current;
                 _task = task;
                 _resumeOperation = resumeOperation;
                 _isDone = false;
+                _flushingOperation = flush;
             }
 
             public HandItToUnity(object current)
@@ -214,6 +218,7 @@ namespace Svelto.Tasks.Internal
                 _resumeOperation = null;
                 _task = null;
                 _isDone = false;
+                _flushingOperation = null;
             }
 
             public IEnumerator GetEnumerator()
@@ -222,7 +227,7 @@ namespace Svelto.Tasks.Internal
 
                 _isDone = true;
 
-                if (_task.MoveNext() == true && _resumeOperation != null)
+                if (_flushingOperation.stopped == false && _resumeOperation != null)
                     _resumeOperation(_task);
             }
 
@@ -236,7 +241,8 @@ namespace Svelto.Tasks.Internal
             readonly IPausableTask         _task;
             readonly Action<IPausableTask> _resumeOperation;
 
-            bool _isDone;
+            bool              _isDone;
+            FlushingOperation _flushingOperation;
         }
     }
 }
