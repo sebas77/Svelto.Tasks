@@ -6,7 +6,8 @@ using UnityEngine;
 public class ExamplePromises : MonoBehaviour
 {
     [TextArea]
-    public string Notes = "This example shows how to use the promises-like features.";
+    public string Notes = "This example shows how to use the promises-like features." + 
+        " Pay attention to how Stop a promise, catch a failure and set a race condition ";
 
     class ValueObject<T>
     {
@@ -26,7 +27,7 @@ public class ExamplePromises : MonoBehaviour
     void Start()
     {
         TaskRunner.Instance.AllocateNewTaskRoutine().
-            SetEnumerator(RunTasks(2)).Start(onStop: OnStop);
+            SetEnumerator(RunTasks(0.1f)).Start(onStop: OnStop);
     }
 
     void OnStop()
@@ -42,34 +43,51 @@ public class ExamplePromises : MonoBehaviour
         Debug.LogError("tsk tsk");
     }
 
-    IEnumerator RunTasks(int timeout)
+    IEnumerator RunTasks(float timeout)
     {
         var enumerator = GetURLAsynchronously();
+
+        //wait for one second (simulating async load) 
         yield return enumerator;
         
         string url = (enumerator.Current as ValueObject<string>).target as string;
 
-        yield return new[]
+        var parallelTasks = new ParallelTaskCollection();
+
+        //parallel tasks with race condition (timeout Breaks it)
+        parallelTasks.Add(BreakOnTimeOut(timeout));
+        parallelTasks.Add(new LoadSomething(new WWW(url)));
+
+        yield return parallelTasks;
+
+        if (parallelTasks.Current == Break.It)
         {
-            BreakOnTimeOut(timeout),
-            new LoadSomething(new WWW(url)).GetEnumerator()
-        }; //yep it will be converted to a Parallel task
+            yield return Break.AndStop;
+
+            throw new Exception("should never get here");
+        }
+
+        yield return new WaitForSecondsEnumerator(2);
     }
 
     IEnumerator GetURLAsynchronously()
     {
         yield return new WaitForSecondsEnumerator(1); //well not real reason to wait, let's assume we were running a web service
 
-        yield return new ValueObject<string>("http://download.thinkbroadband.com/50MB.zip");
+        yield return new ValueObject<string>("http://download.thinkbroadband.com/5MB.zip");
     }
 
-    IEnumerator BreakOnTimeOut(int timeout) 
+    IEnumerator BreakOnTimeOut(float timeout) 
     {
         var time = DateTime.Now;
         yield return new WaitForSecondsEnumerator(timeout);
         Debug.Log("time passed: " + (DateTime.Now - time).TotalMilliseconds);
 
-        yield return Break.It; //basically is the inverse of the Race Promises function, achieve the same result
+        yield return Break.It;
+
+        //this is the inverse of the standard Promises race function, 
+        //achieve the same result as it stops the parallel enumerator 
+        //once hit
     }
 
     class LoadSomething : IEnumerable
@@ -83,12 +101,12 @@ public class ExamplePromises : MonoBehaviour
         {
             Debug.Log("download started");
 
-            yield return new[] { new WWWEnumerator(wWW), PrintProgress(wWW) };
+            yield return new[] { wWW, PrintProgress(wWW) };
 
             foreach (string s in wWW.responseHeaders.Values)
                 Debug.Log(s);
 
-            Debug.Log("Success! Let's throw an Exception because I am crazy");
+            Debug.Log("Success! Let's throw an Exception to be caught by OnFail");
 
             throw new Exception("Dayyym");
         }

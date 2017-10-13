@@ -59,6 +59,7 @@ namespace Svelto.Tasks
                 while (stack.Count > 0)
                 {
                     var ce = stack.Peek(); //get the current task to execute
+                    _current = ce;
 
                     if (ce.MoveNext() == false)
                     {
@@ -67,28 +68,45 @@ namespace Svelto.Tasks
                         _subProgress = 0;
 #endif
                         stack.Pop(); //task is done (the iteration is over)
+
+                        if (ce.Current == Break.AndStop)
+                        {
+                            _current = ce.Current;
+
+                            return false;
+                        }
                     }
                     else
                     {
-                        _current = ce.Current;
+                        var current = ce.Current;
 
-                        if (_current == ce)
+                        if (current == ce)
                             throw new Exception("An enumerator returning itself is not supported");
 
-                        if ((ce is TaskCollection == false) && _current != null && _current != Break.It)
+                        if ((ce is TaskCollection == false) 
+                            && current != null && current != Break.It
+                            && current != Break.AndStop)
                         {
-                           IEnumerator result = StandardEnumeratorCheck(_current);
+                           IEnumerator result = StandardEnumeratorCheck(current);
                            if (result != null)
                            {
                                stack.Push(result);
                                continue;
                            }
-                           //in all the cases above, the task collection is not meant to yield
+                            //in all the cases above, the task collection is not meant 
+                            //to yield
                         }
-                        else 
-                        if (_current == Break.It)
-                             return false;
-                        
+                        else
+                        //Break.It breaks only the current task collection 
+                        //enumeration but allows the parent task to continue
+                        //yield break would instead stops only the single task
+                        if (current == Break.It || ce.Current == Break.AndStop)
+                        {
+                            _current = ce.Current;
+
+                            return false;
+                        }
+
                         return true;
 #if TO_IMPLEMENT_PROPERLY
                         if (ce is AsyncTask) //asyn

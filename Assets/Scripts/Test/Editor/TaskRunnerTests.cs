@@ -75,7 +75,8 @@ namespace Test
 
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, parallelTasks1);
 
-            Assert.That(iterable1.AllRight == false && iterable2.AllRight == false);
+            Assert.That(iterable1.AllRight == false && iterable1.iterations == 1 && 
+                iterable2.AllRight == false && iterable2.iterations == 0);
         }
 
         [Test]
@@ -156,7 +157,9 @@ namespace Test
             serialTasks1.Add (iterable2);
             
             //this time we will make the task run on another thread
-            _reusableTaskRoutine.SetScheduler(new MultiThreadRunner()).SetEnumerator(serialTasks1).Start(null, () => { testDone = true; Assert.That(allDone, Is.False); });
+            _reusableTaskRoutine.SetScheduler(new MultiThreadRunner()).
+                SetEnumerator(serialTasks1).Start
+                (null, () => { testDone = true; Assert.That(allDone, Is.False); });
             _reusableTaskRoutine.Stop();
 
             while (testDone == false);
@@ -468,7 +471,7 @@ namespace Test
             }
 
             int totalIterations;
-            int iterations;
+            public int iterations;
         }
     }
 }

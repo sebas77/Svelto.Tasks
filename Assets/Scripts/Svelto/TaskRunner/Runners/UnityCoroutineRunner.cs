@@ -37,8 +37,10 @@ namespace Svelto.Tasks.Internal
             }
 
             go = new GameObject(taskRunnerName);
-
-            Object.DontDestroyOnLoad(go);
+#if UNITY_EDITOR
+            if (Application.isPlaying)
+#endif
+                Object.DontDestroyOnLoad(go);
 
             return go;
         }

@@ -8,7 +8,6 @@
 /// 
 /// 
 
-using Svelto.Tasks.Internal;
 using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
@@ -100,6 +99,9 @@ namespace Svelto.Tasks.Internal
             {
                 _completed = true;
 
+                if (_onStop != null)
+                    _onStop();
+
                 //this is needed to avoid to create multiple CoRoutine when
                 //Stop and Start are called in the same frame
                 if (_pendingRestart == true)
@@ -109,9 +111,6 @@ namespace Svelto.Tasks.Internal
 
                     return false;
                 }
-
-                if (_onStop != null)
-                    _onStop();
             }
             else    
             if (_runner.paused == false && _paused == false)
@@ -120,7 +119,9 @@ namespace Svelto.Tasks.Internal
                 {
                     _completed = !_coroutine.MoveNext();
 
-                    if (_coroutine.Current == Break.It)
+                    var current = _coroutine.Current;
+                    if (current == Break.It ||
+                        current == Break.AndStop)
                     {
                         Stop();
 

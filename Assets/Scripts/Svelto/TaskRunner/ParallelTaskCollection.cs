@@ -13,12 +13,12 @@ namespace Svelto.Tasks
 
         public ParallelTaskCollection()
         {
-            _parallelTask = new ParallelTask(_current, this);
+            _currentWrapper = new ParallelTask(this);
         }
 
         public ParallelTaskCollection(int initialSize) : base(initialSize)
         {
-            _parallelTask = new ParallelTask(_current, this);
+            _currentWrapper = new ParallelTask(this);
         }
 
         public ParallelTaskCollection(IEnumerator[] ptasks) : this()
@@ -83,21 +83,31 @@ namespace Svelto.Tasks
                     if (stack.Count > 0)
                     {
                         IEnumerator ce = stack.Peek(); //without popping it.
+                        _current = ce;
 
                         if (ce.MoveNext() == false)
+                        {
                             stack.Pop(); //now it can be popped
+
+                            if (ce.Current == Break.AndStop)
+                            {
+                                _currentWrapper = ce.Current;
+
+                                return false;
+                            }
+                        }
                         else //ok the iteration is not over
                         {
-                            _current = ce.Current;
+                            var current = ce.Current;
 
-                            if (_current == ce)
-                                throw new Exception
-                            ("An enumerator returning itself is not supported");
+                            if (current == ce)
+                                throw new Exception("An enumerator returning itself is not supported");
 
-                            if ((ce is TaskCollection == false) && 
-                                _current != null && _current != Break.It)
+                            if (ce is TaskCollection == false && 
+                                current != null && current != Break.It
+                                 && current != Break.AndStop)
                             {
-                                IEnumerator result = StandardEnumeratorCheck(_current);
+                                IEnumerator result = StandardEnumeratorCheck(current);
                                 if (result != null)
                                 {
                                     stack.Push(result);
@@ -106,9 +116,18 @@ namespace Svelto.Tasks
                                 }
                                 //in all the cases above, the task collection is not meant to yield
                             }
-                            else 
-                            if (_current == Break.It)
+                            else
+                            //Break.It breaks only the current task collection 
+                            //enumeration but allows the parent task to continue
+                            //yield break would instead stops only the single task
+                            //BreakAndStop bubble until it gets to the TaskRoutine
+                            //which is stopped and triggers the OnStop callback
+                            if (current == Break.It || ce.Current == Break.AndStop)
+                            {
+                                _currentWrapper = ce.Current;
+
                                 return false;
+                            }
 
                             _index = index + 1;
 
@@ -132,24 +151,24 @@ namespace Svelto.Tasks
 
         public object Current
         {
-            get { return _parallelTask; }
+            get { return _currentWrapper; }
         }
 
-        object          _current;
-        int             _index;
+        object  _current;
+        object  _currentWrapper;
 
-        readonly ParallelTask    _parallelTask;
+        int     _index;
+
 #if TO_IMPLEMENT_PROPERLY
         float 			_progress;
         float           _subprogress;
 #endif
         internal class ParallelTask
         {
-            public object current {  get {  return _current;} }
+            public object current {  get {  return _parent._current; } }
 
-            public ParallelTask(object current, ParallelTaskCollection parent)
+            public ParallelTask(ParallelTaskCollection parent)
             {
-                _current = current;
                 _parent = parent;
             }
 
@@ -158,7 +177,6 @@ namespace Svelto.Tasks
                 _parent.Add(task);
             }
 
-            readonly object _current;
             readonly ParallelTaskCollection _parent;
         }
     }
