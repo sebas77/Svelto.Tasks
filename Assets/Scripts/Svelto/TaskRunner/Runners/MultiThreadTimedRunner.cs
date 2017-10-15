@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Timers;
 using Svelto.DataStructures;
 using Console = Utility.Console;
 
@@ -13,25 +14,20 @@ namespace Svelto.Tasks
 {
     //The multithread runner always uses just one thread to run all the couroutines
     //If you want to use a separate thread, you will need to create another MultiThreadRunner
-    public class MultiThreadRunner : IRunner
+    public class MultiThreadTimedRunner : IRunner
     {
+        public MultiThreadTimedRunner(uint frequency)
+        {
+            paused = false;
+            _timer = new System.Timers.Timer(frequency);
+            _timer.AutoReset = false;
+            _timer.Elapsed += RunCoroutineFiber;
+            _name = _timer.ToString();
+        }
+
         public override string ToString()
         {
             return _name;
-        }
-
-        public MultiThreadRunner()
-        {
-            _thread = new Thread(() =>
-            {
-                _threadID = Thread.CurrentThread.ManagedThreadId;
-                _name = _threadID.ToString();
-
-                RunCoroutineFiber();
-            });
-
-            _thread.IsBackground = true;
-            _thread.Start();
         }
 
         public void StartCoroutineThreadSafe(IPausableTask task)
@@ -45,12 +41,12 @@ namespace Svelto.Tasks
 
             _newTaskRoutines.Enqueue(task);
 
-            MemoryBarrier();
-            if (_isAlive == false)
+            MultiThreadRunner.MemoryBarrier();
+            if (_timer.Enabled == false)
             {
-                _isAlive = true;
+                _waitForflush = false;
 
-                _interlock = 1;
+                _timer.Start();
             }
         }
 
@@ -59,7 +55,7 @@ namespace Svelto.Tasks
             _newTaskRoutines.Clear();
 
             _waitForflush = true;
-            MemoryBarrier();
+            MultiThreadRunner.MemoryBarrier();
         }
 
         public bool paused
@@ -67,21 +63,22 @@ namespace Svelto.Tasks
             set
             {
                 _paused = value;
-                MemoryBarrier();
+                MultiThreadRunner.MemoryBarrier();
             }
             get
             {
-                MemoryBarrier();
+                MultiThreadRunner.MemoryBarrier();
                 return _paused;
             }
         }
+
+        private System.Timers.Timer _timer;
 
         public bool stopped
         {
             get
             {
-                MemoryBarrier();
-                return _isAlive == false;
+                return _timer.Enabled;
             }
         }
 
@@ -90,13 +87,13 @@ namespace Svelto.Tasks
             get { return _coroutines.Count; }
         }
 
-        void RunCoroutineFiber()
+        void RunCoroutineFiber(object sender, EventArgs ea)
         {
-            while (true)
+            
+            if (_coroutines.Count > 0 || (_newTaskRoutines.Count > 0 && false == _waitForflush))
             {
-                MemoryBarrier();
-
-				if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
+                MultiThreadRunner.MemoryBarrier();
+                if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
                 for (var i = 0; i < _coroutines.Count; i++)
@@ -130,41 +127,22 @@ namespace Svelto.Tasks
                     }
                 }
 
-                if (_newTaskRoutines.Count == 0 && _coroutines.Count == 0)
-                {
-                    _isAlive = false;                   
-                    _waitForflush = false;
-                    MemoryBarrier();
-                    _interlock = 2;
-                    while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
-#if NET_4_6
-                    { Thread.Yield(); } 
-#else
-                    { Thread.Sleep(1); } 
-#endif
-                }
+                _timer.Start();
+            }
+            else
+            {
+                _waitForflush = false;
+                _timer.Stop();
             }
         }
 
-        public static void MemoryBarrier()
-        {
-#if NETFX_CORE
-            Interlocked.MemoryBarrier();
-#else
-            Thread.MemoryBarrier();
-#endif
-        }
-
         readonly FasterList<IPausableTask> _coroutines = new FasterList<IPausableTask>();
-        readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
 
-        Thread _thread;
-        string _name;
+         readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
 
-        volatile bool _paused;
-        volatile bool _isAlive;
-        volatile int  _threadID;
+        bool _paused;
+ 
         volatile bool _waitForflush;
-        int _interlock;
+        string _name;
     }
 }

@@ -145,13 +145,7 @@ namespace Svelto.Tasks.Internal
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
                         result = Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, info.runnerName);
 #else
-#if PROFILER
-                        UnityEngine.Profiling.Profiler.BeginSample("TaskRunner".FastConcat(enumerator.ToString()));
-#endif
                         result = enumerator.MoveNext();
-#if PROFILER
-                        UnityEngine.Profiling.Profiler.EndSample();
-#endif
 #endif
                         if (result == false)
                         {
@@ -175,7 +169,7 @@ namespace Svelto.Tasks.Internal
                     info.count = coroutines.Count;
                 }
 
-                if (flushingOperation.stopped && coroutines.Count == 0)
+                if (flushingOperation.stopped == true && coroutines.Count == 0)
                 {   //once all the coroutines are flushed
                     //the loop can return accepting new tasks
                     flushingOperation.stopped = false;

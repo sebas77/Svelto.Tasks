@@ -5,6 +5,7 @@ namespace Svelto.Tasks.Internal
     interface IPausableTaskPool
     {
         ITaskRoutine RetrieveTaskFromPool();
+
         void PushTaskBack(PausableTask task);
     }
 
@@ -16,8 +17,6 @@ namespace Svelto.Tasks.Internal
 
             if (_pool.TryDequeue(out task))
             {
-                task.Reset();
-
                 return task;
             }
 
@@ -26,6 +25,8 @@ namespace Svelto.Tasks.Internal
 
         public void PushTaskBack(PausableTask task)
         {
+            task.Reset();
+
             _pool.Enqueue(task);
         }
 

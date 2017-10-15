@@ -4,12 +4,9 @@ using System.Collections.Generic;
 
 namespace Svelto.Tasks
 {
-    public class ParallelTaskCollection: TaskCollection, IEnumerator
+    public class ParallelTaskCollection: TaskCollection
     {
         public event Action		onComplete;
-#if TO_IMPLEMENT_PROPERLY
-        override public float progress { get { return _progress + _subprogress; } }
-#endif
 
         public ParallelTaskCollection()
         {
@@ -27,18 +24,18 @@ namespace Svelto.Tasks
                 Add(ptasks[i]);
         }
 
-        public void Reset()
+        public override void Reset()
         {
-            _index = 0;
+            _offset = 0; _index = 0;
         }
 
         public new void Clear()
         {
             base.Clear();
-            _index = 0;
+            Reset();
         }
 
-        public bool MoveNext()
+        public override bool MoveNext()
         {
             isRunning = true;
             
@@ -56,44 +53,35 @@ namespace Svelto.Tasks
 
         bool RunTasks()
         {
-            while (_listOfStacks.Count > 0)
+            var count = _listOfStacks.Count;
+            while (count - _offset > 0)
             {
-#if TO_IMPLEMENT_PROPERLY   
-                _subprogress = 0;
-
-                for (int i = 0; i < _listOfStacks.Count; ++i)
-                {
-                    Stack<IEnumerator> stack = _listOfStacks[i];
-
-                    if (stack.Count > 0)
-                    {
-                        IEnumerator ce = stack.Peek(); //without popping it.
-
-                        if (ce is EnumeratorWithProgress)
-                            _subprogress += (ce as EnumeratorWithProgress).progress;
-                    }
-                }
-
-                _subprogress /= registeredEnumerators.Count;
-#endif
-                for (int index = _index; index < _listOfStacks.Count; ++index)
+                for (int index = _index; index < count - _offset; ++index)
                 {
                     Stack<IEnumerator> stack = _listOfStacks[index];
 
                     if (stack.Count > 0)
                     {
-                        IEnumerator ce = stack.Peek(); //without popping it.
+                        IEnumerator ce = stack.Peek();  //get the current task to execute
                         _current = ce;
 
-                        if (ce.MoveNext() == false)
+                        if (ce.MoveNext() == false) //execute step and check if continue
                         {
-                            stack.Pop(); //now it can be popped
-
                             if (ce.Current == Break.AndStop)
                             {
                                 _currentWrapper = ce.Current;
 
                                 return false;
+                            }
+
+                            if (stack.Count > 1)
+                                stack.Pop(); //now it can be popped
+                            else
+                            {
+                                //in order to be able to reuse the task collection, we will keep the stack 
+                                //in its original state. The tasks will be shuffled, but due to the nature
+                                //of the parallel execution, it doesn't matter.
+                                index = RemoveStack(index); 
                             }
                         }
                         else //ok the iteration is not over
@@ -110,11 +98,10 @@ namespace Svelto.Tasks
                                 IEnumerator result = StandardEnumeratorCheck(current);
                                 if (result != null)
                                 {
-                                    stack.Push(result);
+                                    stack.Push(result); //push the new yielded task and execute it immediately
 
                                     continue;
                                 }
-                                //in all the cases above, the task collection is not meant to yield
                             }
                             else
                             //Break.It breaks only the current task collection 
@@ -134,14 +121,6 @@ namespace Svelto.Tasks
                             return true;
                         }
                     }
-                    else
-                    {
-                        _listOfStacks.UnorderedRemoveAt(index--);
-#if TO_IMPLEMENT_PROPERLY
-                        _progress = (registeredEnumerators.Count - _listOfStacks.Count) / (float)registeredEnumerators.Count;
-                        _subprogress = 0.0f;
-#endif
-                    }
                 }
 
                 _index = 0;
@@ -149,20 +128,33 @@ namespace Svelto.Tasks
             return false;
         }
 
-        public object Current
+        int RemoveStack(int index)
+        {
+            if (index > _listOfStacks.Count - 1)
+            {
+                var lastIndex = _listOfStacks.Count - _offset;
+                var item = _listOfStacks[lastIndex];
+                _listOfStacks[lastIndex] = _listOfStacks[index];
+                _listOfStacks[index] = item;
+            }
+
+            _offset++;
+            index--;
+
+            return index;
+        }
+
+        public override object Current
         {
             get { return _currentWrapper; }
         }
 
-        object  _current;
+        object      _current;
+        int         _index;
+        int         _offset;
+
         object  _currentWrapper;
-
-        int     _index;
-
-#if TO_IMPLEMENT_PROPERLY
-        float 			_progress;
-        float           _subprogress;
-#endif
+        
         internal class ParallelTask
         {
             public object current {  get {  return _parent._current; } }
