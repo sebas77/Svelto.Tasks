@@ -77,16 +77,16 @@ namespace Svelto.Tasks
                     }
                     else //ok the iteration is not over
                     {
-                        var current = ce.Current;
+                        _current = ce.Current;
 
-                        if (current == ce)
+                        if (_current == ce)
                             throw new Exception("An enumerator returning itself is not supported");
 
                         if ((ce is TaskCollection == false) 
-                            && current != null && current != Break.It
-                            && current != Break.AndStop)
+                            && _current != null && _current != Break.It
+                            && _current != Break.AndStop)
                         {
-                           IEnumerator result = StandardEnumeratorCheck(current);
+                           IEnumerator result = StandardEnumeratorCheck(_current);
                            if (result != null)
                            {
                                stack.Push(result); //push the new yielded task and execute it immediately
@@ -98,7 +98,7 @@ namespace Svelto.Tasks
                         //Break.It breaks only the current task collection 
                         //enumeration but allows the parent task to continue
                         //yield break would instead stops only the single task
-                        if (current == Break.It || ce.Current == Break.AndStop)
+                        if (_current == Break.It || _current == Break.AndStop)
                         {
                             _current = ce.Current;
 

@@ -74,7 +74,7 @@ namespace Svelto.Tasks
 
         private System.Timers.Timer _timer;
 
-        public bool stopped
+        public bool isStopping
         {
             get
             {
@@ -89,7 +89,6 @@ namespace Svelto.Tasks
 
         void RunCoroutineFiber(object sender, EventArgs ea)
         {
-            
             if (_coroutines.Count > 0 || (_newTaskRoutines.Count > 0 && false == _waitForflush))
             {
                 MultiThreadRunner.MemoryBarrier();

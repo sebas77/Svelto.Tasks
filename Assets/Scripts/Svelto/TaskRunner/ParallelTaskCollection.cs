@@ -86,16 +86,16 @@ namespace Svelto.Tasks
                         }
                         else //ok the iteration is not over
                         {
-                            var current = ce.Current;
+                            _current = ce.Current;
 
-                            if (current == ce)
+                            if (_current == ce)
                                 throw new Exception("An enumerator returning itself is not supported");
 
                             if (ce is TaskCollection == false && 
-                                current != null && current != Break.It
-                                 && current != Break.AndStop)
+                                _current != null && _current != Break.It
+                                 && _current != Break.AndStop)
                             {
-                                IEnumerator result = StandardEnumeratorCheck(current);
+                                IEnumerator result = StandardEnumeratorCheck(_current);
                                 if (result != null)
                                 {
                                     stack.Push(result); //push the new yielded task and execute it immediately
@@ -109,7 +109,7 @@ namespace Svelto.Tasks
                             //yield break would instead stops only the single task
                             //BreakAndStop bubble until it gets to the TaskRoutine
                             //which is stopped and triggers the OnStop callback
-                            if (current == Break.It || ce.Current == Break.AndStop)
+                            if (_current == Break.It || _current == Break.AndStop)
                             {
                                 _currentWrapper = ce.Current;
 
@@ -130,18 +130,18 @@ namespace Svelto.Tasks
 
         int RemoveStack(int index)
         {
-            if (index > _listOfStacks.Count - 1)
-            {
-                var lastIndex = _listOfStacks.Count - _offset;
-                var item = _listOfStacks[lastIndex];
-                _listOfStacks[lastIndex] = _listOfStacks[index];
-                _listOfStacks[index] = item;
-            }
+            var lastIndex = _listOfStacks.Count - _offset - 1;
 
             _offset++;
-            index--;
 
-            return index;
+            if (index == lastIndex)
+                return index;
+
+            var item = _listOfStacks[lastIndex];
+            _listOfStacks[lastIndex] = _listOfStacks[index];
+            _listOfStacks[index] = item;
+
+            return --index;
         }
 
         public override object Current

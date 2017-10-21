@@ -95,20 +95,12 @@ namespace Svelto.Tasks.Internal
 
         public bool MoveNext()
         {
-            if (_stopped == true || _runner.stopped == true)
+            if (_stopped == true || _runner.isStopping == true)
             {
                 _completed = true;
 
                 if (_onStop != null)
                     _onStop();
-
-                if (_pendingRestart == true)
-                {
-                    //start new coroutine using this task
-                    Restart(_pendingEnumerator);
-
-                    return false;
-                }
             }
             else    
             if (_runner.paused == false && _paused == false)
@@ -150,6 +142,10 @@ namespace Svelto.Tasks.Internal
             {
                 FinalizeIt();
 
+                if (_pendingRestart == true)
+                    //start new coroutine using this task
+                    Restart(_pendingEnumerator);
+
                 return false;
             }
 
@@ -158,19 +154,18 @@ namespace Svelto.Tasks.Internal
 
         private void FinalizeIt()
         {
-            _enumeratorWrap.Completed();
             _coroutineWrapper.FastClear();
             Stop();
 
             if (_pool != null)
                 _pool.PushTaskBack(this);
+
+            _enumeratorWrap.Completed();
         }
 
         //Reset task on reuse, when fetched from the Pool
         public void Reset()
         {
-            _enumeratorWrap.Reset();
-
             _pendingEnumerator = null;
             _taskGenerator     = null;
             _taskEnumerator    = null;
@@ -307,6 +302,7 @@ namespace Svelto.Tasks.Internal
             _started               = true;
             _pendingEnumerator     = null;
             _pendingRestart        = false;
+            _enumeratorWrap.Reset();
 
             SetTask(task);
 
@@ -358,7 +354,6 @@ namespace Svelto.Tasks.Internal
         {
             public bool MoveNext()
             {
-                MultiThreadRunner.MemoryBarrier();
                 if (_completed == true)
                 {
                     _completed = false;
@@ -370,13 +365,11 @@ namespace Svelto.Tasks.Internal
             public void Completed()
             {
                 _completed = true;
-                MultiThreadRunner.MemoryBarrier();
             }
 
             public void Reset()
             {
                 _completed = false;
-                MultiThreadRunner.MemoryBarrier();
             }
 
             public object Current { get; private set; }

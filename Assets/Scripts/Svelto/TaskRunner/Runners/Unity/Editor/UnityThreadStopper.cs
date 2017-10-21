@@ -13,7 +13,7 @@ namespace Svelto.Tasks.Internal
         static void Update(PlayModeStateChange state)
         {
             if (state == PlayModeStateChange.ExitingPlayMode)
-                StandardSchedulers.multiThreadScheduler.StopAllCoroutines();
+                (StandardSchedulers.multiThreadScheduler as MultiThreadRunner).Kill();
         }
     }
 }

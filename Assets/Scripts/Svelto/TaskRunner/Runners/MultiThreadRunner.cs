@@ -20,7 +20,7 @@ namespace Svelto.Tasks
             return _name;
         }
 
-        public MultiThreadRunner()
+        public MultiThreadRunner(bool relaxed)
         {
             _thread = new Thread(() =>
             {
@@ -32,6 +32,30 @@ namespace Svelto.Tasks
 
             _thread.IsBackground = true;
             _thread.Start();
+
+            if (relaxed)
+                _lockingMechanism = RelaxedLockingMechanism;
+            else
+                _lockingMechanism = QuickLockingMechanism;
+
+            _relaxed = relaxed;
+
+            _aevent = new AutoResetEvent(false);
+        }
+
+        void QuickLockingMechanism()
+        {
+            while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
+#if NET_4_6
+            { Thread.Yield(); } 
+#else
+            { Thread.Sleep(0); }
+#endif
+        }
+    
+        void RelaxedLockingMechanism()
+        {
+            _aevent.WaitOne();
         }
 
         public void StartCoroutineThreadSafe(IPausableTask task)
@@ -50,7 +74,7 @@ namespace Svelto.Tasks
             {
                 _isAlive = true;
 
-                _interlock = 1;
+                UnlockThread();
             }
         }
 
@@ -59,7 +83,26 @@ namespace Svelto.Tasks
             _newTaskRoutines.Clear();
 
             _waitForflush = true;
+
             MemoryBarrier();
+        }
+
+        public void Kill()
+        {
+            _breakThread = true;
+
+            UnlockThread();
+        }
+
+        private void UnlockThread()
+        {
+            if (_relaxed)
+                _aevent.Set();
+            else
+            {
+                _interlock = 1;
+                MemoryBarrier();
+            }
         }
 
         public bool paused
@@ -67,21 +110,18 @@ namespace Svelto.Tasks
             set
             {
                 _paused = value;
-                MemoryBarrier();
             }
             get
             {
-                MemoryBarrier();
                 return _paused;
             }
         }
 
-        public bool stopped
+        public bool isStopping
         {
             get
             {
-                MemoryBarrier();
-                return _isAlive == false;
+                return _waitForflush == true;
             }
         }
 
@@ -92,7 +132,7 @@ namespace Svelto.Tasks
 
         void RunCoroutineFiber()
         {
-            while (true)
+            while (_breakThread == false)
             {
                 MemoryBarrier();
 
@@ -132,23 +172,18 @@ namespace Svelto.Tasks
 
                 if (_newTaskRoutines.Count == 0 && _coroutines.Count == 0)
                 {
-                    _isAlive = false;                   
+                    _isAlive = false;
                     _waitForflush = false;
-                    MemoryBarrier();
                     _interlock = 2;
-                    while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
-#if NET_4_6
-                    { Thread.Yield(); } 
-#else
-                    { Thread.Sleep(1); } 
-#endif
+
+                    _lockingMechanism();
                 }
             }
         }
 
         public static void MemoryBarrier()
         {
-#if NETFX_CORE
+#if NETFX_CORE || NET_4_6
             Interlocked.MemoryBarrier();
 #else
             Thread.MemoryBarrier();
@@ -165,6 +200,11 @@ namespace Svelto.Tasks
         volatile bool _isAlive;
         volatile int  _threadID;
         volatile bool _waitForflush;
+        volatile bool _breakThread;
         int _interlock;
+
+        AutoResetEvent _aevent;
+        System.Action _lockingMechanism;
+        private bool _relaxed;
     }
 }

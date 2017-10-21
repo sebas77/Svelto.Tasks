@@ -10,13 +10,16 @@ namespace Svelto.Tasks
     /// a ParallelTaskCollection ran by MultiThreadRunner will run the tasks in a single thread
     /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
     /// </summary>
-    public class MultiThreadParallelTaskCollection : IEnumerator
+    public class MultiThreadedParallelTaskCollection : IEnumerator
     {
         public event Action onComplete;
 
         const int MAX_CONCURRENT_TASKS = 1024;
 
-        public MultiThreadParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS)
+        public object Current { get { return null; } }
+        public bool isRunning { protected set; get; }
+
+        public MultiThreadedParallelTaskCollection(int numberOfThreads = MAX_CONCURRENT_TASKS)
         {
             _runners = new MultiThreadRunner[numberOfThreads];
             _taskRoutines = new ITaskRoutine[numberOfThreads];
@@ -24,7 +27,7 @@ namespace Svelto.Tasks
 
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
-            for (int i = 0; i < numberOfThreads; i++) _runners[i] = new MultiThreadRunner();
+            for (int i = 0; i < numberOfThreads; i++) _runners[i] = new MultiThreadRunner(false);
 
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)
@@ -43,18 +46,19 @@ namespace Svelto.Tasks
 
         bool RunMultiThreadParallelTasks()
         {
+            if (_taskRoutines == null)
+                throw new Exception("can't run a MultiThreadedParallelTaskCollection once killed");
+
             if (isRunning == false)
             {
-                //decide how many threads to run
-                var numberOfConcurrentOperationsToRun = _counter = Math.Min(_parallelTasks.Length, _numberOfTasksAdded);
+                _counter = _numberOfConcurrentOperationsToRun;
                 //start them
-                for (int i = 0; i < numberOfConcurrentOperationsToRun; i++)
+                for (int i = 0; i < _numberOfConcurrentOperationsToRun; i++)
                     _taskRoutines[i].ThreadSafeStart();
             }
-
-            MultiThreadRunner.MemoryBarrier();
-            //wait for completition, I am not using signaling as this Collection could be yield by a main thread runner
-            isRunning = _counter > 0;
+            
+            //wait for completition, I am not using signaling as this Collection could be yielded by a main thread runner
+            isRunning = _counter > 0; 
 
             return isRunning;
         }
@@ -67,6 +71,9 @@ namespace Svelto.Tasks
 
             ParallelTaskCollection parallelTaskCollection = _parallelTasks[_numberOfTasksAdded++ % _parallelTasks.Length];
             parallelTaskCollection.Add(enumerator);
+
+            //decide how many threads to run
+            _numberOfConcurrentOperationsToRun = Math.Min(_parallelTasks.Length, _numberOfTasksAdded);
         }
 
         public bool MoveNext()
@@ -95,15 +102,14 @@ namespace Svelto.Tasks
                 _parallelTasks[i].Clear();
         }
 
-        public object Current
+        public void ClearAndKill()
         {
-            get
-            {
-                return null;
-            }
+            Clear();
+            for (int i = 0; i < _runners.Length; i++)
+                _runners[i].Kill();
+            _taskRoutines = null;
+            _parallelTasks = null;
         }
-
-        public bool              isRunning       { protected set; get; }
 
         void DecrementConcurrentOperationsCounter()
         {
@@ -115,5 +121,6 @@ namespace Svelto.Tasks
         ParallelTaskCollection[]    _parallelTasks;
         ITaskRoutine[]              _taskRoutines;
         int                         _numberOfTasksAdded;
+        int                         _numberOfConcurrentOperationsToRun;
     }
 }

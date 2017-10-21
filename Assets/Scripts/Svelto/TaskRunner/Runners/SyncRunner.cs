@@ -6,7 +6,7 @@ namespace Svelto.Tasks
         private bool _sleepInBetween;
 
         public bool paused { set; get; }
-        public bool stopped { private set; get; }
+        public bool isStopping { private set; get; }
 
         public SyncRunner(bool sleepInBetween)
         {
@@ -23,7 +23,7 @@ namespace Svelto.Tasks
             if (_sleepInBetween)
                 while (task.MoveNext() == true) System.Threading.Thread.Sleep(1);
             else
-                while (task.MoveNext() == true);
+                while (task.MoveNext() == true) ;
         }
 
         /// <summary>
