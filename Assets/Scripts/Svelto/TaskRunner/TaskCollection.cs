@@ -5,26 +5,17 @@ using Svelto.DataStructures;
 
 namespace Svelto.Tasks
 {
-    abstract public class TaskCollection
+    abstract public class TaskCollection: IEnumerator
     {
-        public bool                                 isRunning       { protected set; get; }
-        
-#if TO_IMPLEMENT_PROPERLY
-        abstract public float progress { get; }
-#endif
+        public bool            isRunning { protected set; get; }
+        public abstract object Current   { get; }
 
-        protected TaskCollection()
-            : this(_INITIAL_STACK_COUNT)
-        {}
-
-        protected TaskCollection(int initialSize)
-        {
-            _listOfStacks = FasterList<Stack<IEnumerator>>.PreFill<Stack<IEnumerator>>(initialSize);
-        }
+        public abstract bool MoveNext();
+        public abstract void Reset();
 
         public void Clear()
         {
-            _listOfStacks.FastClear();
+            _listOfStacks.Clear();
         }
 
         public TaskCollection Add(ITask task)
@@ -33,30 +24,6 @@ namespace Svelto.Tasks
                 throw new ArgumentNullException();
 
             Add(new TaskWrapper(task));
-
-            return this;
-        }
-
-        public TaskCollection Add(IEnumerable enumerable)
-        {
-#if TO_IMPLEMENT_PROPERLY
-            if (enumerable is TaskCollection)
-        {
-                registeredEnumerators.Enqueue(new EnumeratorWithProgress(enumerable.GetEnumerator(), 
-                                                    () => (enumerable as TaskCollection).progress));
-                
-                if ((enumerable as TaskCollection).tasksRegistered == 0)
-                    Console.WriteLine("Avoid to register zero size collections");
-            }
-            else
-                registeredEnumerators.Enqueue(enumerable.GetEnumerator());
-#endif
-            if (enumerable == null)
-                throw new ArgumentNullException();
-
-            CheckForToken(enumerable);
-
-            Add(enumerable.GetEnumerator());
 
             return this;
         }
@@ -78,6 +45,28 @@ namespace Svelto.Tasks
             _listOfStacks.Add(stack);
 
             return this;
+        }
+
+        /// <summary>
+        /// Restore the list of stacks to their original state
+        /// </summary>
+        public void SafeReset()
+        {
+            var count = _listOfStacks.Count;
+            for (int index = 0; index < count; ++index)
+            {
+                Stack<IEnumerator> stack = _listOfStacks[index];
+                while (stack.Count > 1) stack.Pop();
+            }
+        }
+
+        protected TaskCollection()
+                    : this(_INITIAL_STACK_COUNT)
+        { }
+
+        protected TaskCollection(int initialSize)
+        {
+            _listOfStacks = FasterList<Stack<IEnumerator>>.PreFill<Stack<IEnumerator>>(initialSize);
         }
 
         protected IEnumerator StandardEnumeratorCheck(object current)
@@ -119,8 +108,8 @@ namespace Svelto.Tasks
         }
 
         protected virtual void CheckForToken(object current)
-        {}
-        
+        {}       
+
         protected FasterList<Stack<IEnumerator>> _listOfStacks;
 
         const int _INITIAL_STACK_COUNT = 3;

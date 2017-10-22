@@ -7,7 +7,7 @@ namespace Svelto.Tasks
     public abstract class MonoRunner : IRunner
     {
         public bool paused { set; get; }
-        public bool stopped { get { return flushingOperation.stopped; } }
+        public bool isStopping { get { return flushingOperation.stopped; } }
         
         public int  numberOfRunningTasks { get { return info.count; } }
 
@@ -53,7 +53,7 @@ namespace Svelto.Tasks
             //if the runner is not ready to run new tasks, it
             //cannot run immediatly but it must be saved
             //in the newTaskRoutines to be executed once possible
-            if (stopped == true)
+            if (isStopping == true)
                 return true;
             
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR

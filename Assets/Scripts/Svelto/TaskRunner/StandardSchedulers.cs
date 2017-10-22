@@ -17,8 +17,8 @@ namespace Svelto.Tasks
         static StandardSchedulers()
         {
             coroutineScheduler = new CoroutineMonoRunner("StandardCoroutineRunner");
-            syncScheduler = new SyncRunner();
-            multiThreadScheduler = new MultiThreadRunner();
+            syncScheduler = new SyncRunner(false);
+            multiThreadScheduler = new MultiThreadRunner(true);
             physicScheduler = new PhysicMonoRunner("StandardPhysicRunner");
             lateScheduler = new LateMonoRunner("StandardLateRunner");
             updateScheduler = new StandardMonoRunner("StandardMonoRunner");

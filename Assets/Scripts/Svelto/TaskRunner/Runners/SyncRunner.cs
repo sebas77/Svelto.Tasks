@@ -1,10 +1,17 @@
 
-namespace Svelto.Tasks.Internal
+namespace Svelto.Tasks
 {
-    class SyncRunner : IRunner
+    public class SyncRunner : IRunner
     {
+        private bool _sleepInBetween;
+
         public bool paused { set; get; }
-        public bool stopped { private set; get; }
+        public bool isStopping { private set; get; }
+
+        public SyncRunner(bool sleepInBetween)
+        {
+            _sleepInBetween = sleepInBetween;
+        }
 
         public void StartCoroutineThreadSafe(IPausableTask task)
         {
@@ -13,7 +20,10 @@ namespace Svelto.Tasks.Internal
 
         public void StartCoroutine(IPausableTask task)
         {
-            while (task.MoveNext() == true);
+            if (_sleepInBetween)
+                while (task.MoveNext() == true) System.Threading.Thread.Sleep(1);
+            else
+                while (task.MoveNext() == true) ;
         }
 
         /// <summary>

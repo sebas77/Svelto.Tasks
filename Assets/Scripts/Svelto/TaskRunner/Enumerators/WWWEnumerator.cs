@@ -1,3 +1,4 @@
+#if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -58,7 +59,7 @@ namespace Svelto.Tasks
             _www = www;
             _www.timeout = timeOut;
 
-            _www.Send();
+            _www.SendWebRequest();
         }
 
         public bool MoveNext()
@@ -89,4 +90,4 @@ namespace Svelto.Tasks
         UnityWebRequest _www;
     }
 }
-    
+#endif

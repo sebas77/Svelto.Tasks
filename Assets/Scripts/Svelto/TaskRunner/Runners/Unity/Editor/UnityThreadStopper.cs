@@ -7,13 +7,13 @@ namespace Svelto.Tasks.Internal
     {
         static MyClass()
         {
-            EditorApplication.playmodeStateChanged += Update;
+            EditorApplication.playModeStateChanged += Update;
         }
 
-        static void Update()
+        static void Update(PlayModeStateChange state)
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode == false)
-                StandardSchedulers.multiThreadScheduler.StopAllCoroutines();
+            if (state == PlayModeStateChange.ExitingPlayMode)
+                (StandardSchedulers.multiThreadScheduler as MultiThreadRunner).Kill();
         }
     }
 }

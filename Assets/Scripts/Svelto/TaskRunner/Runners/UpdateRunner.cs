@@ -31,7 +31,7 @@ namespace Svelto.Tasks
         protected override UnityCoroutineRunner.FlushingOperation flushingOperation
         { get { return _flushingOperation; } }
 
-        readonly ThreadSafeQueue<IPausableTask>          _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
+        readonly ThreadSafeQueue<IPausableTask>         _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
         readonly UnityCoroutineRunner.FlushingOperation _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
         readonly UnityCoroutineRunner.RunningTasksInfo  _info;
 
