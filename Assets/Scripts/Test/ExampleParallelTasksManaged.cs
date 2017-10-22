@@ -67,9 +67,9 @@ public class ExampleParallelTasksManaged : MonoBehaviour
         pt.Add(UnityAsyncOperationsMustNotBreakTheParallelism());
         pt.Add(UnityYieldInstructionsMustNotBreakTheParallelism());
 
-        pt.Add(new LoadSomething(new WWW("www.google.com"))); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
-        pt.Add(new LoadSomething(new WWW("http://download.thinkbroadband.com/5MB.zip")));
-        pt.Add(new LoadSomething(new WWW("www.ebay.com")));
+        pt.Add(new LoadSomething(new WWW("www.google.com")).GetEnumerator()); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
+        pt.Add(new LoadSomething(new WWW("http://download.thinkbroadband.com/5MB.zip")).GetEnumerator());
+        pt.Add(new LoadSomething(new WWW("www.ebay.com")).GetEnumerator());
         pt.Add(Print("3"));
         pt.Add(Print("4"));
         pt.Add(Print("5"));

@@ -56,7 +56,7 @@ public class ExamplePromises : MonoBehaviour
 
         //parallel tasks with race condition (timeout Breaks it)
         parallelTasks.Add(BreakOnTimeOut(timeout));
-        parallelTasks.Add(new LoadSomething(new WWW(url)));
+        parallelTasks.Add(new LoadSomething(new WWW(url)).GetEnumerator());
 
         yield return parallelTasks;
 

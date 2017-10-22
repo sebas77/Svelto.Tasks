@@ -21,7 +21,7 @@ namespace Svelto.Tasks
             multiThreadScheduler = new MultiThreadRunner(true);
             physicScheduler = new PhysicMonoRunner("StandardPhysicRunner");
             lateScheduler = new LateMonoRunner("StandardLateRunner");
-            updateScheduler = new StandardMonoRunner("StandardMonoRunner");
+            updateScheduler = new UpdateMonoRunner("StandardMonoRunner");
         }
 
         public static void StopSchedulers()

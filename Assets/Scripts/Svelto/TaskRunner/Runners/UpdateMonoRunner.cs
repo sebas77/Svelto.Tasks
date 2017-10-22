@@ -4,9 +4,9 @@ using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
-    public class StandardMonoRunner : MonoRunner
+    public class UpdateMonoRunner : MonoRunner
     {
-        public StandardMonoRunner(string name)
+        public UpdateMonoRunner(string name)
         {
             var go = UnityCoroutineRunner.InitializeGameobject(name);
 

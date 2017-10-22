@@ -20,7 +20,7 @@ namespace Svelto.Tasks
             return _name;
         }
 
-        public MultiThreadRunner(bool relaxed)
+        public MultiThreadRunner(bool relaxed = true)
         {
             _thread = new Thread(() =>
             {

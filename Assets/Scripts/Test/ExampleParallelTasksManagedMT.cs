@@ -26,9 +26,9 @@ namespace Test.MultiThread
             st.Add(Print("s4"));
             
             pt.Add(Print("p1")).Add(Print("p2"));
-            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("www.google.com")))); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
-            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("http://download.thinkbroadband.com/5MB.zip"))));
-            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("www.ebay.com"))));
+            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("www.google.com"))).GetEnumerator()); //obviously the token could be passed by constructor, but in some complicated situations, this is not possible (usually while exploiting continuation)
+            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("http://download.thinkbroadband.com/5MB.zip"))).GetEnumerator());
+            pt.Add(new LoadSomething(new WWWEnumerator(new WWW("www.ebay.com"))).GetEnumerator());
 
             pt.Add(Print("p3")).Add(Print("p4")).Add(st).Add(Print("p5")).Add(Print("p6")).Add(Print("p7"));
 

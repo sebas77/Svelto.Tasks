@@ -43,8 +43,8 @@ namespace Test
         {
             serialTasks1.onComplete += () => Assert.That(iterable1.AllRight && iterable2.AllRight && (iterable1.endOfExecutionTime <= iterable2.endOfExecutionTime), Is.True);
 
-            serialTasks1.Add(iterable1);
-            serialTasks1.Add(iterable2);
+            serialTasks1.Add(iterable1.GetEnumerator());
+            serialTasks1.Add(iterable2.GetEnumerator());
             
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler,serialTasks1);
         }
@@ -52,9 +52,9 @@ namespace Test
         [Test]
         public void TestSerialBreakIt()
         {
-            serialTasks1.Add(iterable1);
+            serialTasks1.Add(iterable1.GetEnumerator());
             serialTasks1.Add(BreakIt());
-            serialTasks1.Add(iterable2);
+            serialTasks1.Add(iterable2.GetEnumerator());
 
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, serialTasks1);
 
@@ -69,9 +69,9 @@ namespace Test
         [Test]
         public void TestParallelBreakIt()
         {
-            parallelTasks1.Add(iterable1);
+            parallelTasks1.Add(iterable1.GetEnumerator());
             parallelTasks1.Add(BreakIt());
-            parallelTasks1.Add(iterable2);
+            parallelTasks1.Add(iterable2.GetEnumerator());
 
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler, parallelTasks1);
 
@@ -104,16 +104,16 @@ namespace Test
         
         IEnumerator TestSerialTwice()
         {
-            serialTasks1.Add(iterable1);
-            serialTasks1.Add(iterable2);
+            serialTasks1.Add(iterable1.GetEnumerator());
+            serialTasks1.Add(iterable2.GetEnumerator());
 
             yield return serialTasks1;
 
             Assert.That(iterable1.AllRight && iterable2.AllRight && (iterable1.endOfExecutionTime <= iterable2.endOfExecutionTime), Is.True);
 
             iterable1.Reset(); iterable2.Reset();
-            serialTasks1.Add(iterable1);
-            serialTasks1.Add(iterable2);
+            serialTasks1.Add(iterable1.GetEnumerator());
+            serialTasks1.Add(iterable2.GetEnumerator());
 
             yield return serialTasks1;
 
@@ -125,8 +125,8 @@ namespace Test
         {
             parallelTasks1.onComplete += () => { Assert.That(iterable1.AllRight && iterable2.AllRight); };
 
-            parallelTasks1.Add(iterable1);
-            parallelTasks1.Add(iterable2);
+            parallelTasks1.Add(iterable1.GetEnumerator());
+            parallelTasks1.Add(iterable2.GetEnumerator());
 
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler,parallelTasks1);
         }
@@ -138,8 +138,8 @@ namespace Test
 
             serialTasks1.onComplete += () => { allDone = true; Assert.That(false);};
 
-            serialTasks1.Add (iterable1);
-            serialTasks1.Add (iterableWithException); //will throw an exception
+            serialTasks1.Add (iterable1.GetEnumerator());
+            serialTasks1.Add (iterableWithException.GetEnumerator()); //will throw an exception
 
             _reusableTaskRoutine.SetEnumerator(serialTasks1).Start
                 (e => Assert.That(allDone, Is.False)); //will catch the exception
@@ -153,8 +153,8 @@ namespace Test
 
             serialTasks1.onComplete += () => { allDone = true; Assert.That(false); };
 
-            serialTasks1.Add (iterable1);
-            serialTasks1.Add (iterable2);
+            serialTasks1.Add (iterable1.GetEnumerator());
+            serialTasks1.Add (iterable2.GetEnumerator());
             
             //this time we will make the task run on another thread
             _reusableTaskRoutine.SetScheduler(new MultiThreadRunner()).
@@ -245,14 +245,14 @@ namespace Test
             bool parallelTasks2Done = false;
 
             parallelTasks1.Add(task1);
-            parallelTasks1.Add(iterable1);
+            parallelTasks1.Add(iterable1.GetEnumerator());
 
             yield return parallelTasks1;
             
             Assert.That(parallelTasks2Done, Is.False); parallelTasks1Done = true;
 
             parallelTasks1.Add(task2);
-            parallelTasks1.Add(iterable2);
+            parallelTasks1.Add(iterable2.GetEnumerator());
 
             yield return parallelTasks1;
 
@@ -268,11 +268,11 @@ namespace Test
             bool parallelTasks2Done = false;
 
             parallelTasks1.Add(task1);
-            parallelTasks1.Add(iterable1);
+            parallelTasks1.Add(iterable1.GetEnumerator());
             parallelTasks1.onComplete += () => { Assert.That(parallelTasks2Done, Is.False); parallelTasks1Done = true; };
 
             parallelTasks2.Add(task2);
-            parallelTasks2.Add(iterable2);
+            parallelTasks2.Add(iterable2.GetEnumerator());
             parallelTasks2.onComplete += () => { Assert.That(parallelTasks1Done, Is.True); parallelTasks2Done = true; };
 
             serialTasks1.Add(parallelTasks1);
@@ -307,8 +307,8 @@ namespace Test
             int test1 = 0;
             int test2 = 0;
 
-            serialTasks1.Add (iterable1);
-            serialTasks1.Add (iterable2);
+            serialTasks1.Add (iterable1.GetEnumerator());
+            serialTasks1.Add (iterable2.GetEnumerator());
             serialTasks1.onComplete += () => { test1++; test2++; }; 
 
             serialTasks2.Add (task1);
