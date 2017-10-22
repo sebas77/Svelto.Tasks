@@ -1,7 +1,7 @@
 # Svelto.Tasks
 ======================
 
-Run Parallel and Serial Promises compliant tasks, even on other threads! Compatible with Unity 5.
+Run Parallel and Serial Promises compliant tasks, even on other threads! Compatible with Unity 5 and onward.
 
 Please read about it on here:
 
