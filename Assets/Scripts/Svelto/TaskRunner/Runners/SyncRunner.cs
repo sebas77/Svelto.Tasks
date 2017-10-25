@@ -20,9 +20,11 @@ namespace Svelto.Tasks
 
         public void StartCoroutine(IPausableTask task)
         {
+#if !NETFX_CORE
             if (_sleepInBetween)
                 while (task.MoveNext() == true) System.Threading.Thread.Sleep(1);
             else
+#endif
                 while (task.MoveNext() == true) ;
         }
 
@@ -33,6 +35,10 @@ namespace Svelto.Tasks
         public void StopAllCoroutines()
         {}
 
+        public void Dispose()
+        {}
+
         public int numberOfRunningTasks { get { return -1; } }
+        
     }
 }

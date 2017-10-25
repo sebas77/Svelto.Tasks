@@ -1,6 +1,6 @@
 namespace Svelto.Tasks.Experimental
 {
-    interface IChainLink<Token>
+    public interface IChainLink<in Token>
     {
         Token token { set; }
     }

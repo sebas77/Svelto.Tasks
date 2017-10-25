@@ -2,8 +2,6 @@ using System;
 using System.Collections;
 using Svelto.Tasks;
 using Svelto.Tasks.Internal;
-using UnityEngine;
-using Object = UnityEngine.Object;
 
 public class TaskRunner
 {

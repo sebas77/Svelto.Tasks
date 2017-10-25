@@ -5,7 +5,7 @@ using Svelto.DataStructures;
 
 namespace Svelto.Tasks
 {
-    abstract public class TaskCollection: IEnumerator
+    public abstract class TaskCollection: IEnumerator
     {
         public bool            isRunning { protected set; get; }
         public abstract object Current   { get; }
@@ -79,21 +79,18 @@ namespace Svelto.Tasks
                 return enumerator;
             }
 
-            ///
-            /// Careful an array is an IEnumerable!!!
-            /// 
-            var ptasks = current as IEnumerator[]; 
-            if (ptasks != null)
-                return new ParallelTaskCollection(ptasks);
-
             var task = current as IAbstractTask;
             if (task != null)
                 return CreateTaskWrapper(task);
-            
+#if DEBUG            
+            var ptasks = current as IEnumerator[]; 
+            if (ptasks != null)
+                throw new TaskYieldsIEnumerableException("yielding an array as been deprecated for performance issues, use paralleltask explicitly");
+
             var enumerable = current as IEnumerable;
             if (enumerable != null)
                 throw new TaskYieldsIEnumerableException("Yield an IEnumerable is not supported " + current.GetType());
-
+#endif
             return null;
         }
 

@@ -69,7 +69,7 @@ namespace Svelto.Tasks
 
         protected IAbstractTask task { get; private set; }
 
-        IEnumerator _enumerator;
+        readonly IEnumerator _enumerator;
     }
 }
 

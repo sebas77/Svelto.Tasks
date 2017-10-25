@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections;
 using System.Collections.Generic;
 using Svelto.DataStructures;
@@ -18,3 +19,4 @@ namespace Svelto.Tasks.Profiler
         }
     }
 }
+#endif

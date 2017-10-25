@@ -47,8 +47,8 @@ namespace Svelto.Tasks
 
         public WWW www { get { return _www; }}
 
-        WWW     _www;
-        float   _timeOut;
+        readonly WWW     _www;
+        readonly float   _timeOut;
         float   _timePassed;
     }
 
@@ -58,8 +58,11 @@ namespace Svelto.Tasks
         {
             _www = www;
             _www.timeout = timeOut;
-
+#if UNITY_2017_2
             _www.SendWebRequest();
+#else
+            _www.Send();
+#endif
         }
 
         public bool MoveNext()
@@ -87,7 +90,7 @@ namespace Svelto.Tasks
 
         public UnityWebRequest www { get { return _www; } }
 
-        UnityWebRequest _www;
+        readonly UnityWebRequest _www;
     }
 }
 #endif

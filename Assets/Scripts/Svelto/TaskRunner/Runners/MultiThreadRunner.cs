@@ -1,12 +1,11 @@
 using System;
-using System.Threading;
+using System.Diagnostics;
 using Svelto.DataStructures;
 using Console = Utility.Console;
+using System.Threading;
 
 #if NETFX_CORE
 using System.Threading.Tasks;
-using Windows.Foundation;
-using Windows.System.Threading;
 #endif
 
 namespace Svelto.Tasks
@@ -15,13 +14,44 @@ namespace Svelto.Tasks
     //If you want to use a separate thread, you will need to create another MultiThreadRunner
     public class MultiThreadRunner : IRunner
     {
+        public bool paused
+        {
+            set
+            {
+                _paused = value;
+            }
+            get
+            {
+                return _paused;
+            }
+        }
+
+        public bool isStopping
+        {
+            get
+            {
+                return _waitForflush == true;
+            }
+        }
+
+        public int numberOfRunningTasks
+        {
+            get { return _coroutines.Count; }
+        }
+
         public override string ToString()
         {
             return _name;
         }
 
+        public void Dispose()
+        {
+            Kill();
+        }
+
         public MultiThreadRunner(bool relaxed = true)
         {
+#if !NETFX_CORE
             _thread = new Thread(() =>
             {
                 _threadID = Thread.CurrentThread.ManagedThreadId;
@@ -31,31 +61,36 @@ namespace Svelto.Tasks
             });
 
             _thread.IsBackground = true;
+#else
+            _thread = new Task(() =>
+            {
+                _threadID = (int)Task.CurrentId;
+                _name = _threadID.ToString();
+
+                RunCoroutineFiber();
+            });
+#endif
             _thread.Start();
 
             if (relaxed)
+            {                
                 _lockingMechanism = RelaxedLockingMechanism;
+#if NET_4_6 || NETFX_CORE
+                _aevent = new ManualResetEventSlim(false);
+#else
+                _aevent = new ManualResetEvent(false);
+#endif
+            }
             else
                 _lockingMechanism = QuickLockingMechanism;
 
             _relaxed = relaxed;
-
-            _aevent = new AutoResetEvent(false);
         }
 
-        void QuickLockingMechanism()
+        public MultiThreadRunner(int intervalInMS) : this(false)
         {
-            while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
-#if NET_4_6
-            { Thread.Yield(); } 
-#else
-            { Thread.Sleep(0); }
-#endif
-        }
-    
-        void RelaxedLockingMechanism()
-        {
-            _aevent.WaitOne();
+            _interval = intervalInMS;
+            _watch = new Stopwatch();
         }
 
         public void StartCoroutineThreadSafe(IPausableTask task)
@@ -83,51 +118,23 @@ namespace Svelto.Tasks
             _newTaskRoutines.Clear();
 
             _waitForflush = true;
-
+            
             MemoryBarrier();
         }
 
         public void Kill()
         {
             _breakThread = true;
-
             UnlockThread();
         }
 
-        private void UnlockThread()
+        public static void MemoryBarrier()
         {
-            if (_relaxed)
-                _aevent.Set();
-            else
-            {
-                _interlock = 1;
-                MemoryBarrier();
-            }
-        }
-
-        public bool paused
-        {
-            set
-            {
-                _paused = value;
-            }
-            get
-            {
-                return _paused;
-            }
-        }
-
-        public bool isStopping
-        {
-            get
-            {
-                return _waitForflush == true;
-            }
-        }
-
-        public int numberOfRunningTasks
-        {
-            get { return _coroutines.Count; }
+#if NETFX_CORE || NET_4_6
+            Interlocked.MemoryBarrier();
+#else
+            Thread.MemoryBarrier();
+#endif
         }
 
         void RunCoroutineFiber()
@@ -174,26 +181,84 @@ namespace Svelto.Tasks
                 {
                     _isAlive = false;
                     _waitForflush = false;
-                    _interlock = 2;
 
                     _lockingMechanism();
                 }
+                else
+                if (_interval > 0)
+                {
+                    _waitForInterval();
+                }
             }
+
+            if (_aevent != null)
+#if !(NETFX_CORE || NET_4_6)
+                _aevent.Close();
+#else
+                _aevent.Dispose();
+#endif
         }
 
-        public static void MemoryBarrier()
+        void _waitForInterval()
         {
-#if NETFX_CORE || NET_4_6
-            Interlocked.MemoryBarrier();
+            _watch.Start();
+            while (_watch.ElapsedMilliseconds < _interval)
+#if NETFX_CORE
+            { Task.Yield(); }
+#elif NET_4_6
+            { Thread.Yield(); } 
 #else
-            Thread.MemoryBarrier();
+            { Thread.Sleep(0); }
+#endif
+            _watch.Reset();
+        }
+
+        void QuickLockingMechanism()
+        {
+            _interlock = 2;
+
+            while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
+#if NETFX_CORE
+            { Task.Yield(); }
+#elif NET_4_6
+
+            { Thread.Yield(); } 
+#else
+            { Thread.Sleep(0); }
+#endif
+        }
+
+        void RelaxedLockingMechanism()
+        {
+#if NETFX_CORE
+            _aevent.Wait();
+#else
+            _aevent.WaitOne();
+#endif
+            _aevent.Reset();
+        }
+
+
+        void UnlockThread()
+        {
+            if (_relaxed)
+                _aevent.Set();
+#if !NETFX_CORE
+            else
+            {
+                _interlock = 1;
+                MemoryBarrier();
+            }
 #endif
         }
 
         readonly FasterList<IPausableTask> _coroutines = new FasterList<IPausableTask>();
         readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
-
+#if NETFX_CORE
+        Task _thread;
+#else
         Thread _thread;
+#endif
         string _name;
 
         volatile bool _paused;
@@ -203,8 +268,15 @@ namespace Svelto.Tasks
         volatile bool _breakThread;
         int _interlock;
 
-        AutoResetEvent _aevent;
-        System.Action _lockingMechanism;
-        private bool _relaxed;
+#if NETFX_CORE || NET_4_6
+        ManualResetEventSlim _aevent;
+#else
+        ManualResetEvent _aevent;
+#endif
+        Action _lockingMechanism;
+        TimeSpan _timeSpan;
+        bool _relaxed;
+        int _interval;
+        Stopwatch _watch;
     }
 }

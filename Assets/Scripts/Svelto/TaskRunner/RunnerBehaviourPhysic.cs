@@ -1,3 +1,4 @@
+#if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using UnityEngine;
 
@@ -19,3 +20,4 @@ namespace Svelto.Tasks.Internal
         IEnumerator _mainRoutine;
     }
 }
+#endif

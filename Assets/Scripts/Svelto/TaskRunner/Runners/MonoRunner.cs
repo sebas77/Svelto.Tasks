@@ -1,4 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System;
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
 
@@ -61,6 +62,11 @@ namespace Svelto.Tasks
 #else
             return task.MoveNext();
 #endif
+        }
+
+        public void Dispose()
+        {
+            StopAllCoroutines();
         }
     }
 }

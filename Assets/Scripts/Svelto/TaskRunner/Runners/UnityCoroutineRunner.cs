@@ -223,7 +223,9 @@ namespace Svelto.Tasks.Internal
 
                 _isDone = true;
 
-                if (_flushingOperation.stopped == false && _resumeOperation != null)
+                if (_flushingOperation != null && 
+                    _flushingOperation.stopped == false && 
+                    _resumeOperation != null)
                     _resumeOperation(_task);
             }
 

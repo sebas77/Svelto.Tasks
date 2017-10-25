@@ -2,10 +2,11 @@
 
 using System;
 using System.Collections;
+using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
 using Svelto.Tasks.Experimental;
-using UnityEditor;
+using UnityEngine.TestTools;
 
 //Note: RunSync is used only for testing purposes
 //Real scenarios should use Run or RunManaged
@@ -326,6 +327,69 @@ namespace Test
         public void TestComplexCoroutine()
         {
             _taskRunner.RunOnSchedule(StandardSchedulers.syncScheduler,ComplexEnumerator((i) => Assert.That(i == 100, Is.True)));
+        }
+
+        [Test]
+        public void TestMultithread()
+        {
+            using (var runner = new MultiThreadRunner())
+            {
+                var task = iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+
+                while (task.MoveNext());
+
+                Assert.That(iterable1.AllRight == true);
+
+                iterable1.Reset();
+
+                task = iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+
+                while (task.MoveNext()) ;
+
+                Assert.That(iterable1.AllRight == true);
+            }
+        }
+
+        [Test]
+        public void TestMultithreadQuick()
+        {
+            using (var runner = new MultiThreadRunner(false))
+            {
+                var task = iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+
+                while (task.MoveNext()) ;
+
+                Assert.That(iterable1.AllRight == true);
+
+                //do it again to test if starting another task works
+
+                iterable1.Reset();
+
+                task = iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+
+                while (task.MoveNext()) ;
+
+                Assert.That(iterable1.AllRight == true);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator TestMultithreadIntervaled()
+        {
+            using (var runner = new MultiThreadRunner(1))
+            {
+                DateTime now = DateTime.Now;
+
+                var task = iterable1.GetEnumerator().ThreadSafeRunOnSchedule(runner);
+
+                while (task.MoveNext()) yield return null;
+
+                var seconds = (DateTime.Now - now).Seconds;
+
+                //10000 iteration * 1ms = 10 seconds
+
+                Assert.That(iterable1.AllRight == true && seconds == 10);
+            }
         }
 
         IEnumerator ComplexEnumerator(Action<int> callback)
