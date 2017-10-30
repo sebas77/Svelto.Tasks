@@ -230,7 +230,7 @@ namespace Svelto.Tasks
 
         void RelaxedLockingMechanism()
         {
-#if NETFX_CORE
+#if NETFX_CORE || NET_4_6
             _aevent.Wait();
 #else
             _aevent.WaitOne();
