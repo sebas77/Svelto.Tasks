@@ -27,7 +27,7 @@ namespace Svelto.Tasks
 
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
-            for (int i = 0; i < numberOfThreads; i++) _runners[i] = new MultiThreadRunner(relaxed);
+            for (int i = 0; i < numberOfThreads; i++) _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask:".FastConcat(i), relaxed);
 
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)

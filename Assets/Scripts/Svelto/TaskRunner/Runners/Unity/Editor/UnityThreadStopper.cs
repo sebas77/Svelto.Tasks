@@ -5,9 +5,9 @@ namespace Svelto.Tasks.Internal
 {
 #if UNITY_2017_2
     [InitializeOnLoad]
-    class MyClass
+    class StopThreadsInEditor
     {
-        static MyClass()
+        static StopThreadsInEditor()
         {
             EditorApplication.playModeStateChanged += Update;
 
@@ -21,9 +21,9 @@ namespace Svelto.Tasks.Internal
     }
 #else
     [InitializeOnLoad]
-        class MyClass
+        class StopThreadsInEditor
         {
-            static MyClass()
+            static StopThreadsInEditor()
             {
                 EditorApplication.playmodeStateChanged += Update;
             }

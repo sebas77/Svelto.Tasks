@@ -30,19 +30,16 @@ namespace Svelto.Tasks
 
 namespace Svelto.Tasks.Internal
 {
-    class PausableTask : ITaskRoutine, IPausableTask
+    sealed class PausableTask : IPausableTask, ITaskRoutine
     {
-        public object Current
-        {
-            get
-            {
-                if (_coroutine != null)
-                    return _coroutine.Current;
-
-                return null;
-            }
-        }
-
+        const string CALL_START_FIRST_ERROR = "Enumerating PausableTask without starting it, please call Start() first";
+        /// <summary>
+        /// Calling SetScheduler, SetEnumeratorProvider, SetEnumerator
+        /// on a running task won't stop the task until either 
+        /// Stop() or Start() is called.
+        /// </summary>
+        /// <param name="runner"></param>
+        /// <returns></returns>
         public ITaskRoutine SetScheduler(IRunner runner)
         {
             _runner = runner;
@@ -69,8 +66,61 @@ namespace Svelto.Tasks.Internal
 #else
             _compilerGenerated = false;
 #endif
-
             return this;
+        }
+
+        public void Pause()
+        {
+            _paused = true;
+            MultiThreadRunner.MemoryBarrier();
+        }
+
+        public void Resume()
+        {
+            _paused = false;
+            MultiThreadRunner.MemoryBarrier();
+        }
+
+        public void Stop()
+        {
+            _explicitlyStopped = true;
+
+            MultiThreadRunner.MemoryBarrier();
+        }
+
+        public IEnumerator Start(Action<PausableTaskException> onFail = null, Action onStop = null)
+        {
+            _threadSafe = false;
+
+            _onStop = onStop;
+            _onFail = onFail;
+
+            InternalStart();
+
+            return _enumeratorWrap;
+        }
+
+        public IEnumerator ThreadSafeStart(Action<PausableTaskException> onFail = null, Action onStop = null)
+        {
+            _threadSafe = true;
+
+            _onStop = onStop;
+            _onFail = onFail;
+            
+            InternalStart();
+
+            return _enumeratorWrap;
+        }
+
+        public object Current
+        {
+            get
+            {
+                if (_coroutine != null)
+                    return _coroutine.Current;
+
+                return null;
+            }
         }
 
         public override string ToString()
@@ -93,15 +143,25 @@ namespace Svelto.Tasks.Internal
             return _name;
         }
 
+        /// <summary>
+        /// Move Next is called by the current runner, which could be on another thread!
+        /// that means that the class states must be thread safe.
+        /// </summary>
+        /// <returns></returns>
         public bool MoveNext()
         {
-            if (_stopped == true || _runner.isStopping == true)
-            {
-                _completed = true;
-
-                if (_onStop != null)
-                    _onStop();
-            }
+            ///
+            /// Stop() can be called from whatever thread, but the 
+            /// runner won't know about it until the next MoveNext()
+            /// is called. It's VERY important that a task is not reused
+            /// until naturally stopped through this mechanism, otherwise
+            /// there is the risk to add the same task twice in the 
+            /// runner queue. The new task must be added in the queue
+            /// through the pending enumerator functionality
+            /// 
+            MultiThreadRunner.MemoryBarrier();
+            if (_explicitlyStopped == true || _runner.isStopping == true)
+                TaskIsDone(_explicitlyStopped);
             else    
             if (_runner.paused == false && _paused == false)
             {
@@ -109,7 +169,8 @@ namespace Svelto.Tasks.Internal
                 {
 #if DEBUG
                     if (_started == false)
-                        throw new Exception("Enumerating PausableTask without starting it, please call Start() first");
+                        throw new 
+                            Exception(CALL_START_FIRST_ERROR.FastConcat(" task: ", ToString()));
 #endif
                     _completed = !_coroutine.MoveNext();
 
@@ -117,34 +178,34 @@ namespace Svelto.Tasks.Internal
                     if (current == Break.It ||
                         current == Break.AndStop)
                     {
-                        Stop();
-
-                        _completed = true;
-
-                        if (_onStop != null)
-                            _onStop();
+                        TaskIsDone(true);
                     }
                 }
                 catch (Exception e)
                 {
-                    _completed = true;
-
-                    FinalizeIt();
+                    TaskIsDone(false);
 
                     if (_onFail != null && (e is TaskYieldsIEnumerableException) == false)
                         _onFail(new PausableTaskException(e));
                     else
-                        throw new PausableTaskException(e);
+                    {
+                       Utility.Console.LogError(e.Message);
+                    }
                 }
             }
 
             if (_completed == true)
             {
-                FinalizeIt();
-
                 if (_pendingRestart == true)
                     //start new coroutine using this task
                     Restart(_pendingEnumerator);
+                else
+                {
+                    if (_pool != null)
+                        _pool.PushTaskBack(this);
+
+                    FinalizeIt();
+                }
 
                 return false;
             }
@@ -152,81 +213,77 @@ namespace Svelto.Tasks.Internal
             return true;
         }
 
-        private void FinalizeIt()
-        {
-            _coroutineWrapper.FastClear();
-            Stop();
-
-            if (_pool != null)
-                _pool.PushTaskBack(this);
-
-            _enumeratorWrap.Completed();
-        }
-
-        //Reset task on reuse, when fetched from the Pool
+        /// <summary>
+        /// Reset task on reuse, when fetched from the Pool
+        /// </summary>
         public void Reset()
         {
-            _pendingEnumerator = null;
-            _taskGenerator     = null;
-            _taskEnumerator    = null;
+            CleanUp();
 
-            _runner            = null;
-            _onFail            = null;
-            _onStop            = null;
+            //_enumeratorWrap.Reset cannot be inside 
+            //CleanUp because it could be iterated way
+            //after the task is completed.
+            _enumeratorWrap.Reset();
 
-            _stopped           = false;
-            _paused            = false;
-            _threadSafe        = false;
+            _paused = false;
+            _taskEnumeratorJustSet = false;
+            _completed = false;
+            _started = false;
+            _explicitlyStopped = false;
+            _threadSafe = false;
             _compilerGenerated = false;
-            _completed         = false;
-            _started           = false;
-            _pendingRestart    = false;
-            _name              = string.Empty;
+            _pendingRestart = false;
+            _name = string.Empty;
         }
 
-        public void Pause()
+        /// <summary>
+        /// Clean up task on complete
+        /// </summary>
+        internal void CleanUp()
         {
-            _paused = true;
+            _pendingEnumerator = null;
+            _taskGenerator = null;
+            _taskEnumerator = null;
+            _runner = null;
+            _onFail = null;
+            _onStop = null;
+
+            _coroutineWrapper.FastClear();
         }
 
-        public void Resume()
+        /// <summary>
+        /// Clean up task on Restart 
+        /// can happen only through ITaskRoutine
+        /// </summary>
+        void CleanUpOnRestart()
         {
             _paused = false;
+            _taskEnumeratorJustSet = false;
+            _completed = false;
+            _explicitlyStopped = false;
+            _pendingEnumerator = null;
+            _pendingRestart = false;
+            _name = string.Empty;
         }
 
-        public IEnumerator Start(Action<PausableTaskException> onFail = null, Action onStop = null)
+        void TaskIsDone(bool stoppedExplicitly)
         {
-            _threadSafe = false;
+            _completed = true;
 
-            _onStop = onStop;
-            _onFail = onFail;
-
-            InternalStart();
-
-            return _enumeratorWrap;
+            if (stoppedExplicitly == true && _onStop != null)
+                _onStop();
         }
 
-        public IEnumerator ThreadSafeStart(Action<PausableTaskException> onFail = null, Action onStop = null)
+        void FinalizeIt()
         {
-            _threadSafe = true;
-
-            _onStop = onStop;
-            _onFail = onFail;
-
-            InternalStart();
-
-            return _enumeratorWrap;
-        }
-
-        public void Stop()
-        {
-            //pay attention, completed cannot be put to true here, because it the task restarts
-            //it must ends naturally through the fact that _stopped is true
-            _stopped = true;
             _started = false;
+            
+            _enumeratorWrap.Completed();
+
+            MultiThreadRunner.MemoryBarrier();
         }
 
-        internal PausableTask(IPausableTaskPool pool) : this()
+        internal PausableTask(PausableTaskPool pool) : this()
         {
             _pool = pool;
         }
@@ -258,6 +315,8 @@ namespace Svelto.Tasks.Internal
         /// <param name="task"></param>
         void InternalStart()
         {
+            _enumeratorWrap.Reset();
+
             Resume(); //if it's paused, must resume
 
             if (_pendingRestart == false) //ignore the restart otherwise
@@ -296,15 +355,10 @@ namespace Svelto.Tasks.Internal
             if (_runner == null)
                 throw new Exception("SetScheduler function has never been called");
 
-            _taskEnumeratorJustSet = false;
-            _stopped               = false;
-            _completed             = false;
-            _started               = true;
-            _pendingEnumerator     = null;
-            _pendingRestart        = false;
-            _enumeratorWrap.Reset();
-
+            CleanUpOnRestart();
             SetTask(task);
+
+            _started = true;
 
             if (_threadSafe == false)
                 _runner.StartCoroutine(this);
@@ -318,6 +372,7 @@ namespace Svelto.Tasks.Internal
 
             if (taskc == null)
             {
+                _coroutineWrapper.FastClear();
                 _coroutineWrapper.Add(task);
                 _coroutine = _coroutineWrapper;
             }
@@ -327,30 +382,31 @@ namespace Svelto.Tasks.Internal
 
         IRunner                       _runner;
         IEnumerator                   _coroutine;
-        SerialTaskCollection          _coroutineWrapper;
 
-        bool                          _stopped;
-        bool                          _paused;
+        readonly SerialTaskCollection _coroutineWrapper;
+        readonly EnumeratorWrapper    _enumeratorWrap;
+
         bool                          _threadSafe;
         bool                          _compilerGenerated;
-        bool                          _pendingRestart;
         bool                          _taskEnumeratorJustSet;
 
         IEnumerator                   _pendingEnumerator;
         IEnumerator                   _taskEnumerator;
-        EnumeratorWrapper             _enumeratorWrap;
-
-        readonly IPausableTaskPool    _pool;
+      
+        readonly PausableTaskPool     _pool;
         Func<IEnumerator>             _taskGenerator;
 
         Action<PausableTaskException> _onFail;
         Action                        _onStop;
         string                        _name = String.Empty;
 
-        volatile bool _completed = false;
-        volatile bool _started = false;       
+        volatile bool                 _completed;
+        volatile bool                 _started;
+        volatile bool                 _explicitlyStopped;
+        volatile bool                 _paused;
+        volatile bool                 _pendingRestart;
 
-        class EnumeratorWrapper : IEnumerator
+        sealed class EnumeratorWrapper : IEnumerator
         {
             public bool MoveNext()
             {
@@ -372,9 +428,9 @@ namespace Svelto.Tasks.Internal
                 _completed = false;
             }
 
-            public object Current { get; private set; }
+            public object Current { get { return null; } }
 
-            volatile bool _completed;
+            bool _completed;
         }
     }
 }

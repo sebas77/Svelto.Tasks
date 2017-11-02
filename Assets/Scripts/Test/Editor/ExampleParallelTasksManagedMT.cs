@@ -1,5 +1,6 @@
 using System.Collections;
 using Svelto.Tasks;
+using Test.Editor;
 using UnityEngine;
 
 namespace Test.MultiThread
@@ -65,7 +66,7 @@ namespace Test.MultiThread
         }
 
         bool _paused;
-        MultiThreadRunner MTRunner = new MultiThreadRunner();
+        MultiThreadRunner MTRunner = new MultiThreadRunner("ExampleParallelTasksManagedMT");
     }
 
     class LoadSomething : IEnumerable

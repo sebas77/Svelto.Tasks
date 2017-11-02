@@ -2,16 +2,9 @@ using Svelto.DataStructures;
 
 namespace Svelto.Tasks.Internal
 {
-    interface IPausableTaskPool
+    sealed class PausableTaskPool
     {
-        ITaskRoutine RetrieveTaskFromPool();
-
-        void PushTaskBack(PausableTask task);
-    }
-
-    class PausableTaskPool: IPausableTaskPool
-    {
-        public ITaskRoutine RetrieveTaskFromPool()
+        public PausableTask RetrieveTaskFromPool()
         {
             PausableTask task;
 
@@ -27,12 +20,12 @@ namespace Svelto.Tasks.Internal
 
         public void PushTaskBack(PausableTask task)
         {
-            task.Reset();
+            task.CleanUp(); //let's avoid leakings
 
             _pool.Enqueue(task);
         }
 
-        ITaskRoutine CreateEmptyTask()
+        PausableTask CreateEmptyTask()
         {
             return new PausableTask(this);
         }

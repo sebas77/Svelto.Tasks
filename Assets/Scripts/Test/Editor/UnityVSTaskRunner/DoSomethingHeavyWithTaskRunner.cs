@@ -1,9 +1,9 @@
 using System.Collections;
 using UnityEngine;
 
-namespace Assets
+namespace Test.Editor.UnityVSTaskRunner
 {
-    public sealed class DoSomethingHeavyWithTaskRunner : MonoBehaviour
+    public class DoSomethingHeavyWithTaskRunner : MonoBehaviour
     {
         void Awake()
         {

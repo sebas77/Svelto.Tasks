@@ -23,14 +23,32 @@ namespace Svelto.Tasks
             DesignByContract.Check.Require((task is IEnumerable == false) && (task is IEnumerator == false), "Tasks and IEnumerators are mutually exclusive");
 
             this.task = task;
-            _enumerator = Execute();
-
+            
             DesignByContract.Check.Ensure(task != null, "a valid task must be assigned");
         }
 
         public bool MoveNext()
         {
-            return _enumerator.MoveNext();
+            if (_started == false)
+            {
+                ExecuteTask();
+
+                _started = true;
+            }
+            
+            if (task.isDone == false)
+            {
+                var taskException = task as ITaskExceptionHandler;
+
+                if ((taskException != null) && (taskException.throwException != null))
+                    throw taskException.throwException;
+
+                return true;
+            }
+
+            _started = false;
+
+            return false;
         }
 
         public void Reset()
@@ -52,24 +70,9 @@ namespace Svelto.Tasks
                 throw new Exception("not supported task " + task.GetType());
         }
 
-        IEnumerator Execute()
-        {
-            ExecuteTask();            
-            
-            var taskException = task as ITaskExceptionHandler;
-
-            while (task.isDone == false)
-            {
-                if ((taskException != null) && (taskException.throwException != null))
-                    throw taskException.throwException;
-
-                yield return null;
-            }
-        }
-
         protected IAbstractTask task { get; private set; }
 
-        readonly IEnumerator _enumerator;
+        bool _started;
     }
 }
 

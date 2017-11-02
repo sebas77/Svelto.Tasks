@@ -1,6 +1,7 @@
+using PerformanceMT;
 using UnityEngine;
 
-namespace PerformanceMT
+namespace Test.Editor.PerformanceMT
 {
     public class SpawnObjectsMT : MonoBehaviour
     {
