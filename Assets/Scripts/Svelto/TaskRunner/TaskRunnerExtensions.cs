@@ -1,8 +1,7 @@
 
+using Svelto.Tasks;
 using System.Collections;
 
-namespace Svelto.Tasks
-{
     public static class TaskRunnerExtensions
     {
         public static IEnumerator RunOnSchedule(this IEnumerable enumerable, IRunner runner)
@@ -55,4 +54,4 @@ namespace Svelto.Tasks
             return TaskRunner.Instance.AllocateNewTaskRoutine().SetScheduler(runner).SetEnumerator(enumerator);
         }
     }
-}
+

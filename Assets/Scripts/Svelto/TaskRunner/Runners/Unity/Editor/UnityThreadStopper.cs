@@ -3,7 +3,7 @@ using UnityEditor;
 
 namespace Svelto.Tasks.Internal
 {
-#if UNITY_2017_2
+#if UNITY_2017_2_OR_NEWER
     [InitializeOnLoad]
     class StopThreadsInEditor
     {
@@ -21,19 +21,19 @@ namespace Svelto.Tasks.Internal
     }
 #else
     [InitializeOnLoad]
-        class StopThreadsInEditor
+    class StopThreadsInEditor
+    {
+        static StopThreadsInEditor()
         {
-            static StopThreadsInEditor()
-            {
-                EditorApplication.playmodeStateChanged += Update;
-            }
-
-            static void Update()
-            {
-                if (EditorApplication.isPlayingOrWillChangePlaymode == false)
-                    StandardSchedulers.multiThreadScheduler.StopAllCoroutines();
-            }
+            EditorApplication.playmodeStateChanged += Update;
         }
+
+        static void Update()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode == false)
+                StandardSchedulers.multiThreadScheduler.StopAllCoroutines();
+        }
+    }
 #endif
 }
 #endif

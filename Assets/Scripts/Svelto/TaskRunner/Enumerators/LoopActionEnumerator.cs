@@ -1,8 +1,6 @@
 using System;
 using System.Collections;
-#if NETFX_CORE
-using System.Reflection;
-#endif
+
 namespace Svelto.Tasks
 {
     public class LoopActionEnumerator<T> : IEnumerator
@@ -34,15 +32,9 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
-#if NETFX_CORE
-            var method = _action.GetMethodInfo();
+            var method = _action.GetMethodInfoEx();
 
-            return method.DeclaringType.Name + "." + method.Name;
-#else
-            var method = _action.Method;
-
-            return method.ReflectedType.Name + "." + method.Name;
-#endif
+            return method.GetDeclaringType().Name + "." + method.Name;
         }
 
         Action<T> _action;
@@ -72,15 +64,9 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
-#if NETFX_CORE
-            var method = _action.GetMethodInfo();
+            var method = _action.GetMethodInfoEx();
 
-            return method.DeclaringType.Name + "." + method.Name;
-#else
-            var method = _action.Method;
-
-            return method.ReflectedType.Name + "." + method.Name;
-#endif
+            return method.GetDeclaringType().Name + "." + method.Name;
         }
 
         Action _action;
@@ -108,15 +94,9 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
-#if NETFX_CORE
-            var method = _action.GetMethodInfo();
+            var method = _action.GetMethodInfoEx();
 
-            return method.DeclaringType.Name + "." + method.Name;
-#else
-            var method = _action.Method;
-
-            return method.ReflectedType.Name + "." + method.Name;
-#endif
+            return method.GetDeclaringType().Name + "." + method.Name;
         }
 
         public void Reset()
@@ -154,15 +134,9 @@ namespace Svelto.Tasks
 
         public override string ToString()
         {
-#if NETFX_CORE
-            var method = _action.GetMethodInfo();
+            var method = _action.GetMethodInfoEx();
 
-            return method.DeclaringType.Name + "." + method.Name;
-#else
-            var method = _action.Method;
-
-            return method.ReflectedType.Name + "." + method.Name;
-#endif
+            return method.GetDeclaringType().Name + "." + method.Name;
         }
 
         public void Reset()

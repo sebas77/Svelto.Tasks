@@ -2,7 +2,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Enumerators
 {
     class UnityAsyncOperationEnumerator: IEnumerator
     {

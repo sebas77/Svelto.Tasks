@@ -29,7 +29,7 @@ namespace Svelto.Tasks.Profiler
 
         string updateTitle = "Update".PadRight(15, ' ');
         string minTitle = "Min".PadRight(15, ' ');
-        string maxTitle = "Max".PadRight(15, ' ');
+        string maxTitle = "Max";
         
         TasksMonitor _tasksMonitor;
         Queue<float> _taskMonitorData;
@@ -87,7 +87,7 @@ namespace Svelto.Tasks.Profiler
                 ProfilerEditorLayout.EndHorizontal();
 
                 _showTickTasks = EditorGUILayout.Foldout(_showTickTasks, "Tasks Ticks");
-                if (_showTickTasks && ShouldShowSystems(tasks))
+         //       if (_showTickTasks && ShouldShowSystems(tasks))
                 {
                     ProfilerEditorLayout.BeginVerticalBox();
                     {
@@ -162,7 +162,12 @@ namespace Svelto.Tasks.Profiler
                     .FastConcat(minTitle)
                     .FastConcat(maxTitle);
 
-            EditorGUILayout.LabelField("Task Name", title, EditorStyles.boldLabel);
+            ProfilerEditorLayout.BeginHorizontal();
+            {
+                EditorGUILayout.LabelField("Task Name", EditorStyles.boldLabel);
+                EditorGUILayout.TextArea(title, EditorStyles.boldLabel, GUILayout.MaxWidth(200));
+            }
+            ProfilerEditorLayout.EndHorizontal();
 
             int tasksDrawn = 0;
             for (int i = 0; i < tasks.Length; i++)
@@ -179,7 +184,8 @@ namespace Svelto.Tasks.Profiler
 
                         string output = avg.FastConcat(min).FastConcat(max);
 
-                        EditorGUILayout.LabelField(taskInfo.taskName, output, GetTaskStyle());
+                        EditorGUILayout.LabelField(taskInfo.taskName);
+                        EditorGUILayout.TextArea(output, GetTaskStyle(), GUILayout.MaxWidth(200));
                     }
                     ProfilerEditorLayout.EndHorizontal();
 

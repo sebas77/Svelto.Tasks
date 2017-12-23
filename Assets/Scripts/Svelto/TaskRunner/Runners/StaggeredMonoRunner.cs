@@ -1,7 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
-using UnityEngine;
 
 //StaggeredMonoRunner doesn't flush all the tasks at once, but it spread
 //them over "framesToSpread" frames;

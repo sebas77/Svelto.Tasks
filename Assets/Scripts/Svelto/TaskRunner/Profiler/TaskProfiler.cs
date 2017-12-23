@@ -56,10 +56,9 @@ namespace Svelto.Tasks.Profiler
                 info.AddThreadInfo(threadInfo);
             }
 
-            _stopwatch.Reset();
             _stopwatch.Start();
             result = tickable.MoveNext();
-            _stopwatch.Stop();
+            _stopwatch.Reset();
 
             return result;
         }

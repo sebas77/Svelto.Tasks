@@ -1,7 +1,7 @@
-﻿using System;
 using System.Collections;
+using Svelto.Utilities;
 
-namespace Svelto.ECS.Example.Parallelism
+namespace Svelto.Tasks.Enumerators
 {
     internal class WaitForSignal:IEnumerator
     {
@@ -15,7 +15,7 @@ namespace Svelto.ECS.Example.Parallelism
 
         public bool MoveNext()
         {
-            Tasks.MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
             return !_signal;
         }
 
@@ -23,20 +23,20 @@ namespace Svelto.ECS.Example.Parallelism
         {
             _signal = false;
             _return = null;
-            Tasks.MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         internal void Signal()
         {
             _signal = true;
-            Tasks.MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         internal void Signal(object obj)
         {
             _signal = true;
             _return = obj;
-            Tasks.MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         volatile bool _signal;

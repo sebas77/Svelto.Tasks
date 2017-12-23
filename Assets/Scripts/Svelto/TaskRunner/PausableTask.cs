@@ -8,12 +8,9 @@
 /// 
 /// 
 
+using Svelto.Utilities;
 using System;
 using System.Collections;
-using System.Runtime.CompilerServices;
-#if NETFX_CORE
-using System.Reflection;
-#endif
 
 namespace Svelto.Tasks
 {
@@ -62,7 +59,7 @@ namespace Svelto.Tasks.Internal
                 _taskEnumeratorJustSet = true;
             _taskEnumerator = taskEnumerator;
 #if DEBUG && !PROFILER
-            _compilerGenerated = IsCompilerGenerated(taskEnumerator.GetType());
+            _compilerGenerated = taskEnumerator.GetType().IsCompilerGenerated();
 #else
             _compilerGenerated = false;
 #endif
@@ -72,20 +69,20 @@ namespace Svelto.Tasks.Internal
         public void Pause()
         {
             _paused = true;
-            MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         public void Resume()
         {
             _paused = false;
-            MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         public void Stop()
         {
             _explicitlyStopped = true;
 
-            MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         public IEnumerator Start(Action<PausableTaskException> onFail = null, Action onStop = null)
@@ -133,11 +130,10 @@ namespace Svelto.Tasks.Internal
                 if (_taskEnumerator != null)
                     _name = _taskEnumerator.ToString();
                 else
-#if NETFX_CORE
-                    _name = _taskGenerator.GetMethodInfo().DeclaringType.ToString().FastConcat(".", _taskGenerator.GetMethodInfo().Name);
-#else
-                    _name = _taskGenerator.Method.ReflectedType.ToString().FastConcat(".",  _taskGenerator.Method.Name);
-#endif
+                {
+                    System.Reflection.MethodInfo methodInfo = _taskGenerator.GetMethodInfoEx();
+                    _name = methodInfo.GetDeclaringType().ToString().FastConcat(".", methodInfo.Name);
+                }
             }
 
             return _name;
@@ -159,7 +155,6 @@ namespace Svelto.Tasks.Internal
             /// runner queue. The new task must be added in the queue
             /// through the pending enumerator functionality
             /// 
-            MultiThreadRunner.MemoryBarrier();
             if (_explicitlyStopped == true || _runner.isStopping == true)
                 TaskIsDone(_explicitlyStopped);
             else    
@@ -189,7 +184,7 @@ namespace Svelto.Tasks.Internal
                         _onFail(new PausableTaskException(e));
                     else
                     {
-                       Utility.Console.LogError(e.Message);
+                       Utility.Console.LogError(e.ToString());
                     }
                 }
             }
@@ -280,7 +275,7 @@ namespace Svelto.Tasks.Internal
             
             _enumeratorWrap.Completed();
 
-            MultiThreadRunner.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         internal PausableTask(PausableTaskPool pool) : this()
@@ -294,17 +289,6 @@ namespace Svelto.Tasks.Internal
             _coroutineWrapper = new SerialTaskCollection(1);
 
             Reset();
-        }
-
-        bool IsCompilerGenerated(Type t)
-        {
-#if NETFX_CORE
-            var attr = t.GetTypeInfo().GetCustomAttribute(typeof(CompilerGeneratedAttribute));
-#else
-            var attr = Attribute.GetCustomAttribute(t, typeof(CompilerGeneratedAttribute));
-#endif
-
-            return attr != null;
         }
 
         /// <summary>

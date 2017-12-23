@@ -1,5 +1,3 @@
-using Svelto.Tasks.Internal;
-
 namespace Svelto.Tasks
 {
     public static class StandardSchedulers

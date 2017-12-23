@@ -1,14 +1,14 @@
 using System;
 using System.Collections;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Enumerators
 {
-    public class SafeEnumerator : IEnumerator
+    public class ExceptionHandlingEnumerator : IEnumerator
     {
         public bool succeeded { get; private set; }
         public Exception error { get; private set; }
 
-        public SafeEnumerator(IEnumerator enumerator)
+        public ExceptionHandlingEnumerator(IEnumerator enumerator)
         {
             _enumerator = enumerator;
         }

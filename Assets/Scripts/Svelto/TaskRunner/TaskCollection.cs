@@ -82,7 +82,7 @@ namespace Svelto.Tasks
             var task = current as IAbstractTask;
             if (task != null)
                 return CreateTaskWrapper(task);
-#if DEBUG            
+#if DEBUG && !PROFILER         
             var ptasks = current as IEnumerator[]; 
             if (ptasks != null)
                 throw new TaskYieldsIEnumerableException("yielding an array as been deprecated for performance issues, use paralleltask explicitly");

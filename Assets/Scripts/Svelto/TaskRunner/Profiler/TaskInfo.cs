@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using Svelto.DataStructures;
 
 //This profiler is based on the Entitas Visual Debugging tool 

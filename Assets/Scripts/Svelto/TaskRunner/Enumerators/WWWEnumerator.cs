@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Enumerators
 {
     public class WWWEnumerator : IEnumerator<WWW>
     {
@@ -58,7 +58,7 @@ namespace Svelto.Tasks
         {
             _www = www;
             _www.timeout = timeOut;
-#if UNITY_2017_2
+#if UNITY_2017_2_OR_NEWER
             _www.SendWebRequest();
 #else
             _www.Send();

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Svelto.DataStructures;
 using Console = Utility.Console;
 using System.Threading;
+using Svelto.Utilities;
 
 #if NETFX_CORE
 using System.Threading.Tasks;
@@ -30,6 +31,7 @@ namespace Svelto.Tasks
         {
             get
             {
+                ThreadUtility.MemoryBarrier();
                 return _waitForflush == true;
             }
         }
@@ -52,16 +54,16 @@ namespace Svelto.Tasks
         public MultiThreadRunner(string name, bool relaxed = true)
         {
 #if !NETFX_CORE
-            var _thread = new Thread(() =>
+            var thread = new Thread(() =>
             {
                 _name = name;
 
                 RunCoroutineFiber();
             });
 
-            _thread.IsBackground = true;
+            thread.IsBackground = true;
 #else
-            var _thread = new Task(() =>
+            var thread = new Task(() =>
             {
                 _name = name;
 
@@ -82,7 +84,7 @@ namespace Svelto.Tasks
 
             _relaxed = relaxed;
 
-            _thread.Start();
+            thread.Start();
         }
 
         public MultiThreadRunner(string name, int intervalInMS) : this(name, false)
@@ -99,7 +101,7 @@ namespace Svelto.Tasks
         public void StartCoroutine(IPausableTask task)
         {
             paused = false;
-
+            
             _newTaskRoutines.Enqueue(task);
 
             MemoryBarrier();
@@ -114,7 +116,7 @@ namespace Svelto.Tasks
         public void StopAllCoroutines()
         {
             _newTaskRoutines.Clear();
-
+            
             _waitForflush = true;
             
             MemoryBarrier();
@@ -123,6 +125,7 @@ namespace Svelto.Tasks
         public void Kill()
         {
             _breakThread = true;
+            
             UnlockThread();
         }
 
@@ -149,9 +152,9 @@ namespace Svelto.Tasks
                     var enumerator = _coroutines[i];
 
                     try
-                    {
+                    { 
 #if TASKS_PROFILER_ENABLED
-                        bool result = Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _threadID);
+                        bool result = Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _name);
 #else
                         bool result = enumerator.MoveNext();
 #endif
@@ -174,18 +177,23 @@ namespace Svelto.Tasks
                         _coroutines.UnorderedRemoveAt(i--);
                     }
                 }
-
-                if (_newTaskRoutines.Count == 0 && _coroutines.Count == 0)
-                {
-                    _isAlive = false;
-                    _waitForflush = false;
-
-                    _lockingMechanism();
-                }
-                else
-                if (_interval > 0)
+                
+                if (_interval > 0 && _waitForflush == false)
                 {
                     _waitForInterval();
+                }
+
+                if (_coroutines.Count == 0)
+                {
+                    _waitForflush = false;
+                    
+                    if (_newTaskRoutines.Count == 0)
+                    {
+                        _isAlive = false;
+                        
+                        _lockingMechanism();
+                    }
+                    ThreadUtility.MemoryBarrier();
                 }
             }
 
