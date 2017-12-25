@@ -5,7 +5,9 @@ using System.Collections;
 using System.Threading;
 using NUnit.Framework;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Experimental;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 //Note: RunSync is used only for testing purposes
@@ -259,7 +261,6 @@ namespace Test
             yield return _parallelTasks1;
 
             Assert.That(parallelTasks1Done, Is.True); parallelTasks2Done = true;
-
             Assert.That(parallelTasks1Done && parallelTasks2Done);
         }
 

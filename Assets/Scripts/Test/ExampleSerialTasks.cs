@@ -1,5 +1,6 @@
 using System.Collections;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using UnityEngine;
 
 namespace Test.Editor
@@ -22,7 +23,7 @@ namespace Test.Editor
             st.Add(Print(2));
             st.Add(DoSomethingAsynchonously(1));
             st.Add(Print(3));
-            st.Add(DoSomethingAsynchonously(5));
+            st.Add(WaitForSecondsTest());
             st.Add(Print(4));
             st.Add(WWWTest ());
             st.Add(Print(5));
@@ -51,6 +52,18 @@ namespace Test.Editor
             yield return new WWWEnumerator(www);
 		
             Debug.Log("www done:" + www.text);
+        }
+
+        IEnumerator WaitForSecondsTest()
+        {
+            int counter = 0;
+            while (counter < 2)
+            {
+                Debug.Log("TestTwice Loop: Time " + Time.time + " C: " + counter);
+                counter++;
+
+                yield return new WaitForSeconds(1f);
+            }
         }
     }
 }

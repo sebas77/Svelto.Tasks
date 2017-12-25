@@ -1,5 +1,6 @@
 using System.Collections;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Experimental;
 using UnityEngine;
 
@@ -17,11 +18,7 @@ namespace Test.Editor
             this.wWW = wWW;
         }
 
-        #region IChainLink implementation
-
         public SomeData token { set; private get; }
-
-        #endregion
 
         public IEnumerator GetEnumerator()
         {

@@ -1,5 +1,6 @@
 using System.Collections;
 using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using Test.Editor;
 using UnityEngine;
 

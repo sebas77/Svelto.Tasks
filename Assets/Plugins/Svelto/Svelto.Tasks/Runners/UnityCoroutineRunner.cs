@@ -138,8 +138,7 @@ namespace Svelto.Tasks.Internal
                                 runnerBehaviourForUnityCoroutine.StartCoroutine
                                     (handItToUnity.GetEnumerator());
                             }
-                        }
-                        
+                        }                        
 
                         bool result;
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
