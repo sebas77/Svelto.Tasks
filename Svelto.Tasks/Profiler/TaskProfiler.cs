@@ -14,13 +14,6 @@ namespace Svelto.Tasks.Profiler
         internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
             new ThreadSafeDictionary<string, TaskInfo>();
 
-        public static bool MonitorUpdateDuration(IEnumerator tickable, int threadID)
-        {
-            bool value = MonitorUpdateDurationInternal(tickable, " ThreadID: ".FastConcat(threadID));
-
-            return value;
-        }
-
         public static bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
         {
             bool value = MonitorUpdateDurationInternal(tickable, runnerName.FastConcat(": "));
@@ -38,6 +31,10 @@ namespace Svelto.Tasks.Profiler
             TaskInfo info;
 
             bool result;
+            
+            _stopwatch.Start();
+            result = tickable.MoveNext();
+            _stopwatch.Stop();
 
             if (taskInfos.TryGetValue(tickable.ToString(), out info) == false)
             {
@@ -55,9 +52,7 @@ namespace Svelto.Tasks.Profiler
 
                 info.AddThreadInfo(threadInfo);
             }
-
-            _stopwatch.Start();
-            result = tickable.MoveNext();
+            
             _stopwatch.Reset();
 
             return result;
