@@ -20,7 +20,7 @@ namespace Svelto.Tasks.Internal
 
         public void PushTaskBack(PausableTask task)
         {
-            task.CleanUp(); //let's avoid leakings
+            task.CleanUpOnRecycle(); //let's avoid leakings
 
             _pool.Enqueue(task);
         }

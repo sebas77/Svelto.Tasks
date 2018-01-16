@@ -129,13 +129,9 @@ namespace Svelto.Tasks
             UnlockThread();
         }
 
-        public static void MemoryBarrier()
+        static void MemoryBarrier()
         {
-#if NETFX_CORE || NET_4_6
-            Interlocked.MemoryBarrier();
-#else
-            Thread.MemoryBarrier();
-#endif
+            ThreadUtility.MemoryBarrier();
         }
 
         void RunCoroutineFiber()
@@ -193,7 +189,8 @@ namespace Svelto.Tasks
                         
                         _lockingMechanism();
                     }
-                    ThreadUtility.MemoryBarrier();
+                    
+                    MemoryBarrier();
                 }
             }
 

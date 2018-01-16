@@ -39,42 +39,42 @@ public class TaskRunner
         _runner.paused = false;
     }
 
-    public IEnumerator Run(Func<IEnumerator> taskGenerator)
+    public ContinuationWrapper Run(Func<IEnumerator> taskGenerator)
     {
         return RunOnSchedule(_runner, taskGenerator);
     }
 
-    public IEnumerator Run(IEnumerator task)
+    public ContinuationWrapper Run(IEnumerator task)
     {
         return RunOnSchedule(_runner, task);
     }
 
-    public IEnumerator RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
+    public ContinuationWrapper RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).Start();
     }
 
-    public IEnumerator RunOnSchedule(IRunner runner, IEnumerator task)
+    public ContinuationWrapper RunOnSchedule(IRunner runner, IEnumerator task)
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
     }
 
-    public IEnumerator ThreadSafeRun(Func<IEnumerator> taskGenerator)
+    public ContinuationWrapper ThreadSafeRun(Func<IEnumerator> taskGenerator)
     {
         return ThreadSafeRunOnSchedule(_runner, taskGenerator);
     }
 
-    public IEnumerator ThreadSafeRun(IEnumerator task)
+    public ContinuationWrapper ThreadSafeRun(IEnumerator task)
     {
         return ThreadSafeRunOnSchedule(_runner, task);
     }
 
-    public IEnumerator ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
+    public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).ThreadSafeStart();
     }
 
-    public IEnumerator ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)
+    public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
     }
