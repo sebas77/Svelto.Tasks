@@ -42,15 +42,22 @@ namespace Svelto.Tasks
         public override bool MoveNext()
         {
             isRunning = true;
-            
-            if (RunTasks()) return true;
-            
-            isRunning = false;
-            
-            if (onComplete != null)
-                onComplete();
 
-            ResetIndices();
+            try
+            {
+                if (RunTasks()) return true;
+            }
+            catch 
+            {
+                isRunning = false;
+
+                if (onComplete != null)
+                    onComplete();
+
+                ResetIndices();
+                
+                throw;
+            }
 
             return false;
         }
@@ -64,7 +71,6 @@ namespace Svelto.Tasks
         bool RunTasks()
         {
             var count = _listOfStacks.Count;
-            bool isDone;
             while (count - _offset > 0)
             {
                 for (int index = _index; index < count - _offset; ++index)
@@ -76,14 +82,7 @@ namespace Svelto.Tasks
                         IEnumerator ce = stack.Peek();  //get the current task to execute
                         _current = ce;
                         
-                        try
-                        {
-                            isDone = !ce.MoveNext(); //execute step and check if continue
-                        }
-                        catch
-                        {
-                            isDone = true;
-                        }
+                        bool isDone = !ce.MoveNext();
 
                         if (isDone == true) 
                         {

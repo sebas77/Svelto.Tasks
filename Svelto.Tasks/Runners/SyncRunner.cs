@@ -3,8 +3,6 @@ namespace Svelto.Tasks
 {
     public class SyncRunner : IRunner
     {
-        private bool _sleepInBetween;
-
         public bool paused { set; get; }
         public bool isStopping { private set; get; }
 
@@ -39,6 +37,7 @@ namespace Svelto.Tasks
         {}
 
         public int numberOfRunningTasks { get { return -1; } }
-        
+
+        readonly bool _sleepInBetween;
     }
 }

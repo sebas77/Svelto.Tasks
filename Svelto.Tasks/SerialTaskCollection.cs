@@ -37,14 +37,22 @@ namespace Svelto.Tasks
         {
             isRunning = true;
 
-            if (RunTasks()) return true;
+            try
+            {
+                if (RunTasks())
+                    return true;
+            }
+            catch
+            {
+                if (onComplete != null)
+                    onComplete();
 
-            if (onComplete != null)
-                onComplete();
+                isRunning = false;
 
-            isRunning = false;
-            
-            _index = 0;
+                _index = 0;
+
+                throw;
+            }
 
             return false;
         }
