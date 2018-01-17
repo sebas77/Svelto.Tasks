@@ -27,12 +27,15 @@ namespace Svelto.Tasks
         public override void Reset()
         {
             _offset = 0; _index = 0;
+            
+            for (int i = 0; i < base._listOfStacks.Count; i++)
+                _listOfStacks[i].Peek().Reset();
         }
 
         public new void Clear()
         {
             base.Clear();
-            Reset();
+            _offset = 0; _index = 0;
         }
 
         public override bool MoveNext()
@@ -54,6 +57,7 @@ namespace Svelto.Tasks
         bool RunTasks()
         {
             var count = _listOfStacks.Count;
+            bool isDone;
             while (count - _offset > 0)
             {
                 for (int index = _index; index < count - _offset; ++index)
@@ -64,8 +68,17 @@ namespace Svelto.Tasks
                     {
                         IEnumerator ce = stack.Peek();  //get the current task to execute
                         _current = ce;
+                        
+                        try
+                        {
+                            isDone = !ce.MoveNext();
+                        }
+                        catch
+                        {
+                            isDone = true;
+                        }
 
-                        if (ce.MoveNext() == false) //execute step and check if continue
+                        if (isDone == true) //execute step and check if continue
                         {
                             if (ce.Current == Break.AndStop)
                             {

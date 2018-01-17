@@ -18,7 +18,7 @@ namespace Svelto.Tasks
         public object Current { get { return null; } }
         public bool isRunning { protected set; get; }
 
-        public MultiThreadedParallelTaskCollection(int numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = false)
+        public MultiThreadedParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = false)
         {
             _runners = new MultiThreadRunner[numberOfThreads];
             _taskRoutines = new ITaskRoutine[numberOfThreads];
