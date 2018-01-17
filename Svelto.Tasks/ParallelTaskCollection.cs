@@ -26,7 +26,7 @@ namespace Svelto.Tasks
 
         public override void Reset()
         {
-            _offset = 0; _index = 0;
+            ResetIndices();
             
             for (int i = 0; i < base._listOfStacks.Count; i++)
                 _listOfStacks[i].Peek().Reset();
@@ -35,7 +35,8 @@ namespace Svelto.Tasks
         public new void Clear()
         {
             base.Clear();
-            _offset = 0; _index = 0;
+            
+            ResetIndices();
         }
 
         public override bool MoveNext()
@@ -49,9 +50,15 @@ namespace Svelto.Tasks
             if (onComplete != null)
                 onComplete();
 
-            Reset();
+            ResetIndices();
 
             return false;
+        }
+
+        void ResetIndices()
+        {
+            _offset = 0;
+            _index = 0;
         }
 
         bool RunTasks()
@@ -71,14 +78,14 @@ namespace Svelto.Tasks
                         
                         try
                         {
-                            isDone = !ce.MoveNext();
+                            isDone = !ce.MoveNext(); //execute step and check if continue
                         }
                         catch
                         {
                             isDone = true;
                         }
 
-                        if (isDone == true) //execute step and check if continue
+                        if (isDone == true) 
                         {
                             if (ce.Current == Break.AndStop)
                             {

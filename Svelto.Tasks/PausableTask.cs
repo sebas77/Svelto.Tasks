@@ -345,7 +345,8 @@ namespace Svelto.Tasks.Internal
             
             _pendingEnumerator = null;
             _pendingContinuationWrapper = null;
-            _coroutineWrapper.Reset();
+            
+            _coroutineWrapper.Clear();
             _continuationWrapper.Reset();
         }
 
