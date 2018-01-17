@@ -56,6 +56,7 @@ namespace Svelto.Tasks
         public void Reset()
         {
             _completed = false;
+            ThreadUtility.MemoryBarrier();
         }
 
         public object Current { get { return null; } }
@@ -294,10 +295,10 @@ namespace Svelto.Tasks.Internal
         {
             CleanUpOnRecycle();
 
-           //_enumeratorWrap.Reset cannot be inside 
+            //_enumeratorWrap.Reset cannot be inside 
             //CleanUp because it could be iterated way
             //after the task is completed.
-            _continuationWrapper = new ContinuationWrapper();
+            _continuationWrapper =  new ContinuationWrapper();
     
             _paused = false;
             _taskEnumeratorJustSet = false;
