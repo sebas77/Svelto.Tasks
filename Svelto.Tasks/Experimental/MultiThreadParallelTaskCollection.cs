@@ -2,6 +2,8 @@
 //is useless for generic game features.
 using System;
 using System.Collections;
+using System.Threading;
+using Svelto.Utilities;
 
 namespace Svelto.Tasks
 {
@@ -110,9 +112,15 @@ namespace Svelto.Tasks
             _parallelTasks = null;
         }
 
-        void DecrementConcurrentOperationsCounter()
+        void DecrementConcurrentOperationsCounter(bool withSuccess)
         {
-            System.Threading.Interlocked.Decrement(ref _counter);
+            if (withSuccess)
+                System.Threading.Interlocked.Decrement(ref _counter);
+            else
+            {
+                _counter = 0;
+                ThreadUtility.MemoryBarrier();
+            }
         }   
 
         MultiThreadRunner[]         _runners;

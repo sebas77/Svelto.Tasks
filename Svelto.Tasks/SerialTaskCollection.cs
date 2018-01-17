@@ -5,8 +5,8 @@ namespace Svelto.Tasks
 {
     public class SerialTaskCollection: TaskCollection
     {
-        public event Action		onComplete;
-
+        public event Action<bool>       onComplete;
+        
         public SerialTaskCollection(int size):base(size)
         {}
 
@@ -41,18 +41,25 @@ namespace Svelto.Tasks
             {
                 if (RunTasks())
                     return true;
-            }
-            catch
-            {
+                
                 if (onComplete != null)
-                    onComplete();
-
+                    onComplete(true);
+            }
+            catch (Exception e)
+            {
                 isRunning = false;
 
                 _index = 0;
-
+                
+                if (onComplete != null)
+                    onComplete(false);
+                
                 throw;
             }
+            
+            isRunning = false;
+
+            _index = 0;
 
             return false;
         }

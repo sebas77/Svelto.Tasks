@@ -6,7 +6,7 @@ namespace Svelto.Tasks
 {
     public class ParallelTaskCollection: TaskCollection
     {
-        public event Action		onComplete;
+        public event Action<bool>		onComplete;
 
         public ParallelTaskCollection()
         {
@@ -46,19 +46,24 @@ namespace Svelto.Tasks
             try
             {
                 if (RunTasks()) return true;
+                
+                isRunning = false;
+                ResetIndices();
+                
+                if (onComplete != null)
+                    onComplete(true);
             }
             catch 
             {
                 isRunning = false;
-
-                if (onComplete != null)
-                    onComplete();
-
                 ResetIndices();
+                
+                if (onComplete != null)
+                    onComplete(false);
                 
                 throw;
             }
-
+            
             return false;
         }
 
