@@ -6,7 +6,8 @@ namespace Svelto.Tasks
 {
     public class ParallelTaskCollection: TaskCollection
     {
-        public event Action<bool>		onComplete;
+        public event Action        		    onComplete;
+        public event Func<Exception, bool>  onException;
 
         public ParallelTaskCollection()
         {
@@ -51,15 +52,21 @@ namespace Svelto.Tasks
                 ResetIndices();
                 
                 if (onComplete != null)
-                    onComplete(true);
+                    onComplete();
             }
-            catch 
+            catch (Exception e)
             {
-                isRunning = false;
-                ResetIndices();
-                
-                if (onComplete != null)
-                    onComplete(false);
+                if (onException != null)
+                {
+                    var mustComplete = onException(e);
+
+                    if (mustComplete)
+                    {
+                        isRunning = false;
+
+                        _index = 0;
+                    }
+                }
                 
                 throw;
             }

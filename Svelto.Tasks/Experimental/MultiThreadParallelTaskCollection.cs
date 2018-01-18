@@ -36,6 +36,11 @@ namespace Svelto.Tasks
                 var ptask = TaskRunner.Instance.AllocateNewTaskRoutine();
                 var ptc = new ParallelTaskCollection();
                 ptc.onComplete += DecrementConcurrentOperationsCounter;
+                ptc.onException += (e) =>
+                                   {
+                                       DecrementConcurrentOperationsCounter();
+                                       return false;
+                                   };
 
                 ptask.SetEnumerator(ptc).SetScheduler(_runners[i]);
 
@@ -112,15 +117,9 @@ namespace Svelto.Tasks
             _parallelTasks = null;
         }
 
-        void DecrementConcurrentOperationsCounter(bool withSuccess)
+        void DecrementConcurrentOperationsCounter()
         {
-            if (withSuccess)
-                System.Threading.Interlocked.Decrement(ref _counter);
-            else
-            {
-                _counter = 0;
-                ThreadUtility.MemoryBarrier();
-            }
+            System.Threading.Interlocked.Decrement(ref _counter);
         }   
 
         MultiThreadRunner[]         _runners;

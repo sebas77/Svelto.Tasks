@@ -213,6 +213,7 @@ namespace Svelto.Tasks.Internal
             if (_explicitlyStopped == true || _runner.isStopping == true)
             {
                 _completed = true;
+                
                 ThreadUtility.MemoryBarrier();
 
                 if (_onStop != null)
