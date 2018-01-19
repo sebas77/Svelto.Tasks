@@ -3,7 +3,6 @@ namespace Svelto.Tasks
     public static class StandardSchedulers
     {
         public static IRunner multiThreadScheduler { get; private set; }
-        public static IRunner syncScheduler { get; private set; }
 
 #if UNITY_5 || UNITY_5_3_OR_NEWER
         public static IRunner coroutineScheduler { get; private set; }
@@ -16,7 +15,6 @@ namespace Svelto.Tasks
 
         static StandardSchedulers()
         {
-            syncScheduler = new SyncRunner(false);
             multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", true);
 #if UNITY_5 || UNITY_5_3_OR_NEWER
             coroutineScheduler = new CoroutineMonoRunner("StandardCoroutineRunner");

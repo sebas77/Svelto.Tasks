@@ -3,7 +3,7 @@ using Svelto.Utilities;
 
 namespace Svelto.Tasks.Enumerators
 {
-    internal class WaitForSignal:IEnumerator
+    public class WaitForSignalEnumerator:IEnumerator
     {
         public object Current
         {
@@ -15,8 +15,16 @@ namespace Svelto.Tasks.Enumerators
 
         public bool MoveNext()
         {
+            ThreadUtility.Yield();
             ThreadUtility.MemoryBarrier();
-            return !_signal;
+
+            if (_signal == true)
+            {
+                _signal = false;
+                return false;
+            }
+            
+            return true;
         }
 
         public void Reset()
@@ -26,13 +34,13 @@ namespace Svelto.Tasks.Enumerators
             ThreadUtility.MemoryBarrier();
         }
 
-        internal void Signal()
+        public void Signal()
         {
             _signal = true;
             ThreadUtility.MemoryBarrier();
         }
 
-        internal void Signal(object obj)
+        public void Signal(object obj)
         {
             _signal = true;
             _return = obj;

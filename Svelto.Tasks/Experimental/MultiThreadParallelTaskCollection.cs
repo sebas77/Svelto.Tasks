@@ -18,10 +18,22 @@ namespace Svelto.Tasks
         const int MAX_CONCURRENT_TASKS = 1024;
 
         public object Current { get { return null; } }
-        public bool isRunning { protected set; get; }
+        public bool isRunning { private set; get; }
 
+        public bool isValid
+        {
+            private set { _isValid = value; ThreadUtility.MemoryBarrier();}
+            
+            get
+            {
+                ThreadUtility.MemoryBarrier(); return _isValid;  
+            }
+        }
+        
         public MultiThreadedParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = false)
         {
+            isValid = true;
+            
             _runners = new MultiThreadRunner[numberOfThreads];
             _taskRoutines = new ITaskRoutine[numberOfThreads];
             _parallelTasks = new ParallelTaskCollection[numberOfThreads];
@@ -105,9 +117,15 @@ namespace Svelto.Tasks
 
         public void ClearAndKill()
         {
-            Clear();
+            isValid = false;
+            
             for (int i = 0; i < _runners.Length; i++)
                 _runners[i].Kill();
+            
+            _numberOfTasksAdded = 0;
+            _counter = 0;
+            
+            _runners = null;
             _taskRoutines = null;
             _parallelTasks = null;
         }
@@ -129,5 +147,6 @@ namespace Svelto.Tasks
         ITaskRoutine[]              _taskRoutines;
         int                         _numberOfTasksAdded;
         int                         _numberOfConcurrentOperationsToRun;
+        volatile bool               _isValid;
     }
 }

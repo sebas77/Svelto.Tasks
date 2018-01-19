@@ -73,11 +73,8 @@ namespace Svelto.Tasks
             if (relaxed)
             {
                 _lockingMechanism = RelaxedLockingMechanism;
-#if NET_4_6 || NETFX_CORE
-                _mevent = new ManualResetEventSlim(false);
-#else
-                _mevent = new ManualResetEvent(false);
-#endif
+
+                _mevent = new ManualResetEventEx();
             }
             else
                 _lockingMechanism = QuickLockingMechanism;
@@ -104,7 +101,7 @@ namespace Svelto.Tasks
             
             _newTaskRoutines.Enqueue(task);
 
-            MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
             if (_isAlive == false)
             {
                 _isAlive = true;
@@ -119,7 +116,7 @@ namespace Svelto.Tasks
             
             _waitForflush = true;
             
-            MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         public void Kill()
@@ -129,16 +126,11 @@ namespace Svelto.Tasks
             UnlockThread();
         }
 
-        static void MemoryBarrier()
-        {
-            ThreadUtility.MemoryBarrier();
-        }
-
         void RunCoroutineFiber()
         {
             while (_breakThread == false)
             {
-                MemoryBarrier();
+                ThreadUtility.MemoryBarrier();
 
 				if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
@@ -190,7 +182,7 @@ namespace Svelto.Tasks
                         _lockingMechanism();
                     }
                     
-                    MemoryBarrier();
+                    ThreadUtility.MemoryBarrier();
                 }
             }
 
@@ -232,11 +224,8 @@ namespace Svelto.Tasks
 
         void RelaxedLockingMechanism()
         {
-#if NETFX_CORE || NET_4_6
             _mevent.Wait();
-#else
-            _mevent.WaitOne();
-#endif
+            
             _mevent.Reset();
         }
 
@@ -245,14 +234,12 @@ namespace Svelto.Tasks
         {
             if (_relaxed)
                 _mevent.Set();
-#if !NETFX_CORE
             else
             {
                 _interlock = 1;
             }
 
-            MemoryBarrier();
-#endif
+            ThreadUtility.MemoryBarrier();
         }
 
         readonly FasterList<IPausableTask>      _coroutines = new FasterList<IPausableTask>();
@@ -266,11 +253,8 @@ namespace Svelto.Tasks
         volatile bool _waitForflush;
         volatile bool _breakThread;
 
-#if NETFX_CORE || NET_4_6
-        readonly ManualResetEventSlim _mevent;
-#else
-        readonly ManualResetEvent _mevent;
-#endif
+        readonly ManualResetEventEx _mevent;
+        
         readonly Action    _lockingMechanism;
         readonly bool      _relaxed;
         readonly int       _interval;
