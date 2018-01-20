@@ -73,13 +73,15 @@ namespace Svelto.Tasks
             if (relaxed)
             {
                 _lockingMechanism = RelaxedLockingMechanism;
-
-                _mevent = new ManualResetEventEx();
             }
             else
+            {
                 _lockingMechanism = QuickLockingMechanism;
-
-            _relaxed = relaxed;
+                
+                _quickLockWatch = new Stopwatch();
+            }
+            
+            _mevent = new ManualResetEventEx();
 
             thread.Start();
         }
@@ -198,14 +200,25 @@ namespace Svelto.Tasks
         {
             _watch.Start();
             while (_watch.ElapsedMilliseconds < _interval)
-                ThreadUtility.Yield();
+                ThreadUtility.SleepZero();
             _watch.Reset();
         }
 
         void QuickLockingMechanism()
         {
+            _quickLockWatch.Start();
+
             while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
+            {
                 ThreadUtility.Yield();
+                if (_quickLockWatch.ElapsedMilliseconds > 1)
+                {
+                    _quickLockWatch.Reset();
+                    RelaxedLockingMechanism();
+                }
+            }
+            
+            _quickLockWatch.Reset();
             
             _interlock = 0;
         }
@@ -219,13 +232,9 @@ namespace Svelto.Tasks
 
         void UnlockThread()
         {
-            if (_relaxed)
-                _mevent.Set();
-            else
-            {
-                _interlock = 1;
-            }
-
+            _interlock = 1;
+            _mevent.Set();
+            
             ThreadUtility.MemoryBarrier();
         }
 
@@ -243,8 +252,8 @@ namespace Svelto.Tasks
         readonly ManualResetEventEx _mevent;
         
         readonly Action    _lockingMechanism;
-        readonly bool      _relaxed;
         readonly int       _interval;
         readonly Stopwatch _watch;
+        readonly Stopwatch _quickLockWatch;
     }
 }
