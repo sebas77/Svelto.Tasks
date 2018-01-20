@@ -189,11 +189,7 @@ namespace Svelto.Tasks
             }
 
             if (_mevent != null)
-#if !(NETFX_CORE || NET_4_6)
-                _mevent.Close();
-#else
                 _mevent.Dispose();
-#endif
         }
 
         void _waitForInterval()
