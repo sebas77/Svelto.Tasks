@@ -75,7 +75,6 @@ namespace Svelto.Tasks
 
             return isRunning;
         }
-
        
         public void Add(IEnumerator enumerator)
         {
@@ -133,7 +132,7 @@ namespace Svelto.Tasks
         void DecrementConcurrentOperationsCounter(bool withSuccess)
         {
             if (withSuccess)
-                System.Threading.Interlocked.Decrement(ref _counter);
+                Interlocked.Decrement(ref _counter);
             else
             {
                 _counter = 0;

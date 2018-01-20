@@ -198,27 +198,15 @@ namespace Svelto.Tasks
         {
             _watch.Start();
             while (_watch.ElapsedMilliseconds < _interval)
-#if NETFX_CORE
-            { Task.Yield(); }
-#elif NET_4_6
-            { Thread.Yield(); } 
-#else
-            { Thread.Sleep(0); }
-#endif
+                ThreadUtility.Yield();
             _watch.Reset();
         }
 
         void QuickLockingMechanism()
         {
             while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
-#if NETFX_CORE
-            { Task.Yield(); }
-#elif NET_4_6
-
-            { Thread.Yield(); } 
-#else
-            { Thread.Sleep(0); }
-#endif
+                ThreadUtility.Yield();
+            
             _interlock = 0;
         }
 
@@ -228,7 +216,6 @@ namespace Svelto.Tasks
             
             _mevent.Reset();
         }
-
 
         void UnlockThread()
         {
