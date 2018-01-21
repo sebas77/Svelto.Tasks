@@ -1,3 +1,5 @@
+//#define ENABLE_PIX_EVENTS
+
 using System.Collections;
 using System.Diagnostics;
 using Svelto.DataStructures;
@@ -18,11 +20,16 @@ namespace Svelto.Tasks.Profiler
 
         public bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
         {
+            var key = tickable.ToString().FastConcat(runnerName);
+#if ENABLE_PIX_EVENTS            
+            PixWrapper.PIXBeginEventEx(0x11000000, key);
+#endif    
             _stopwatch.Start();
             var result = tickable.MoveNext();
             _stopwatch.Stop();
-            var key = tickable.ToString().FastConcat(runnerName);
-            
+#if ENABLE_PIX_EVENTS            
+            PixWrapper.PIXEndEventEx();
+#endif      
             lock (LOCK_OBJECT)
             {
                 TaskInfo info;

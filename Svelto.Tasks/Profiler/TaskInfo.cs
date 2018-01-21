@@ -46,12 +46,6 @@ namespace Svelto.Tasks.Profiler
                 _maxUpdateDuration = 0;
                 _updateFrameTimes.Clear();
             }
-
-            _minAddDuration = 0;
-            _maxAddDuration = 0;
-
-            _minRemoveDuration = 0;
-            _maxRemoveDuration = 0;
         }
 
         void AddUpdateDurationForType(double updateDuration)
@@ -75,11 +69,6 @@ namespace Svelto.Tasks.Profiler
         double _minUpdateDuration;
 
         readonly string _taskName;
-
-        double _maxAddDuration;
-        double _maxRemoveDuration;
-        double _minAddDuration;
-        double _minRemoveDuration;
 
         string _threadInfo;
 
