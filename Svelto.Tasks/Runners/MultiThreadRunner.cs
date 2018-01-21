@@ -77,8 +77,6 @@ namespace Svelto.Tasks
             else
             {
                 _lockingMechanism = QuickLockingMechanism;
-                
-                _quickLockWatch = new Stopwatch();
             }
             
             _mevent = new ManualResetEventEx();
@@ -127,8 +125,8 @@ namespace Svelto.Tasks
             
             UnlockThread();
             
-            _quickLockWatch.Stop();
-            _watch.Stop();
+            if (_watch != null)
+                _watch.Stop();
         }
 
         void RunCoroutineFiber()
@@ -205,19 +203,20 @@ namespace Svelto.Tasks
 
         void QuickLockingMechanism()
         {
-            _quickLockWatch.Start();
+            int quickIterations = 0;
 
             while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
             {
                 ThreadUtility.Yield();
-                if (_quickLockWatch.ElapsedMilliseconds > 1)
+                //this is quite arbitrary at the moment as 
+                //DateTime allocates a lot in UWP .Net Native
+                //and stopwatch casues several issues
+                if (++quickIterations > 20000)
                 {
-                    _quickLockWatch.Reset();
                     RelaxedLockingMechanism();
+                    break;
                 }
             }
-            
-            _quickLockWatch.Reset();
             
             _interlock = 0;
         }
@@ -253,6 +252,5 @@ namespace Svelto.Tasks
         readonly Action    _lockingMechanism;
         readonly int       _interval;
         readonly Stopwatch _watch;
-        readonly Stopwatch _quickLockWatch;
     }
 }

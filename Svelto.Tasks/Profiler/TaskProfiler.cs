@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Svelto.DataStructures;
 
@@ -36,23 +37,26 @@ namespace Svelto.Tasks.Profiler
             result = tickable.MoveNext();
             _stopwatch.Stop();
 
-            if (taskInfos.TryGetValue(tickable.ToString(), out info) == false)
+            lock (_stopwatch)
             {
-                info = new TaskInfo(tickable);
+                if (taskInfos.TryGetValue(tickable.ToString(), out info) == false)
+                {
+                    info = new TaskInfo(tickable);
 
-                info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
+                    info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
 
-                info.AddThreadInfo(threadInfo);
+                    info.AddThreadInfo(threadInfo);
 
-                taskInfos.Add(tickable.ToString(), info);
+                    taskInfos.Add(tickable.ToString(), info);
+                }
+                else
+                {
+                    info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
+
+                    info.AddThreadInfo(threadInfo);
+                }
             }
-            else
-            {
-                info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
 
-                info.AddThreadInfo(threadInfo);
-            }
-            
             _stopwatch.Reset();
 
             return result;
