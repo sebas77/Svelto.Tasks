@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using UnityEditor.MemoryProfiler;
 
 namespace Svelto.Tasks
 {
@@ -7,12 +8,29 @@ namespace Svelto.Tasks
     {
         public event Action                 onComplete;
         public event Func<Exception, bool>  onException;
-        
-        public SerialTaskCollection(int size):base(size)
-        {}
 
-        public SerialTaskCollection()        
-        {}
+        public SerialTaskCollection(int size, string name = null) : base(size)
+        {
+            if (name == null)
+                _name = "SerialTaskCollection".FastConcat(GetHashCode());
+            else
+                _name = name;
+        }
+
+        public SerialTaskCollection()
+        {
+            _name = "SerialTaskCollection".FastConcat(GetHashCode());
+        }
+        
+        public SerialTaskCollection(string name)
+        {
+            _name = name;
+        }
+
+        public override String ToString()
+        {
+            return _name;
+        }
 
         public override object Current
         {
@@ -146,6 +164,7 @@ namespace Svelto.Tasks
 
         int _index;
         object _current;
+        string _name;
     }
 }
 

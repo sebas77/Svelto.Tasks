@@ -12,17 +12,35 @@ namespace Svelto.Tasks
         public ParallelTaskCollection()
         {
             _currentWrapper = new ParallelTask(this);
+            
+            _name = "ParallelTaskCollection".FastConcat(GetHashCode());
         }
-
-        public ParallelTaskCollection(int initialSize) : base(initialSize)
+        
+        public ParallelTaskCollection(string name)
         {
             _currentWrapper = new ParallelTask(this);
+            _name = name;
+        }
+
+        public ParallelTaskCollection(int initialSize, string name = null) : base(initialSize)
+        {
+            _currentWrapper = new ParallelTask(this);
+            
+            if (name == null)
+                _name = "ParallelTaskCollection".FastConcat(GetHashCode());
+            else
+                _name = name;
         }
 
         public ParallelTaskCollection(IEnumerator[] ptasks) : this()
         {
             for (int i = 0; i < ptasks.Length; i++)
                 Add(ptasks[i]);
+        }
+
+        public override String ToString()
+        {
+            return _name;
         }
 
         public override void Reset()
@@ -185,7 +203,8 @@ namespace Svelto.Tasks
         int         _offset;
 
         object  _currentWrapper;
-        
+        string _name;
+
         internal class ParallelTask
         {
             public object current {  get {  return _parent._current; } }

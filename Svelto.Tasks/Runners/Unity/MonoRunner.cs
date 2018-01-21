@@ -2,6 +2,9 @@
 
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
+#if TASKS_PROFILER_ENABLED
+using Svelto.Tasks.Profiler;
+#endif
 
 namespace Svelto.Tasks
 {
@@ -57,8 +60,8 @@ namespace Svelto.Tasks
             if (isStopping == true)
                 return true;
             
-#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
-            return Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(task, info.runnerName);
+#if TASKS_PROFILER_ENABLED
+            return UnityCoroutineRunner.TASK_PROFILER.MonitorUpdateDuration(task, info.runnerName);
 #else
             return task.MoveNext();
 #endif

@@ -1,13 +1,13 @@
 using System;
 using System.Collections;
-using Svelto.DataStructures;
+using System.Collections.Generic;
 
 //This profiler is based on the Entitas Visual Debugging tool 
 //https://github.com/sschmid/Entitas-CSharp
 
 namespace Svelto.Tasks.Profiler
 {
-    public sealed class TaskInfo
+    public struct TaskInfo
     {
         const int NUM_UPDATE_TYPES = 3;
         const int NUM_FRAMES_TO_AVERAGE = 10;
@@ -18,11 +18,11 @@ namespace Svelto.Tasks.Profiler
         public double maxUpdateDuration { get { return _maxUpdateDuration; } }
         public double averageUpdateDuration { get { return _updateFrameTimes.Count == 0 ? 0 : _accumulatedUpdateDuration / _updateFrameTimes.Count; } }
 
-        public TaskInfo(IEnumerator task)
+        public TaskInfo(IEnumerator task) : this()
         {
             _taskName = " ".FastConcat(task.ToString());
 
-            _updateFrameTimes = new ThreadSafeQueue<double>();
+            _updateFrameTimes = new Queue<double>();
 
             ResetDurations();
         }
@@ -37,23 +37,7 @@ namespace Svelto.Tasks.Profiler
             _threadInfo = threadInfo;
         }
 
-        public void AddAddDuration(double duration)
-        {
-            if ((duration < _minAddDuration) || (Math.Abs(_minAddDuration) < double.Epsilon))
-                _minAddDuration = duration;
-            if (duration > _maxAddDuration)
-                _maxAddDuration = duration;
-        }
-
-        public void AddRemoveDuration(double duration)
-        {
-            if ((duration < _minRemoveDuration) || (Math.Abs(_minRemoveDuration) < double.Epsilon))
-                _minRemoveDuration = duration;
-            if (duration > _maxRemoveDuration)
-                _maxRemoveDuration = duration;
-        }
-
-        public void ResetDurations()
+        void ResetDurations()
         {
             for (var i = 0; i < NUM_UPDATE_TYPES; i++)
             {
@@ -100,6 +84,6 @@ namespace Svelto.Tasks.Profiler
         string _threadInfo;
 
         //use a queue to averave out the last 30 frames
-        ThreadSafeQueue<double> _updateFrameTimes;
+        Queue<double> _updateFrameTimes;
     }
 }

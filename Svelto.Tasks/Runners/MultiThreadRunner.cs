@@ -5,6 +5,9 @@ using Console = Utility.Console;
 using System.Threading;
 using Svelto.Utilities;
 
+#if TASKS_PROFILER_ENABLED
+using Svelto.Tasks.Profiler;
+#endif
 #if NETFX_CORE
 using System.Threading.Tasks;
 #endif
@@ -145,7 +148,7 @@ namespace Svelto.Tasks
                     try
                     { 
 #if TASKS_PROFILER_ENABLED
-                        bool result = Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _name);
+                        bool result = _taskProfiler.MonitorUpdateDuration(enumerator, _name);
 #else
                         bool result = enumerator.MoveNext();
 #endif
@@ -252,5 +255,9 @@ namespace Svelto.Tasks
         readonly Action    _lockingMechanism;
         readonly int       _interval;
         readonly Stopwatch _watch;
+        
+#if TASKS_PROFILER_ENABLED        
+        readonly TaskProfiler _taskProfiler = new TaskProfiler();
+#endif        
     }
 }

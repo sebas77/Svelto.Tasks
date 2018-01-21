@@ -4,6 +4,10 @@ using System.Collections;
 using Svelto.DataStructures;
 using UnityEngine;
 using Object = UnityEngine.Object;
+#if TASKS_PROFILER_ENABLED
+using Svelto.Tasks.Profiler;
+#endif
+
 
 namespace Svelto.Tasks.Internal
 {
@@ -141,8 +145,8 @@ namespace Svelto.Tasks.Internal
                         }                        
 
                         bool result;
-#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
-                        result = Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, info.runnerName);
+#if TASKS_PROFILER_ENABLED
+                        result = TASK_PROFILER.MonitorUpdateDuration(enumerator, info.runnerName);
 #else
                         result = enumerator.MoveNext();
 #endif
@@ -241,6 +245,10 @@ namespace Svelto.Tasks.Internal
             bool              _isDone;
             FlushingOperation _flushingOperation;
         }
+        
+#if TASKS_PROFILER_ENABLED
+        public static readonly TaskProfiler TASK_PROFILER = new TaskProfiler();
+#endif        
     }
 }
 #endif

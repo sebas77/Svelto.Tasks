@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using Svelto.DataStructures;
 
@@ -10,56 +9,46 @@ namespace Svelto.Tasks.Profiler
 {
     public sealed class TaskProfiler
     {
-        static readonly Stopwatch _stopwatch = new Stopwatch();
+        readonly Stopwatch _stopwatch = new Stopwatch();
+        
+        static object LOCK_OBJECT = new object();
 
         internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
             new ThreadSafeDictionary<string, TaskInfo>();
 
-        public static bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
+        public bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
         {
-            bool value = MonitorUpdateDurationInternal(tickable, runnerName.FastConcat(": "));
-
-            return value;
-        }
-
-        public static void ResetDurations()
-        {
-            taskInfos.Clear();
-        }
-
-        static bool MonitorUpdateDurationInternal(IEnumerator tickable, string threadInfo)
-        {
-            TaskInfo info;
-
-            bool result;
-            
             _stopwatch.Start();
-            result = tickable.MoveNext();
+            var result = tickable.MoveNext();
             _stopwatch.Stop();
-
-            lock (_stopwatch)
+            var key = tickable.ToString().FastConcat(runnerName);
+            
+            lock (LOCK_OBJECT)
             {
-                if (taskInfos.TryGetValue(tickable.ToString(), out info) == false)
+                TaskInfo info;
+                
+                if (taskInfos.TryGetValue(key, out info) == false)
                 {
                     info = new TaskInfo(tickable);
-
-                    info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
-
-                    info.AddThreadInfo(threadInfo);
-
-                    taskInfos.Add(tickable.ToString(), info);
+                    info.AddThreadInfo(runnerName.FastConcat(": "));
+                    taskInfos.Add(key, ref info);
                 }
                 else
                 {
                     info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
-
-                    info.AddThreadInfo(threadInfo);
+                    
+                    taskInfos.Update(key, ref info);
                 }
             }
 
             _stopwatch.Reset();
 
             return result;
+        }
+
+        public static void ResetDurations()
+        {
+            taskInfos.Clear();
         }
     }
 }
