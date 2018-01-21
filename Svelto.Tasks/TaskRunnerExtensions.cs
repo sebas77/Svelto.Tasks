@@ -24,11 +24,21 @@ using System.Collections;
             return enumerable.GetEnumerator().ThreadSafeRun();
         }
 
+        /// <summary>
+        /// the first instructions until the first yield are executed immediately
+        /// </summary>
+        /// <param name="runner"></param>
+        /// <param name="task"></param>
+        /// <returns></returns>
         public static IEnumerator RunOnSchedule(this IEnumerator enumerator, IRunner runner)
         {
             return TaskRunner.Instance.RunOnSchedule(runner, enumerator);
         }
-
+        /// <summary>
+        /// all the instructions are executed on the selected runner
+        /// </summary>
+        /// <param name="taskGenerator"></param>
+        /// <returns></returns>
         public static IEnumerator ThreadSafeRunOnSchedule(this IEnumerator enumerator, IRunner runner)
         {
             return TaskRunner.Instance.ThreadSafeRunOnSchedule(runner, enumerator);

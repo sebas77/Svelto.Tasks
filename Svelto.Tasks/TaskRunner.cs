@@ -53,12 +53,22 @@ public class TaskRunner
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).Start();
     }
-
+    
+    /// <summary>
+    /// the first instructions until the first yield are executed immediately
+    /// </summary>
+    /// <param name="runner"></param>
+    /// <param name="task"></param>
+    /// <returns></returns>
     public ContinuationWrapper RunOnSchedule(IRunner runner, IEnumerator task)
     {
         return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
     }
-
+    /// <summary>
+    /// all the instructions are executed on the selected runner
+    /// </summary>
+    /// <param name="taskGenerator"></param>
+    /// <returns></returns>
     public ContinuationWrapper ThreadSafeRun(Func<IEnumerator> taskGenerator)
     {
         return ThreadSafeRunOnSchedule(_runner, taskGenerator);

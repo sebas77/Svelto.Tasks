@@ -126,6 +126,9 @@ namespace Svelto.Tasks
             _breakThread = true;
             
             UnlockThread();
+            
+            _quickLockWatch.Stop();
+            _watch.Stop();
         }
 
         void RunCoroutineFiber()
@@ -196,7 +199,7 @@ namespace Svelto.Tasks
         {
             _watch.Start();
             while (_watch.ElapsedMilliseconds < _interval)
-                ThreadUtility.SleepZero();
+                ThreadUtility.Yield();
             _watch.Reset();
         }
 
