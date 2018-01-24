@@ -78,7 +78,6 @@ namespace Svelto.Tasks
 #endif
 
             _mevent = new ManualResetEventEx();
-            _waitEvent = new ManualResetEventEx();
 
             thread.Start();
         }
@@ -86,6 +85,7 @@ namespace Svelto.Tasks
         public MultiThreadRunner(string name, int intervalInMS) : this(name, false)
         {
             _interval = intervalInMS;
+            _watch = new Stopwatch();
         }
 
         public void StartCoroutineThreadSafe(IPausableTask task)
@@ -122,6 +122,9 @@ namespace Svelto.Tasks
             _breakThread = true;
             
             UnlockThread();
+            
+            if (_watch != null)
+                _watch.Stop();
         }
 
         void RunCoroutineFiber()
@@ -166,7 +169,7 @@ namespace Svelto.Tasks
                 
                 if (_interval > 0 && _waitForflush == false)
                 {
-                    _waitEvent.Wait(_interval);
+                    WaitForInterval();
                 }
 
                 if (_coroutines.Count == 0)
@@ -186,12 +189,18 @@ namespace Svelto.Tasks
 
             if (_mevent != null)
                 _mevent.Dispose();
-
-            if (_waitEvent != null)
-                _waitEvent.Dispose();
         }
 
 #if !NETFX_CORE || NET_STANDARD_2_0
+        void WaitForInterval()
+        {
+            _watch.Start();
+            while (_watch.ElapsedMilliseconds < _interval)
+                ThreadUtility.Yield();
+            
+            _watch.Reset();
+        }
+        
         void QuickLockingMechanism()
         {
             int quickIterations = 0;
@@ -239,10 +248,10 @@ namespace Svelto.Tasks
         volatile bool _breakThread;
 
         readonly ManualResetEventEx _mevent;
-        readonly ManualResetEventEx _waitEvent;
 
         readonly Action    _lockingMechanism;
         readonly int       _interval;
+        readonly Stopwatch _watch;
 
 #if TASKS_PROFILER_ENABLED
         readonly TaskProfiler _taskProfiler = new TaskProfiler();
