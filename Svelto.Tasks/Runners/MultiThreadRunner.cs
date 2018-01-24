@@ -49,7 +49,7 @@ namespace Svelto.Tasks
 
         public MultiThreadRunner(string name, bool relaxed = true)
         {
-#if !NETFX_CORE || NET_STANDARD_2_0
+#if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
             var thread = new Thread(() =>
             {
                 _name = name;
@@ -191,7 +191,7 @@ namespace Svelto.Tasks
                 _mevent.Dispose();
         }
 
-#if !NETFX_CORE || NET_STANDARD_2_0
+#if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
         void WaitForInterval()
         {
             _watch.Start();
