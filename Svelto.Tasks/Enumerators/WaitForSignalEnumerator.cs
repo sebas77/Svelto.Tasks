@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using Svelto.Utilities;
 
@@ -17,19 +18,26 @@ namespace Svelto.Tasks.Enumerators
         {
             _autoreset = autoreset;
         }
+        
+        public WaitForSignalEnumerator(Func<bool> extraCondition, bool autoreset = true)
+        {
+            _autoreset = autoreset;
+            _extraCondition = extraCondition;
+        }
 
         public bool MoveNext()
         {
-            ThreadUtility.Yield();
             ThreadUtility.MemoryBarrier();
 
-            if (_autoreset == true && _signal == true)
+            var isDone = _signal;
+            if (_extraCondition != null) isDone |= _extraCondition();
+            if (_autoreset == true && isDone == true)
             {
                 Reset();
                 return false;
             }
             
-            return !_signal;
+            return !isDone;
         }
 
         public void Reset()
@@ -63,5 +71,6 @@ namespace Svelto.Tasks.Enumerators
         volatile object _return;
         
         bool _autoreset;
+        Func<bool> _extraCondition;
     }
 }

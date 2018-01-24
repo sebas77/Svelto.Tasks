@@ -4,22 +4,22 @@ using System.Collections;
 
     public static class TaskRunnerExtensions
     {
-        public static IEnumerator RunOnSchedule(this IEnumerable enumerable, IRunner runner)
+        public static ContinuationWrapper RunOnSchedule(this IEnumerable enumerable, IRunner runner)
         {
             return enumerable.GetEnumerator().RunOnSchedule(runner);
         }
 
-        public static IEnumerator Run(this IEnumerable enumerable)
+        public static ContinuationWrapper Run(this IEnumerable enumerable)
         {
             return enumerable.GetEnumerator().Run();
         }
 
-        public static IEnumerator ThreadSafeRunOnSchedule(this IEnumerable enumerable, IRunner runner)
+        public static ContinuationWrapper ThreadSafeRunOnSchedule(this IEnumerable enumerable, IRunner runner)
         {
             return enumerable.GetEnumerator().ThreadSafeRunOnSchedule(runner);
         }
 
-        public static IEnumerator ThreadSafeRun(this IEnumerable enumerable)
+        public static ContinuationWrapper ThreadSafeRun(this IEnumerable enumerable)
         {
             return enumerable.GetEnumerator().ThreadSafeRun();
         }
@@ -30,7 +30,7 @@ using System.Collections;
         /// <param name="runner"></param>
         /// <param name="task"></param>
         /// <returns></returns>
-        public static IEnumerator RunOnSchedule(this IEnumerator enumerator, IRunner runner)
+        public static ContinuationWrapper RunOnSchedule(this IEnumerator enumerator, IRunner runner)
         {
             return TaskRunner.Instance.RunOnSchedule(runner, enumerator);
         }
@@ -39,17 +39,17 @@ using System.Collections;
         /// </summary>
         /// <param name="taskGenerator"></param>
         /// <returns></returns>
-        public static IEnumerator ThreadSafeRunOnSchedule(this IEnumerator enumerator, IRunner runner)
+        public static ContinuationWrapper ThreadSafeRunOnSchedule(this IEnumerator enumerator, IRunner runner)
         {
             return TaskRunner.Instance.ThreadSafeRunOnSchedule(runner, enumerator);
         }
 
-        public static IEnumerator Run(this IEnumerator enumerator)
+        public static ContinuationWrapper Run(this IEnumerator enumerator)
         {
             return TaskRunner.Instance.Run(enumerator);
         }
 
-        public static IEnumerator ThreadSafeRun(this IEnumerator enumerator)
+        public static ContinuationWrapper ThreadSafeRun(this IEnumerator enumerator)
         {
             return TaskRunner.Instance.ThreadSafeRun(enumerator);
         }

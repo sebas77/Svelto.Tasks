@@ -32,14 +32,24 @@ namespace Svelto.Tasks
         public bool MoveNext()
         {
             ThreadUtility.MemoryBarrier();
-            if (_completed == true)
+            var result = completed == true;
+            if (_condition != null)
+                result |= _condition();
+            
+            if (result == true)
             {
+                _condition = null;
                 _completed = false;
                 ThreadUtility.MemoryBarrier();
                 return false;
             }
             
             return true;
+        }
+        
+        public void BreakOnCondition(Func<bool> func)
+        {
+            _condition = func;
         }
 
         public void Completed()
@@ -62,6 +72,7 @@ namespace Svelto.Tasks
         public object Current { get { return null; } }
 
         volatile bool _completed;
+        Func<bool> _condition;
     }
 
 }

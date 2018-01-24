@@ -3,13 +3,14 @@ using Svelto.Utilities;
 
 namespace Svelto.Tasks
 {
+    //Be sure you know what you are doing when you are using
+    //the Sync runner, it will stall the current thread!
+    //Depending by the case, it may be better to
+    //use the ManualResetEventEx synchronization instead.
     public class SyncRunner : IRunner
     {
         public bool paused { set; get; }
         public bool isStopping { private set; get; }
-
-        public SyncRunner(bool sleepInBetween = true)
-        {}
 
         public void StartCoroutineThreadSafe(IPausableTask task)
         {
@@ -32,7 +33,5 @@ namespace Svelto.Tasks
         {}
 
         public int numberOfRunningTasks { get { return -1; } }
-
-        readonly bool _sleepInBetween;
     }
 }

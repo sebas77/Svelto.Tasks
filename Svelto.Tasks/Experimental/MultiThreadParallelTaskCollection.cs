@@ -30,7 +30,7 @@ namespace Svelto.Tasks
             }
         }
         
-        public MultiThreadedParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = false)
+        public MultiThreadedParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = true)
         {
             isValid = true;
             
@@ -41,18 +41,21 @@ namespace Svelto.Tasks
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
             for (int i = 0; i < numberOfThreads; i++) _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), relaxed);
-
+            
+            Action ptcOnOnComplete = DecrementConcurrentOperationsCounter;
+            Func<Exception, bool> ptcOnOnException = (e) =>
+                   {
+                       DecrementConcurrentOperationsCounter();
+                       return false;
+                   };
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)
             {
                 var ptask = TaskRunner.Instance.AllocateNewTaskRoutine();
                 var ptc = new ParallelTaskCollection("ParallelTaskCollection #".FastConcat(i));
-                ptc.onComplete += DecrementConcurrentOperationsCounter;
-                ptc.onException += (e) =>
-                                   {
-                                       DecrementConcurrentOperationsCounter();
-                                       return false;
-                                   };
+                
+                ptc.onComplete += ptcOnOnComplete;               
+                ptc.onException += ptcOnOnException;
 
                 ptask.SetEnumerator(ptc).SetScheduler(_runners[i]);
 
@@ -70,12 +73,14 @@ namespace Svelto.Tasks
             if (isRunning == false)
             {
                 _counter = _numberOfConcurrentOperationsToRun;
+                ThreadUtility.MemoryBarrier();
                 //start them
                 for (int i = 0; i < _numberOfConcurrentOperationsToRun; i++)
                     _taskRoutines[i].ThreadSafeStart();
             }
             
             //wait for completition, I am not using signaling as this Collection could be yielded by a main thread runner
+            ThreadUtility.MemoryBarrier();
             isRunning = _counter > 0; 
 
             return isRunning;

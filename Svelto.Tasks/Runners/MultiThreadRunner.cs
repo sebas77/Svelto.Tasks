@@ -20,14 +20,7 @@ namespace Svelto.Tasks
     {
         public bool paused
         {
-            set
-            {
-                _paused = value;
-            }
-            get
-            {
-                return _paused;
-            }
+            set; get;
         }
 
         public bool isStopping
@@ -56,7 +49,7 @@ namespace Svelto.Tasks
 
         public MultiThreadRunner(string name, bool relaxed = true)
         {
-#if !NETFX_CORE
+#if !NETFX_CORE || NET_STANDARD_2_0
             var thread = new Thread(() =>
             {
                 _name = name;
@@ -65,14 +58,6 @@ namespace Svelto.Tasks
             });
 
             thread.IsBackground = true;
-#else
-            var thread = new Task(() =>
-            {
-                _name = name;
-
-                RunCoroutineFiber();
-            });
-#endif
             if (relaxed)
             {
                 _lockingMechanism = RelaxedLockingMechanism;
@@ -81,7 +66,17 @@ namespace Svelto.Tasks
             {
                 _lockingMechanism = QuickLockingMechanism;
             }
-            
+#else
+            var thread = new Task(() =>
+            {
+                _name = name;
+
+                RunCoroutineFiber();
+            });
+    
+            _lockingMechanism = RelaxedLockingMechanism;
+#endif
+
             _mevent = new ManualResetEventEx();
 
             thread.Start();
@@ -174,7 +169,7 @@ namespace Svelto.Tasks
                 
                 if (_interval > 0 && _waitForflush == false)
                 {
-                    _waitForInterval();
+                    WaitForInterval();
                 }
 
                 if (_coroutines.Count == 0)
@@ -184,7 +179,7 @@ namespace Svelto.Tasks
                     if (_newTaskRoutines.Count == 0)
                     {
                         _isAlive = false;
-                        
+
                         _lockingMechanism();
                     }
                     
@@ -196,14 +191,16 @@ namespace Svelto.Tasks
                 _mevent.Dispose();
         }
 
-        void _waitForInterval()
+#if !NETFX_CORE || NET_STANDARD_2_0
+        void WaitForInterval()
         {
             _watch.Start();
             while (_watch.ElapsedMilliseconds < _interval)
                 ThreadUtility.Yield();
+            
             _watch.Reset();
         }
-
+        
         void QuickLockingMechanism()
         {
             int quickIterations = 0;
@@ -223,6 +220,7 @@ namespace Svelto.Tasks
             
             _interlock = 0;
         }
+#endif
 
         void RelaxedLockingMechanism()
         {
@@ -245,19 +243,18 @@ namespace Svelto.Tasks
         string _name;
         int    _interlock;
 
-        volatile bool _paused;
         volatile bool _isAlive;
         volatile bool _waitForflush;
         volatile bool _breakThread;
 
         readonly ManualResetEventEx _mevent;
-        
+
         readonly Action    _lockingMechanism;
         readonly int       _interval;
         readonly Stopwatch _watch;
-        
-#if TASKS_PROFILER_ENABLED        
+
+#if TASKS_PROFILER_ENABLED
         readonly TaskProfiler _taskProfiler = new TaskProfiler();
-#endif        
+#endif
     }
 }
