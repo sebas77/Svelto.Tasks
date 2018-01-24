@@ -27,7 +27,6 @@ namespace Svelto.Tasks.Enumerators
 
         public bool MoveNext()
         {
-            ThreadUtility.Yield();
             ThreadUtility.MemoryBarrier();
 
             var isDone = _signal;

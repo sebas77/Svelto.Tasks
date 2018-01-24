@@ -30,7 +30,7 @@ namespace Svelto.Tasks
             }
         }
         
-        public MultiThreadedParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = false)
+        public MultiThreadedParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = true)
         {
             isValid = true;
             
@@ -145,7 +145,7 @@ namespace Svelto.Tasks
         }   
 
         MultiThreadRunner[]         _runners;
-        volatile int                _counter;
+        int                         _counter;
         ParallelTaskCollection[]    _parallelTasks;
         ITaskRoutine[]              _taskRoutines;
         int                         _numberOfTasksAdded;

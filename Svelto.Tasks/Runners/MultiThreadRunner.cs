@@ -49,7 +49,7 @@ namespace Svelto.Tasks
 
         public MultiThreadRunner(string name, bool relaxed = true)
         {
-#if !NETFX_CORE && !NET_STANDARD_2_0
+#if !NETFX_CORE || NET_STANDARD_2_0
             var thread = new Thread(() =>
             {
                 _name = name;
@@ -86,7 +86,6 @@ namespace Svelto.Tasks
         public MultiThreadRunner(string name, int intervalInMS) : this(name, false)
         {
             _interval = intervalInMS;
-            _watch = new Stopwatch();
         }
 
         public void StartCoroutineThreadSafe(IPausableTask task)
@@ -123,9 +122,6 @@ namespace Svelto.Tasks
             _breakThread = true;
             
             UnlockThread();
-            
-            if (_watch != null)
-                _watch.Stop();
         }
 
         void RunCoroutineFiber()
@@ -190,18 +186,12 @@ namespace Svelto.Tasks
 
             if (_mevent != null)
                 _mevent.Dispose();
+
+            if (_waitEvent != null)
+                _waitEvent.Dispose();
         }
 
 #if !NETFX_CORE || NET_STANDARD_2_0
-        void WaitForInterval()
-        {
-            _watch.Start();
-            while (_watch.ElapsedMilliseconds < _interval)
-                ThreadUtility.Yield();
-            
-            _watch.Reset();
-        }
-        
         void QuickLockingMechanism()
         {
             int quickIterations = 0;
@@ -253,7 +243,6 @@ namespace Svelto.Tasks
 
         readonly Action    _lockingMechanism;
         readonly int       _interval;
-        readonly Stopwatch _watch;
 
 #if TASKS_PROFILER_ENABLED
         readonly TaskProfiler _taskProfiler = new TaskProfiler();
