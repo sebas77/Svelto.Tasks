@@ -1,122 +1,125 @@
 using System;
 using System.Collections;
-using Svelto.Tasks;
 using Svelto.Tasks.Internal;
 
-public class TaskRunner
+namespace Svelto.Tasks
 {
-    static TaskRunner _instance;
-
-    public static TaskRunner Instance
+    public class TaskRunner
     {
-        get
+        static TaskRunner _instance;
+
+        public static TaskRunner Instance
         {
-            if (_instance == null)
-                InitInstance();
+            get
+            {
+                if (_instance == null)
+                    InitInstance();
 
-            return _instance;
+                return _instance;
+            }
         }
-    }
 
-/// <summary>
-/// Use this function only to preallocate TaskRoutine that can be reused. this minimize run-time allocations
-/// </summary>
-/// <returns>
-/// New reusable TaskRoutine
-/// </returns>
-    public ITaskRoutine AllocateNewTaskRoutine()
-    {
-        return new PausableTask().SetScheduler(_runner);
-    }
+        /// <summary>
+        /// Use this function only to preallocate TaskRoutine that can be reused. this minimize run-time allocations
+        /// </summary>
+        /// <returns>
+        /// New reusable TaskRoutine
+        /// </returns>
+        public ITaskRoutine AllocateNewTaskRoutine()
+        {
+            return new PausableTask().SetScheduler(_runner);
+        }
 
-    public void PauseAllTasks()
-    {
-        _runner.paused = true;
-    }
+        public void PauseAllTasks()
+        {
+            _runner.paused = true;
+        }
 
-    public void ResumeAllTasks()
-    {
-        _runner.paused = false;
-    }
+        public void ResumeAllTasks()
+        {
+            _runner.paused = false;
+        }
 
-    public ContinuationWrapper Run(Func<IEnumerator> taskGenerator)
-    {
-        return RunOnSchedule(_runner, taskGenerator);
-    }
+        public ContinuationWrapper Run(Func<IEnumerator> taskGenerator)
+        {
+            return RunOnSchedule(_runner, taskGenerator);
+        }
 
-    public ContinuationWrapper Run(IEnumerator task)
-    {
-        return RunOnSchedule(_runner, task);
-    }
+        public ContinuationWrapper Run(IEnumerator task)
+        {
+            return RunOnSchedule(_runner, task);
+        }
 
-    public ContinuationWrapper RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
-    {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).Start();
-    }
-    
-    /// <summary>
-    /// the first instructions until the first yield are executed immediately
-    /// </summary>
-    /// <param name="runner"></param>
-    /// <param name="task"></param>
-    /// <returns></returns>
-    public ContinuationWrapper RunOnSchedule(IRunner runner, IEnumerator task)
-    {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
-    }
-    /// <summary>
-    /// all the instructions are executed on the selected runner
-    /// </summary>
-    /// <param name="taskGenerator"></param>
-    /// <returns></returns>
-    public ContinuationWrapper ThreadSafeRun(Func<IEnumerator> taskGenerator)
-    {
-        return ThreadSafeRunOnSchedule(_runner, taskGenerator);
-    }
+        public ContinuationWrapper RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
+        {
+            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).Start();
+        }
 
-    public ContinuationWrapper ThreadSafeRun(IEnumerator task)
-    {
-        return ThreadSafeRunOnSchedule(_runner, task);
-    }
+        /// <summary>
+        /// the first instructions until the first yield are executed immediately
+        /// </summary>
+        /// <param name="runner"></param>
+        /// <param name="task"></param>
+        /// <returns></returns>
+        public ContinuationWrapper RunOnSchedule(IRunner runner, IEnumerator task)
+        {
+            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
+        }
 
-    public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
-    {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).ThreadSafeStart();
-    }
+        /// <summary>
+        /// all the instructions are executed on the selected runner
+        /// </summary>
+        /// <param name="taskGenerator"></param>
+        /// <returns></returns>
+        public ContinuationWrapper ThreadSafeRun(Func<IEnumerator> taskGenerator)
+        {
+            return ThreadSafeRunOnSchedule(_runner, taskGenerator);
+        }
 
-    public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)
-    {
-        return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
-    }
+        public ContinuationWrapper ThreadSafeRun(IEnumerator task)
+        {
+            return ThreadSafeRunOnSchedule(_runner, task);
+        }
 
-    public static void StopDefaultSchedulerTasks()
-    {
-        StandardSchedulers.StopSchedulers();
-    }
+        public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
+        {
+            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator)
+                .ThreadSafeStart();
+        }
 
-    public void StopAndCleanupAllDefaultSchedulerTasks()
-    {
-        StopDefaultSchedulerTasks();
+        public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)
+        {
+            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
+        }
 
-        _taskPool = null;
-        _runner = null;
-        _instance = null;
-    }
+        public static void StopDefaultSchedulerTasks()
+        {
+            StandardSchedulers.StopSchedulers();
+        }
+
+        public void StopAndCleanupAllDefaultSchedulerTasks()
+        {
+            StopDefaultSchedulerTasks();
+
+            _taskPool = null;
+            _runner = null;
+            _instance = null;
+        }
 
 //TaskRunner is supposed to be used in the mainthread only
 //this should be enforced in future. 
 //Runners should be used directly on other threads 
 //than the main one
 
-    static void InitInstance()
-    {
-        _instance = new TaskRunner();
+        static void InitInstance()
+        {
+            _instance = new TaskRunner();
 #if UNITY_5_3_OR_NEWER || UNITY_5
-        _instance._runner = StandardSchedulers.coroutineScheduler;
+            _instance._runner = StandardSchedulers.coroutineScheduler;
 #else
         _instance._runner = new MultiThreadRunner("TaskThread");
 #endif
-        _instance._taskPool = new PausableTaskPool();
+            _instance._taskPool = new PausableTaskPool();
 
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
         var debugTasksObject = UnityEngine.GameObject.Find("Svelto.Tasks.Profiler");
@@ -127,8 +130,9 @@ public class TaskRunner
             UnityEngine.Object.DontDestroyOnLoad(debugTasksObject);
         }
 #endif
-    }
+        }
 
-    IRunner             _runner;
-    PausableTaskPool    _taskPool;
+        IRunner _runner;
+        PausableTaskPool _taskPool;
+    }
 }
