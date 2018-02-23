@@ -81,7 +81,7 @@ namespace Svelto.Tasks.Internal
 
                 for (var i = 0; i < info.count; i++)
                 {
-                    var enumerator = coroutines[i];
+                    var pausableTask = coroutines[i];
 
                     try
                     {
@@ -111,12 +111,12 @@ namespace Svelto.Tasks.Internal
                         if (runnerBehaviourForUnityCoroutine != null && 
                             flushingOperation.stopped == false)
                         {
-                            var current = enumerator.Current;
+                            var current = pausableTask.Current;
 
                             if (current is YieldInstruction)
                             {
                                 var handItToUnity = new HandItToUnity
-                                    (current, enumerator, resumeOperation, flushingOperation);
+                                    (current, pausableTask, resumeOperation, flushingOperation);
 
                                 //remove the special instruction. it will
                                 //be added back once Unity completes.
@@ -124,9 +124,15 @@ namespace Svelto.Tasks.Internal
 
                                 info.count = coroutines.Count;
 
-                                runnerBehaviourForUnityCoroutine.StartCoroutine
+                                var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
                                     (handItToUnity.GetEnumerator());
 
+                                pausableTask.OnExplicitlyStopped = () =>
+                                {
+                                    runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                    handItToUnity.ForceStop();
+                                };
+                                
                                 continue;
                             }
 
@@ -139,8 +145,14 @@ namespace Svelto.Tasks.Internal
 
                                 parallelTask.Add(handItToUnity.WaitUntilIsDone());
 
-                                runnerBehaviourForUnityCoroutine.StartCoroutine
+                                var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
                                     (handItToUnity.GetEnumerator());
+                                
+                                pausableTask.OnExplicitlyStopped = () =>
+                                {
+                                    runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                    handItToUnity.ForceStop();
+                                };
                             }
                         }                        
 
@@ -148,11 +160,11 @@ namespace Svelto.Tasks.Internal
 #if TASKS_PROFILER_ENABLED
                         result = TASK_PROFILER.MonitorUpdateDuration(enumerator, info.runnerName);
 #else
-                        result = enumerator.MoveNext();
+                        result = pausableTask.MoveNext();
 #endif
                         if (result == false)
                         {
-                            var disposable = enumerator as IDisposable;
+                            var disposable = pausableTask as IDisposable;
                             if (disposable != null)
                                 disposable.Dispose();
 
@@ -224,10 +236,15 @@ namespace Svelto.Tasks.Internal
             {
                 yield return _current;
 
+                ForceStop();
+            }
+            
+            public void ForceStop()
+            {
                 _isDone = true;
-
-                if (_flushingOperation != null && 
-                    _flushingOperation.stopped == false && 
+                
+                if (_flushingOperation != null &&
+                    _flushingOperation.stopped == false &&
                     _resumeOperation != null)
                     _resumeOperation(_task);
             }
