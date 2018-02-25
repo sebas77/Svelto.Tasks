@@ -11,11 +11,11 @@ If you want to test it out right away with some pre made examples, please don't 
 
 New Parallelism example: http://www.sebaslab.com/learning-svelto-tasks-example-million-points-example/
 
-# how to clone:
+## how to clone the repository:
 
 The folders Svelto.ECS, Svelto.Tasks and Svelto.Common, where present, are submodules pointing to the relavite repositories. If you find them empty, you need to update them through the submodule command. Check some instructions here: https://github.com/sebas77/Svelto.ECS.Vanilla.Example/wiki
 
-# Svelto Framework is used to develop the following products:
+## Svelto Framework is used to develop the following products:
 
 ![Robocraft](https://i.ytimg.com/vi/JGr1Em2Ip-c/maxresdefault.jpg)
 ![Robocraft Infinity](https://news.xbox.com/en-us/wp-content/uploads/Robocraft_Hero-hero.jpg)
