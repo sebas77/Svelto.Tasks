@@ -11,7 +11,6 @@
 using Svelto.Utilities;
 using System;
 using System.Collections;
-using UnityEngine;
 
 namespace Svelto.Tasks
 {
