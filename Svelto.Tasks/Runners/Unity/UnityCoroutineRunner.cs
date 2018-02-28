@@ -158,7 +158,7 @@ namespace Svelto.Tasks.Internal
 
                         bool result;
 #if TASKS_PROFILER_ENABLED
-                        result = TASK_PROFILER.MonitorUpdateDuration(enumerator, info.runnerName);
+                        result = TASK_PROFILER.MonitorUpdateDuration(pausableTask, info.runnerName);
 #else
                         result = pausableTask.MoveNext();
 #endif
