@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Threading;
 using Svelto.Utilities;
+using UnityEngine;
 
 namespace Svelto.Tasks
 {
@@ -20,20 +21,8 @@ namespace Svelto.Tasks
         public object Current { get { return null; } }
         public bool isRunning { private set; get; }
 
-        public bool isValid
-        {
-            private set { _isValid = value; ThreadUtility.MemoryBarrier();}
-            
-            get
-            {
-                ThreadUtility.MemoryBarrier(); return _isValid;  
-            }
-        }
-        
         public MultiThreadedParallelTaskCollection(uint numberOfThreads = MAX_CONCURRENT_TASKS, bool relaxed = true)
         {
-            isValid = true;
-            
             _runners = new MultiThreadRunner[numberOfThreads];
             _taskRoutines = new ITaskRoutine[numberOfThreads];
             _parallelTasks = new ParallelTaskCollection[numberOfThreads];
@@ -48,6 +37,7 @@ namespace Svelto.Tasks
                        DecrementConcurrentOperationsCounter();
                        return false;
                    };
+            
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)
             {
@@ -61,7 +51,6 @@ namespace Svelto.Tasks
 
                 _parallelTasks[i] = ptc;
                 _taskRoutines[i] = ptask;
-                //once they are all done, the process will be completed               
             }
         }
 
@@ -101,7 +90,7 @@ namespace Svelto.Tasks
         public bool MoveNext()
         {
             if (RunMultiThreadParallelTasks()) return true;
-
+            
             if (onComplete != null)
                 onComplete();
 
@@ -117,6 +106,7 @@ namespace Svelto.Tasks
         {
             _numberOfTasksAdded = 0;
             _counter = 0;
+            
             for (int i = 0; i < _taskRoutines.Length; i++)
                 _taskRoutines[i].Stop();
             var length = _parallelTasks.Length;
@@ -126,30 +116,37 @@ namespace Svelto.Tasks
 
         public void ClearAndKill()
         {
-            isValid = false;
-            
+            _runningThreads = _runners.Length;
+
             for (int i = 0; i < _runners.Length; i++)
-                _runners[i].Kill();
-            
+                _runners[i].Kill(DecrementRunningThread);
+
             _numberOfTasksAdded = 0;
-            _counter = 0;
             
-            _runners = null;
+            while (_runningThreads > 0) ThreadUtility.Yield();
+
             _taskRoutines = null;
             _parallelTasks = null;
+            _runners = null;
+        }
+
+        void DecrementRunningThread()
+        {
+            Interlocked.Decrement(ref _runningThreads);
         }
 
         void DecrementConcurrentOperationsCounter()
         {
             Interlocked.Decrement(ref _counter);
-        }   
-
-        MultiThreadRunner[]         _runners;
-        int                         _counter;
-        ParallelTaskCollection[]    _parallelTasks;
-        ITaskRoutine[]              _taskRoutines;
-        int                         _numberOfTasksAdded;
-        int                         _numberOfConcurrentOperationsToRun;
-        volatile bool               _isValid;
+        }
+        
+        MultiThreadRunner[]      _runners;
+        ParallelTaskCollection[] _parallelTasks;
+        ITaskRoutine[]           _taskRoutines;
+        
+        int                      _numberOfTasksAdded;
+        int                      _numberOfConcurrentOperationsToRun;
+        int                      _counter;
+        int                      _runningThreads;
     }
 }

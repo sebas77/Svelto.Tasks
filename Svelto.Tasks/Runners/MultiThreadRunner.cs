@@ -44,7 +44,7 @@ namespace Svelto.Tasks
 
         public void Dispose()
         {
-            Kill();
+            Kill(null);
         }
 
         public MultiThreadRunner(string name, bool relaxed = true)
@@ -117,9 +117,11 @@ namespace Svelto.Tasks
             ThreadUtility.MemoryBarrier();
         }
 
-        public void Kill()
+        public void Kill(Action onThreadKilled)
         {
             _breakThread = true;
+
+            _onThreadKilled = onThreadKilled;
             
             UnlockThread();
             
@@ -132,7 +134,6 @@ namespace Svelto.Tasks
             while (_breakThread == false)
             {
                 ThreadUtility.MemoryBarrier();
-
 				if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
@@ -166,26 +167,33 @@ namespace Svelto.Tasks
                         _coroutines.UnorderedRemoveAt(i--);
                     }
                 }
-                
-                if (_interval > 0 && _waitForflush == false)
-                {
-                    WaitForInterval();
-                }
 
-                if (_coroutines.Count == 0)
+                ThreadUtility.MemoryBarrier();
+                if (_breakThread == false)
                 {
-                    _waitForflush = false;
-                    
-                    if (_newTaskRoutines.Count == 0)
+                    if (_interval > 0 && _waitForflush == false)
                     {
-                        _isAlive = false;
-
-                        _lockingMechanism();
+                        WaitForInterval();
                     }
-                    
-                    ThreadUtility.MemoryBarrier();
+
+                    if (_coroutines.Count == 0)
+                    {
+                        _waitForflush = false;
+
+                        if (_newTaskRoutines.Count == 0)
+                        {
+                            _isAlive = false;
+
+                            _lockingMechanism();
+                        }
+
+                        ThreadUtility.MemoryBarrier();
+                    }
                 }
             }
+
+            if (_onThreadKilled != null)
+                _onThreadKilled();
 
             if (_mevent != null)
                 _mevent.Dispose();
@@ -252,6 +260,7 @@ namespace Svelto.Tasks
         readonly Action    _lockingMechanism;
         readonly int       _interval;
         readonly Stopwatch _watch;
+        Action _onThreadKilled;
 
 #if TASKS_PROFILER_ENABLED
         readonly TaskProfiler _taskProfiler = new TaskProfiler();

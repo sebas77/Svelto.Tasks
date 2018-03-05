@@ -10,7 +10,6 @@ namespace Svelto.Tasks.Internal
         static StopThreadsInEditor()
         {
             EditorApplication.playModeStateChanged += Update;
-
         }
 
         static void Update(PlayModeStateChange state)
