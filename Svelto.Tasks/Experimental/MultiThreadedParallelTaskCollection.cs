@@ -11,7 +11,7 @@ namespace Svelto.Tasks
     /// a ParallelTaskCollection ran by MultiThreadRunner will run the tasks in a single thread
     /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
     /// </summary>
-    public class MultiThreadedParallelTaskCollection : IEnumerator
+    public class  MultiThreadedParallelTaskCollection  : IEnumerator
     {
         public event Action onComplete;
 
