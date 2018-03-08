@@ -22,9 +22,7 @@ namespace Svelto.Tasks
     }
 
     public interface IPausableTask:IEnumerator
-    {
-        Action OnExplicitlyStopped { get; set;  }
-    }
+    {}
     
     //The Continuation Wrapper contains a valid
     //value until the task is not stopped.
@@ -85,7 +83,7 @@ namespace Svelto.Tasks.Internal
     {
         const string CALL_START_FIRST_ERROR = "Enumerating PausableTask without starting it, please call Start() first";
         
-        public Action OnExplicitlyStopped { get; set;  }
+        internal Action onExplicitlyStopped { private get; set; }
         
         /// <summary>
         /// Calling SetScheduler, SetEnumeratorProvider, SetEnumerator
@@ -139,10 +137,10 @@ namespace Svelto.Tasks.Internal
         {
             _explicitlyStopped = true;
 
-            if (OnExplicitlyStopped != null)
+            if (onExplicitlyStopped != null)
             {
-                OnExplicitlyStopped();
-                OnExplicitlyStopped = null;
+                onExplicitlyStopped();
+                onExplicitlyStopped = null;
             }
 
             ThreadUtility.MemoryBarrier();
@@ -245,7 +243,7 @@ namespace Svelto.Tasks.Internal
             {
                 try
                 {
-                    DesignByContract.Check.Assert(_started == true, _callStartFirstError);
+                    DBC.Check.Assert(_started == true, _callStartFirstError);
                     
                     _completed = !_coroutine.MoveNext();
                     ThreadUtility.MemoryBarrier();
@@ -269,6 +267,9 @@ namespace Svelto.Tasks.Internal
                     {
                        Utility.Console.LogError(e.ToString());
                     }
+#if DEBUG
+                    throw;
+#endif
                 }
             }
 
@@ -276,7 +277,7 @@ namespace Svelto.Tasks.Internal
             {
                 if (_pool != null)
                 {
-                    DesignByContract.Check.Assert(_pendingRestart == false, "a pooled task cannot have a pending restart!");
+                    DBC.Check.Assert(_pendingRestart == false, "a pooled task cannot have a pending restart!");
                     
                     _continuationWrapper.Completed();
                     _pool.PushTaskBack(this);
@@ -397,8 +398,8 @@ namespace Svelto.Tasks.Internal
         /// <param name="task"></param>
         void InternalStart()
         {
-            DesignByContract.Check.Require(_pendingRestart == false, "a task has been reused while is pending to start");
-            DesignByContract.Check.Require(_taskGenerator != null || _taskEnumerator != null, "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
+            DBC.Check.Require(_pendingRestart == false, "a task has been reused while is pending to start");
+            DBC.Check.Require(_taskGenerator != null || _taskEnumerator != null, "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
             
             Resume(); //if it's paused, must resume
             
@@ -427,11 +428,11 @@ namespace Svelto.Tasks.Internal
 
         void Restart(IEnumerator task)
         {
-            DesignByContract.Check.Require(_runner != null, "SetScheduler function has never been called");
+            DBC.Check.Require(_runner != null, "SetScheduler function has never been called");
             
             if (_taskEnumerator != null && _taskEnumeratorJustSet == false)
             {
-                DesignByContract.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead");
+                DBC.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead");
                 
                 task.Reset();
             }

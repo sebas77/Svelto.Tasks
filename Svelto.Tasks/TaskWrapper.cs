@@ -20,11 +20,11 @@ namespace Svelto.Tasks
 
         protected TaskWrapper(IAbstractTask task)
         {
-            DesignByContract.Check.Require((task is IEnumerable == false) && (task is IEnumerator == false), "Tasks and IEnumerators are mutually exclusive");
+            DBC.Check.Require((task is IEnumerable == false) && (task is IEnumerator == false), "Tasks and IEnumerators are mutually exclusive");
 
             this.task = task;
             
-            DesignByContract.Check.Ensure(task != null, "a valid task must be assigned");
+            DBC.Check.Ensure(task != null, "a valid task must be assigned");
         }
 
         public bool MoveNext()

@@ -27,10 +27,5 @@ public static class TaskRunnerExtensions
     {
         return TaskRunner.Instance.Run(enumerator);
     }
-
-    public static ContinuationWrapper ThreadSafeRun(this IEnumerator enumerator)
-    {
-        return TaskRunner.Instance.ThreadSafeRun(enumerator);
-    }
 }
 

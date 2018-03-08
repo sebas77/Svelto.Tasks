@@ -83,9 +83,7 @@ namespace Svelto.Tasks.Internal
                 {
                     var pausableTask = coroutines[i];
 
-                    try
-                    {
-                        //let's spend few words about this. 
+                        //let's spend few words on this. 
                         //yielded YieldInstruction and AsyncOperation can 
                         //only be processed internally by Unity. 
                         //The simplest way to handle them is to hand them to Unity itself.
@@ -127,7 +125,7 @@ namespace Svelto.Tasks.Internal
                                 var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
                                     (handItToUnity.GetEnumerator());
 
-                                pausableTask.OnExplicitlyStopped = () =>
+                                (pausableTask as PausableTask).onExplicitlyStopped = () =>
                                 {
                                     runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
                                     handItToUnity.ForceStop();
@@ -148,7 +146,7 @@ namespace Svelto.Tasks.Internal
                                 var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
                                     (handItToUnity.GetEnumerator());
                                 
-                                pausableTask.OnExplicitlyStopped = () =>
+                                (pausableTask as PausableTask).onExplicitlyStopped = () =>
                                 {
                                     runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
                                     handItToUnity.ForceStop();
@@ -170,16 +168,6 @@ namespace Svelto.Tasks.Internal
 
                             coroutines.UnorderedRemoveAt(i--);
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        if (e.InnerException != null)
-                            Utility.Console.LogException(e.InnerException);
-                        else
-                            Utility.Console.LogException(e);
-
-                        coroutines.UnorderedRemoveAt(i--);
-                    }
 
                     info.count = coroutines.Count;
                 }

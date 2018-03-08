@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Svelto.DataStructures;
 using Console = Utility.Console;
 using System.Threading;
+using NUnit.Framework.Internal.Execution;
 using Svelto.Utilities;
 
 #if TASKS_PROFILER_ENABLED
@@ -46,6 +47,41 @@ namespace Svelto.Tasks
         {
             Kill(null);
         }
+        
+        internal MultiThreadRunner(string name, bool relaxed = true, bool fromThePool = true)
+        {
+            _mevent = new ManualResetEventEx();
+            
+#if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
+            if (relaxed)
+            {
+                _lockingMechanism = RelaxedLockingMechanism;
+            }
+            else
+            {
+                _lockingMechanism = QuickLockingMechanism;
+            }
+            
+            ThreadPool.QueueUserWorkItem((callback) =>
+                                         {
+                                             _name = name;
+
+                                             RunCoroutineFiber();
+                                         });
+
+#else
+            _lockingMechanism = RelaxedLockingMechanism;
+    
+            var thread = new Task(() =>
+            {
+                _name = name;
+
+                RunCoroutineFiber();
+            });
+    
+            thread.Start();
+#endif
+        }
 
         public MultiThreadRunner(string name, bool relaxed = true)
         {
@@ -76,7 +112,6 @@ namespace Svelto.Tasks
     
             _lockingMechanism = RelaxedLockingMechanism;
 #endif
-
             _mevent = new ManualResetEventEx();
 
             thread.Start();
@@ -141,8 +176,6 @@ namespace Svelto.Tasks
                 {
                     var enumerator = _coroutines[i];
 
-                    try
-                    { 
 #if TASKS_PROFILER_ENABLED
                         bool result = _taskProfiler.MonitorUpdateDuration(enumerator, _name);
 #else
@@ -156,16 +189,6 @@ namespace Svelto.Tasks
 
                             _coroutines.UnorderedRemoveAt(i--);
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        if (e.InnerException != null)
-                            Console.LogException(e.InnerException);
-                        else
-                            Console.LogException(e);
-
-                        _coroutines.UnorderedRemoveAt(i--);
-                    }
                 }
 
                 ThreadUtility.MemoryBarrier();

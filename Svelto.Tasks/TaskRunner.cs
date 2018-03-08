@@ -117,18 +117,18 @@ namespace Svelto.Tasks
 #if UNITY_5_3_OR_NEWER || UNITY_5
             _instance._runner = StandardSchedulers.coroutineScheduler;
 #else
-        _instance._runner = new MultiThreadRunner("TaskThread");
+            _instance._runner = new MultiThreadRunner("TaskThread");
 #endif
             _instance._taskPool = new PausableTaskPool();
 
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
-        var debugTasksObject = UnityEngine.GameObject.Find("Svelto.Tasks.Profiler");
-        if (debugTasksObject == null)
-        {
-            debugTasksObject = new UnityEngine.GameObject("Svelto.Tasks.Profiler");
-            debugTasksObject.gameObject.AddComponent<Svelto.Tasks.Profiler.TasksProfilerBehaviour>();
-            UnityEngine.Object.DontDestroyOnLoad(debugTasksObject);
-        }
+            var debugTasksObject = UnityEngine.GameObject.Find("Svelto.Tasks.Profiler");
+            if (debugTasksObject == null)
+            {
+                debugTasksObject = new UnityEngine.GameObject("Svelto.Tasks.Profiler");
+                debugTasksObject.gameObject.AddComponent<Svelto.Tasks.Profiler.TasksProfilerBehaviour>();
+                UnityEngine.Object.DontDestroyOnLoad(debugTasksObject);
+            }
 #endif
         }
 
