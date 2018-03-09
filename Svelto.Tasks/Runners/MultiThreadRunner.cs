@@ -171,7 +171,7 @@ namespace Svelto.Tasks
 				if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
-                for (var i = 0; i < _coroutines.Count; i++)
+                for (var i = 0; (i < _coroutines.Count) && (false == _waitForflush || _breakThread); i++)
                 {
                     var enumerator = _coroutines[i];
 

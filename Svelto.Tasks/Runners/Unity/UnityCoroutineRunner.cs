@@ -71,7 +71,7 @@ namespace Svelto.Tasks.Internal
         {
             while (true)
             {
-                if (flushingOperation.stopped == false) //don't start anything while flushing
+                if (false == flushingOperation.stopped) //don't start anything while flushing
                     flushTaskDel(newTaskRoutines, coroutines, flushingOperation);
                 else
                 if (runnerBehaviourForUnityCoroutine != null)

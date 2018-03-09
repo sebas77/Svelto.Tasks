@@ -1,5 +1,3 @@
-//this was a good excercise, but with my current knowledge, I say that heavy parallelism
-//is useless for generic game features.
 using System;
 using System.Collections;
 using System.Threading;
@@ -28,17 +26,15 @@ namespace Svelto.Tasks
 
         public MultiThreadedParallelTaskCollection()
         {
-            uint numberOfThreads = (uint) Math.Max(MAX_CONCURRENT_TASKS, 4);
-
-            InitializeThreadsAndData(numberOfThreads, true);
+            InitializeThreadsAndData((uint) MAX_CONCURRENT_TASKS);
         }
 
-        public MultiThreadedParallelTaskCollection(uint numberOfThreads, bool relaxed = true)
+        public MultiThreadedParallelTaskCollection(uint numberOfThreads)
         {
-            InitializeThreadsAndData(numberOfThreads, relaxed);
+            InitializeThreadsAndData(numberOfThreads);
         }
 
-        void InitializeThreadsAndData(uint numberOfThreads, bool relaxed)
+        void InitializeThreadsAndData(uint numberOfThreads)
         {
             _runners       = new MultiThreadRunner[numberOfThreads];
             _taskRoutines  = new ITaskRoutine[numberOfThreads];
@@ -47,7 +43,7 @@ namespace Svelto.Tasks
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
             for (int i = 0; i < numberOfThreads; i++)
-                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), relaxed);
+                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), false);
 
             /*Action*/ _ptcOnOnComplete = DecrementConcurrentOperationsCounter;
             Func<Exception, bool> ptcOnOnException = (e) =>
@@ -158,6 +154,7 @@ namespace Svelto.Tasks
             _taskRoutines = null;
             _parallelTasks = null;
             _runners = null;
+            isRunning = false;
             onComplete = null;
         }
 
