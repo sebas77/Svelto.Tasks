@@ -71,19 +71,28 @@ namespace Svelto.Tasks
 #else
             _lockingMechanism = RelaxedLockingMechanism;
     
-            var thread = new Task(() =>
+            Task.Run(() =>
             {
                 _name = name;
 
                 RunCoroutineFiber();
             });
-    
-            thread.Start();
 #endif
         }
 
         public MultiThreadRunner(string name, bool relaxed = true)
         {
+            _mevent = new ManualResetEventEx();
+
+            if (relaxed)
+            {
+                _lockingMechanism = RelaxedLockingMechanism;
+            }
+            else
+            {
+                _lockingMechanism = QuickLockingMechanism;
+            }
+
 #if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
             var thread = new Thread(() =>
             {
@@ -93,27 +102,17 @@ namespace Svelto.Tasks
             });
 
             thread.IsBackground = true;
-            if (relaxed)
-            {
-                _lockingMechanism = RelaxedLockingMechanism;
-            }
-            else
-            {
-                _lockingMechanism = QuickLockingMechanism;
-            }
+
+            thread.Start();
 #else
-            var thread = new Task(() =>
+            
+            Task.Run(() =>
             {
                 _name = name;
 
                 RunCoroutineFiber();
             });
-    
-            _lockingMechanism = RelaxedLockingMechanism;
 #endif
-            _mevent = new ManualResetEventEx();
-
-            thread.Start();
         }
 
         public MultiThreadRunner(string name, int intervalInMS) : this(name, false)
@@ -221,7 +220,6 @@ namespace Svelto.Tasks
                 _mevent.Dispose();
         }
 
-#if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
         void WaitForInterval()
         {
             _watch.Start();
@@ -230,7 +228,7 @@ namespace Svelto.Tasks
             
             _watch.Reset();
         }
-        
+
         void QuickLockingMechanism()
         {
             int quickIterations = 0;
@@ -250,7 +248,7 @@ namespace Svelto.Tasks
             
             _interlock = 0;
         }
-#endif
+
 
         void RelaxedLockingMechanism()
         {
