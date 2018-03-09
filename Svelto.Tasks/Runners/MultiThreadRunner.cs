@@ -3,7 +3,6 @@ using System.Diagnostics;
 using Svelto.DataStructures;
 using Console = Utility.Console;
 using System.Threading;
-using NUnit.Framework.Internal.Execution;
 using Svelto.Utilities;
 
 #if TASKS_PROFILER_ENABLED
@@ -48,7 +47,7 @@ namespace Svelto.Tasks
             Kill(null);
         }
         
-        internal MultiThreadRunner(string name, bool relaxed = true, bool fromThePool = true)
+        internal MultiThreadRunner(string name, bool relaxed, bool fromThePool)
         {
             _mevent = new ManualResetEventEx();
             
