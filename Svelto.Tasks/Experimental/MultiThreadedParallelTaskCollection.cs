@@ -9,7 +9,7 @@ namespace Svelto.Tasks
     /// a ParallelTaskCollection ran by MultiThreadRunner will run the tasks in a single thread
     /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
     /// </summary>
-    public class  MultiThreadedParallelTaskCollection  : IEnumerator
+    public class  MultiThreadedParallelTaskCollection  : IEnumerator, IDisposable
     {
         public event Action onComplete;
 
@@ -43,7 +43,7 @@ namespace Svelto.Tasks
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
             for (int i = 0; i < numberOfThreads; i++)
-                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), false);
+                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), false, true);
 
             /*Action*/ _ptcOnOnComplete = DecrementConcurrentOperationsCounter;
             Func<Exception, bool> ptcOnOnException = (e) =>
@@ -140,7 +140,7 @@ namespace Svelto.Tasks
             ThreadUtility.MemoryBarrier();
         }
 
-        public void ClearAndKill()
+        public void Dispose()
         {
             _runningThreads = _runners.Length;
 

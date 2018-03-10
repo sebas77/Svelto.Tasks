@@ -1,8 +1,7 @@
 using System;
 using System.Diagnostics;
-using Svelto.DataStructures;
-using Console = Utility.Console;
 using System.Threading;
+using Svelto.DataStructures;
 using Svelto.Utilities;
 
 #if TASKS_PROFILER_ENABLED
@@ -18,17 +17,14 @@ namespace Svelto.Tasks
     //If you want to use a separate thread, you will need to create another MultiThreadRunner
     public sealed class MultiThreadRunner : IRunner
     {
-        public bool paused
-        {
-            set; get;
-        }
+        public bool paused { set; get; }
 
         public bool isStopping
         {
             get
             {
                 ThreadUtility.MemoryBarrier();
-                return _waitForflush == true;
+                return _waitForflush;
             }
         }
 
@@ -46,79 +42,55 @@ namespace Svelto.Tasks
         {
             Kill(null);
         }
-        
+
         internal MultiThreadRunner(string name, bool relaxed, bool fromThePool)
         {
             _mevent = new ManualResetEventEx();
-            
-#if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
+
             if (relaxed)
-            {
                 _lockingMechanism = RelaxedLockingMechanism;
+            else
+                _lockingMechanism = QuickLockingMechanism;
+
+#if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
+            if (fromThePool)
+            {
+                ThreadPool.QueueUserWorkItem(callback =>
+                                             {
+                                                 _name = name;
+
+                                                 RunCoroutineFiber();
+                                             });
             }
             else
             {
-                _lockingMechanism = QuickLockingMechanism;
+                var thread = new Thread(() =>
+                                        {
+                                            _name = name;
+
+                                            RunCoroutineFiber();
+                                        });
+
+                thread.IsBackground = true;
+
+                thread.Start();
             }
-            
-            ThreadPool.QueueUserWorkItem((callback) =>
-                                         {
-                                             _name = name;
-
-                                             RunCoroutineFiber();
-                                         });
-
 #else
-            _lockingMechanism = RelaxedLockingMechanism;
-    
-            Task.Run(() =>
+            var thread = new Task(() => 
             {
                 _name = name;
 
                 RunCoroutineFiber();
             });
-#endif
-        }
-
-        public MultiThreadRunner(string name, bool relaxed = true)
-        {
-            _mevent = new ManualResetEventEx();
-
-            if (relaxed)
-            {
-                _lockingMechanism = RelaxedLockingMechanism;
-            }
-            else
-            {
-                _lockingMechanism = QuickLockingMechanism;
-            }
-
-#if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
-            var thread = new Thread(() =>
-            {
-                _name = name;
-
-                RunCoroutineFiber();
-            });
-
-            thread.IsBackground = true;
 
             thread.Start();
-#else
-            
-            Task.Run(() =>
-            {
-                _name = name;
-
-                RunCoroutineFiber();
-            });
 #endif
         }
 
-        public MultiThreadRunner(string name, int intervalInMS) : this(name, false)
+        public MultiThreadRunner(string name, int intervalInMS) : this(name, false, false)
         {
             _interval = intervalInMS;
-            _watch = new Stopwatch();
+            _watch    = new Stopwatch();
         }
 
         public void StartCoroutineThreadSafe(IPausableTask task)
@@ -129,7 +101,7 @@ namespace Svelto.Tasks
         public void StartCoroutine(IPausableTask task)
         {
             paused = false;
-            
+
             _newTaskRoutines.Enqueue(task);
 
             ThreadUtility.MemoryBarrier();
@@ -144,9 +116,9 @@ namespace Svelto.Tasks
         public void StopAllCoroutines()
         {
             _newTaskRoutines.Clear();
-            
+
             _waitForflush = true;
-            
+
             ThreadUtility.MemoryBarrier();
         }
 
@@ -155,9 +127,9 @@ namespace Svelto.Tasks
             _breakThread = true;
 
             _onThreadKilled = onThreadKilled;
-            
+
             UnlockThread();
-            
+
             if (_watch != null)
                 _watch.Stop();
         }
@@ -167,35 +139,32 @@ namespace Svelto.Tasks
             while (_breakThread == false)
             {
                 ThreadUtility.MemoryBarrier();
-				if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
+                if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
-                for (var i = 0; (i < _coroutines.Count) && (false == _waitForflush || _breakThread); i++)
+                for (var i = 0; i < _coroutines.Count && (false == _waitForflush || _breakThread); i++)
                 {
                     var enumerator = _coroutines[i];
 
 #if TASKS_PROFILER_ENABLED
-                        bool result = _taskProfiler.MonitorUpdateDuration(enumerator, _name);
+                    bool result = _taskProfiler.MonitorUpdateDuration(enumerator, _name);
 #else
-                        bool result = enumerator.MoveNext();
+                    var result = enumerator.MoveNext();
 #endif
-                        if (result == false)
-                        {
-                            var disposable = enumerator as IDisposable;
-                            if (disposable != null)
-                                disposable.Dispose();
+                    if (result == false)
+                    {
+                        var disposable = enumerator as IDisposable;
+                        if (disposable != null)
+                            disposable.Dispose();
 
-                            _coroutines.UnorderedRemoveAt(i--);
-                        }
+                        _coroutines.UnorderedRemoveAt(i--);
+                    }
                 }
 
                 ThreadUtility.MemoryBarrier();
                 if (_breakThread == false)
                 {
-                    if (_interval > 0 && _waitForflush == false)
-                    {
-                        WaitForInterval();
-                    }
+                    if (_interval > 0 && _waitForflush == false) WaitForInterval();
 
                     if (_coroutines.Count == 0)
                     {
@@ -225,13 +194,13 @@ namespace Svelto.Tasks
             _watch.Start();
             while (_watch.ElapsedMilliseconds < _interval)
                 ThreadUtility.Yield();
-            
+
             _watch.Reset();
         }
 
         void QuickLockingMechanism()
         {
-            int quickIterations = 0;
+            var quickIterations = 0;
 
             while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
             {
@@ -245,15 +214,14 @@ namespace Svelto.Tasks
                     break;
                 }
             }
-            
+
             _interlock = 0;
         }
-
 
         void RelaxedLockingMechanism()
         {
             _mevent.Wait();
-            
+
             _mevent.Reset();
         }
 
@@ -261,11 +229,11 @@ namespace Svelto.Tasks
         {
             _interlock = 1;
             _mevent.Set();
-            
+
             ThreadUtility.MemoryBarrier();
         }
 
-        readonly FasterList<IPausableTask>      _coroutines = new FasterList<IPausableTask>();
+        readonly FasterList<IPausableTask>      _coroutines      = new FasterList<IPausableTask>();
         readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
 
         string _name;
@@ -280,7 +248,7 @@ namespace Svelto.Tasks
         readonly Action    _lockingMechanism;
         readonly int       _interval;
         readonly Stopwatch _watch;
-        Action _onThreadKilled;
+        Action             _onThreadKilled;
 
 #if TASKS_PROFILER_ENABLED
         readonly TaskProfiler _taskProfiler = new TaskProfiler();

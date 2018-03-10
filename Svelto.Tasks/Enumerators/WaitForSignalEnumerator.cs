@@ -1,7 +1,5 @@
 using System;
-using System.CodeDom.Compiler;
 using System.Collections;
-using System.Threading;
 using Svelto.Utilities;
 
 namespace Svelto.Tasks.Enumerators
@@ -16,21 +14,25 @@ namespace Svelto.Tasks.Enumerators
             }
         }
 
-        public WaitForSignalEnumerator(double timeout = 10, bool autoreset = true)
+        public WaitForSignalEnumerator(string name, float timeout = 100, bool autoreset = true)
         {
+            _initialTimeOut = timeout;
             _timeout = timeout;
             _autoreset = autoreset;
+            _name = name;
+            ThreadUtility.MemoryBarrier();
         }
         
-        public WaitForSignalEnumerator(Func<bool> extraCondition, double timeout = 10, bool autoreset = true):this(timeout, autoreset)
+        public WaitForSignalEnumerator(string name, Func<bool> extraCondition, float timeout = 100, bool autoreset = true):this(name, timeout, autoreset)
         {
             _extraCondition = extraCondition;
         }
 
         public bool MoveNext()
         {
-            var then = DateTime.UtcNow;
-            
+            if (_timeout == _initialTimeOut)
+                _then = DateTime.UtcNow;
+
             ThreadUtility.MemoryBarrier();
 
             var isDone = _signal || _timeout < 0;
@@ -41,10 +43,11 @@ namespace Svelto.Tasks.Enumerators
                 return false;
             }
             
-            _timeout -= (DateTime.UtcNow - then).TotalMilliseconds;
+            _timeout -= (float)(DateTime.UtcNow - _then).TotalMilliseconds;
+            _then = DateTime.UtcNow;
             
             if (_timeout < 0)
-                Utility.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(ToString(), " timedOut"));
+                Utility.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
             
             return !isDone;
         }
@@ -53,6 +56,7 @@ namespace Svelto.Tasks.Enumerators
         {
             _signal = false;
             _return = null;
+            _timeout = _initialTimeOut;
             
             ThreadUtility.MemoryBarrier();
         }
@@ -84,11 +88,15 @@ namespace Svelto.Tasks.Enumerators
             return _signal;
         }
         
-        volatile bool _signal;
+        volatile bool   _signal;
         volatile object _return;
+        volatile float _timeout;
 
-        readonly bool _autoreset;
+        readonly bool       _autoreset;
         readonly Func<bool> _extraCondition;
-        double _timeout;
+        
+        readonly float      _initialTimeOut;
+        DateTime            _then;
+        string              _name;
     }
 }
