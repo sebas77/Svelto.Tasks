@@ -204,7 +204,11 @@ namespace Svelto.Tasks
 
             while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
             {   //yielding here was slower on the 1 M points simulation
-                ThreadUtility.TakeItEasy();
+                if (++quickIterations < 1000)
+                    ThreadUtility.Yield();
+                else
+                    ThreadUtility.TakeItEasy();
+                    
                 //this is quite arbitrary at the moment as 
                 //DateTime allocates a lot in UWP .Net Native
                 //and stopwatch casues several issues

@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Threading;
 using Svelto.Utilities;
-using UnityEngine;
+using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
@@ -100,12 +100,28 @@ namespace Svelto.Tasks
         public void Add(IEnumerator enumerator)
         {
             if (isRunning == true)
-                throw new MultiThreadedParallelTaskCollectionException("can't add enumerators on a started MultiThreadedParallelTaskCollection");
+                throw new MultiThreadedParallelTaskCollectionException("can't add tasks on a started MultiThreadedParallelTaskCollection");
 
             ParallelTaskCollection parallelTaskCollection = _parallelTasks[_numberOfTasksAdded++ % _parallelTasks.Length];
             parallelTaskCollection.Add(enumerator);
 
             _numberOfConcurrentOperationsToRun = Math.Min(_parallelTasks.Length, _numberOfTasksAdded);
+        }
+        
+        public void Add<T>(ref T job, int iterations) where T:IMultiThreadParallelizable
+        {
+            if (isRunning == true)
+                throw new MultiThreadedParallelTaskCollectionException("can't add tasks on a started MultiThreadedParallelTaskCollection");
+
+            var runnersLength = _runners.Length;
+            int particlesPerThread = (int) Math.Floor((double)iterations / runnersLength);
+            int reminder = iterations % runnersLength;
+
+            for (int i = 0; i < runnersLength; i++)
+                Add(new ParallelRunEnumerator<T>(ref job, particlesPerThread * i, particlesPerThread));
+            
+            if (reminder > 0)
+                Add(new ParallelRunEnumerator<T>(ref job, particlesPerThread * runnersLength, reminder));
         }
 
         public bool MoveNext()
