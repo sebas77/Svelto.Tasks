@@ -138,7 +138,7 @@ namespace Svelto.Tasks
         public void Dispose()
         {
             _isDisposing = true;
-            Thread.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
             _disposingThreads = _runners.Length;
 
             for (int i = 0; i < _runners.Length; i++)
@@ -151,7 +151,7 @@ namespace Svelto.Tasks
             onComplete          = null;
             _numberOfTasksAdded = 0;
             
-            Thread.MemoryBarrier();
+            ThreadUtility.MemoryBarrier();
         }
 
         void DecrementRunningThread()

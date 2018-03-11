@@ -54,6 +54,7 @@ namespace Svelto.Tasks
 
 #if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
             //threadpool doesn't work well with Unity apparently
+            //it seems to choke when too meany threads are started
             var thread = new Thread(() =>
                                     {
                                         _name = name;
@@ -70,7 +71,7 @@ namespace Svelto.Tasks
                 _name = name;
 
                 RunCoroutineFiber();
-            });
+            }, TaskCreationOptions.LongRunning);
 
             thread.Start();
 #endif
@@ -202,7 +203,7 @@ namespace Svelto.Tasks
             var quickIterations = 0;
 
             while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
-            {
+            {   //yielding here was slower on the 1 M points simulation
                 ThreadUtility.TakeItEasy();
                 //this is quite arbitrary at the moment as 
                 //DateTime allocates a lot in UWP .Net Native
