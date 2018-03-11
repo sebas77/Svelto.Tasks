@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Threading;
 using Svelto.Utilities;
+using UnityEngine;
 
 namespace Svelto.Tasks
 {
@@ -41,15 +42,15 @@ namespace Svelto.Tasks
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
             for (int i = 0; i < numberOfThreads; i++)
-                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), false, true);
+                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), false);
 
-            /*Action*/ _ptcOnOnComplete = DecrementConcurrentOperationsCounter;
+            Action ptcOnOnComplete = DecrementConcurrentOperationsCounter;
             Func<Exception, bool> ptcOnOnException = (e) =>
                                                      {
                                                          DecrementConcurrentOperationsCounter();
                                                          return false;
                                                      };
-            _ptcOnOnException =   (e) => DecrementConcurrentOperationsCounter(); 
+
 
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)
@@ -57,7 +58,7 @@ namespace Svelto.Tasks
                 var ptask = TaskRunner.Instance.AllocateNewTaskRoutine();
                 var ptc   = new ParallelTaskCollection("ParallelTaskCollection #".FastConcat(i));
 
-                ptc.onComplete  += _ptcOnOnComplete;
+                ptc.onComplete  += ptcOnOnComplete;
                 ptc.onException += ptcOnOnException;
 
                 ptask.SetEnumerator(ptc).SetScheduler(_runners[i]);
@@ -76,9 +77,11 @@ namespace Svelto.Tasks
             {
                 _counter = _numberOfConcurrentOperationsToRun;
                 ThreadUtility.MemoryBarrier();
+                
+                Action ptcOnOnComplete = DecrementStoppingThread;
                 //start them
                 for (int i = 0; i < _numberOfConcurrentOperationsToRun; i++)
-                    _taskRoutines[i].ThreadSafeStart(_ptcOnOnException, _ptcOnOnComplete);
+                    _taskRoutines[i].ThreadSafeStart(onStop: ptcOnOnComplete);
             }
             
             //wait for completition, I am not using signaling as this Collection could be yielded by a main thread runner
@@ -119,11 +122,13 @@ namespace Svelto.Tasks
 
         public void Stop()
         {
-            for (int i = 0; i < _taskRoutines.Length; i++)
-                _taskRoutines[i].Stop();
+            _stoppingThreads = _runners.Length;
+            
+            for (int i = 0; i < _runners.Length; i++)
+                _runners[i].StopAllCoroutines();
 
-            while (_counter > 0) 
-                ThreadUtility.Yield();
+            while (_stoppingThreads > 0) 
+                ThreadUtility.TakeItEasy();
             
             isRunning = false;
             
@@ -134,12 +139,12 @@ namespace Svelto.Tasks
         {
             _isDisposing = true;
             Thread.MemoryBarrier();
-            _runningThreads = _runners.Length;
+            _disposingThreads = _runners.Length;
 
             for (int i = 0; i < _runners.Length; i++)
                 _runners[i].Kill(DecrementRunningThread);
             
-            while (_runningThreads > 0) ThreadUtility.Yield();
+            while (_disposingThreads > 0) ThreadUtility.TakeItEasy();
 
             _runners            = null;
             _parallelTasks      = null;
@@ -151,7 +156,12 @@ namespace Svelto.Tasks
 
         void DecrementRunningThread()
         {
-            Interlocked.Decrement(ref _runningThreads);
+            Interlocked.Decrement(ref _disposingThreads);
+        }
+        
+        void DecrementStoppingThread()
+        {
+            Interlocked.Decrement(ref _stoppingThreads);
         }
 
         void DecrementConcurrentOperationsCounter()
@@ -166,9 +176,8 @@ namespace Svelto.Tasks
         int                           _numberOfTasksAdded;
         int                           _numberOfConcurrentOperationsToRun;
         int                           _counter;
-        int                           _runningThreads;
-        Action                        _ptcOnOnComplete;
-        Action<PausableTaskException> _ptcOnOnException;
+        int                           _disposingThreads;
+        int                           _stoppingThreads;
         volatile bool                 _isDisposing;
     }
 

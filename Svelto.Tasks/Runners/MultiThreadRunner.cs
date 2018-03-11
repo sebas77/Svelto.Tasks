@@ -43,7 +43,7 @@ namespace Svelto.Tasks
             Kill(null);
         }
 
-        internal MultiThreadRunner(string name, bool relaxed, bool fromThePool)
+        internal MultiThreadRunner(string name, bool relaxed)
         {
             _mevent = new ManualResetEventEx();
 
@@ -53,28 +53,17 @@ namespace Svelto.Tasks
                 _lockingMechanism = QuickLockingMechanism;
 
 #if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
-            if (fromThePool)
-            {
-                ThreadPool.QueueUserWorkItem(callback =>
-                                             {
-                                                 _name = name;
+            //threadpool doesn't work well with Unity apparently
+            var thread = new Thread(() =>
+                                    {
+                                        _name = name;
 
-                                                 RunCoroutineFiber();
-                                             });
-            }
-            else
-            {
-                var thread = new Thread(() =>
-                                        {
-                                            _name = name;
+                                        RunCoroutineFiber();
+                                    });
 
-                                            RunCoroutineFiber();
-                                        });
+            thread.IsBackground = true;
 
-                thread.IsBackground = true;
-
-                thread.Start();
-            }
+            thread.Start();
 #else
             var thread = new Task(() => 
             {
@@ -87,7 +76,7 @@ namespace Svelto.Tasks
 #endif
         }
 
-        public MultiThreadRunner(string name, int intervalInMS) : this(name, false, false)
+        public MultiThreadRunner(string name, int intervalInMS) : this(name, false)
         {
             _interval = intervalInMS;
             _watch    = new Stopwatch();
@@ -214,7 +203,7 @@ namespace Svelto.Tasks
 
             while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
             {
-                ThreadUtility.Yield();
+                ThreadUtility.TakeItEasy();
                 //this is quite arbitrary at the moment as 
                 //DateTime allocates a lot in UWP .Net Native
                 //and stopwatch casues several issues
@@ -238,7 +227,7 @@ namespace Svelto.Tasks
         void UnlockThread()
         {
             _interlock = 1;
-            
+
             _mevent.Set();
 
             ThreadUtility.MemoryBarrier();
@@ -256,10 +245,10 @@ namespace Svelto.Tasks
 
         ManualResetEventEx _mevent;
 
-        readonly Action    _lockingMechanism;
-        readonly int       _interval;
-        Stopwatch          _watch;
-        Action             _onThreadKilled;
+        readonly Action _lockingMechanism;
+        readonly int    _interval;
+        Stopwatch       _watch;
+        Action          _onThreadKilled;
 
 #if TASKS_PROFILER_ENABLED
         readonly TaskProfiler _taskProfiler = new TaskProfiler();
