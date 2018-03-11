@@ -2,36 +2,53 @@ namespace Svelto.Tasks
 {
     public static class StandardSchedulers
     {
-        public static IRunner multiThreadScheduler { get; private set; }
+        static MultiThreadRunner _multiThreadScheduler;
+        static CoroutineMonoRunner _coroutineScheduler;
+        static PhysicMonoRunner _physicScheduler;
+        static LateMonoRunner _lateScheduler;
+        static UpdateMonoRunner _updateScheduler;
+
+        public static IRunner multiThreadScheduler { get { if (_multiThreadScheduler == null) _multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", true, false);
+            return _multiThreadScheduler;
+        } }
 
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-        public static IRunner coroutineScheduler { get; private set; }
-        public static IRunner physicScheduler { get; private set; }
-        public static IRunner lateScheduler { get; private set; }
-        public static IRunner updateScheduler { get; private set; }
+        public static IRunner coroutineScheduler { get { if (_coroutineScheduler == null) _coroutineScheduler = new CoroutineMonoRunner("StandardCoroutineRunner");
+            return _coroutineScheduler;
+        } }
+        public static IRunner physicScheduler { get { if (_physicScheduler == null) _physicScheduler = new PhysicMonoRunner("StandardPhysicRunner");
+            return _physicScheduler;
+        } }
+        public static IRunner lateScheduler { get { if (_lateScheduler == null) _lateScheduler = new LateMonoRunner("StandardLateRunner");
+            return _lateScheduler;
+        } }
+        public static IRunner updateScheduler { get { if (_updateScheduler == null) _updateScheduler = new UpdateMonoRunner("StandardMonoRunner");
+            return _updateScheduler;
+        } }
 #endif
 
         //physicScheduler -> updateScheduler -> coroutineScheduler -> lateScheduler
 
-        static StandardSchedulers()
+        internal static void KillSchedulers()
         {
-            multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", true, false);
+            if (_multiThreadScheduler != null)
+                _multiThreadScheduler.Dispose();
+            _multiThreadScheduler = null;
+            
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-            coroutineScheduler = new CoroutineMonoRunner("StandardCoroutineRunner");
-            physicScheduler = new PhysicMonoRunner("StandardPhysicRunner");
-            lateScheduler = new LateMonoRunner("StandardLateRunner");
-            updateScheduler = new UpdateMonoRunner("StandardMonoRunner");
-#endif
-        }
-
-        public static void StopSchedulers()
-        {
-            multiThreadScheduler.StopAllCoroutines();
-#if UNITY_5 || UNITY_5_3_OR_NEWER
-            coroutineScheduler.StopAllCoroutines();           
-            physicScheduler.StopAllCoroutines();
-            lateScheduler.StopAllCoroutines();
-            updateScheduler.StopAllCoroutines();
+            if (_coroutineScheduler != null)
+                _coroutineScheduler.StopAllCoroutines();
+            if (_physicScheduler != null)
+                _physicScheduler.StopAllCoroutines();
+            if (_lateScheduler != null)
+                _lateScheduler.StopAllCoroutines();
+            if (_updateScheduler != null)
+                _updateScheduler.StopAllCoroutines();
+            
+            _coroutineScheduler = null;
+            _physicScheduler = null;
+            _lateScheduler = null;
+            _updateScheduler = null;
 #endif
         }
     }

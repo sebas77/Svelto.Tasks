@@ -1,6 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
+using UnityEngine;
 
 //StaggeredMonoRunner doesn't flush all the tasks at once, but it spread
 //them over "framesToSpread" frames;
@@ -13,13 +14,13 @@ namespace Svelto.Tasks
         {
             _flushingOperation = new FlushingOperationStaggered(maxTasksPerFrame);
 
-            var go = UnityCoroutineRunner.InitializeGameobject(name);
+            UnityCoroutineRunner.InitializeGameObject(name, ref _go);
 
             var coroutines = new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
-            var runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
-            var runnerBehaviourForUnityCoroutine = go.AddComponent<RunnerBehaviour>();
+            var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
+            var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
 
-            _info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
+            _info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
 
             runnerBehaviour.StartUpdateCoroutine(UnityCoroutineRunner.Process
                 (_newTaskRoutines, coroutines, _flushingOperation, _info,
@@ -65,6 +66,7 @@ namespace Svelto.Tasks
         readonly FlushingOperationStaggered            _flushingOperation;
         readonly UnityCoroutineRunner.RunningTasksInfo _info;
         readonly ThreadSafeQueue<IPausableTask>        _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
+        readonly GameObject                            _go;
 
         const int NUMBER_OF_INITIAL_COROUTINE = 3;
     }

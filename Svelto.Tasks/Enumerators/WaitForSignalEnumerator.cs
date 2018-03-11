@@ -76,11 +76,6 @@ namespace Svelto.Tasks.Enumerators
             ThreadUtility.MemoryBarrier();
         }
 
-        public void WaitForSignal()
-        {
-            while (MoveNext()) ThreadUtility.Yield();
-        }
-
         public bool isDone()
         {
             DBC.Check.Require(_autoreset == false, "Can't check if done if the signal auto resets, change behaviour through the constructor parameter");

@@ -124,14 +124,20 @@ namespace Svelto.Tasks
 
         public void Kill(Action onThreadKilled)
         {
-            _breakThread = true;
+            if (_mevent != null) //already disposed
+            {
+                _onThreadKilled = onThreadKilled;
 
-            _onThreadKilled = onThreadKilled;
+                _breakThread = true;
 
-            UnlockThread();
+                UnlockThread();
 
-            if (_watch != null)
-                _watch.Stop();
+                if (_watch != null)
+                {
+                    _watch.Stop();
+                    _watch = null;
+                }
+            }
         }
 
         void RunCoroutineFiber()
@@ -186,7 +192,11 @@ namespace Svelto.Tasks
                 _onThreadKilled();
 
             if (_mevent != null)
+            {
                 _mevent.Dispose();
+                _mevent = null;
+                ThreadUtility.MemoryBarrier();
+            }
         }
 
         void WaitForInterval()
@@ -228,6 +238,7 @@ namespace Svelto.Tasks
         void UnlockThread()
         {
             _interlock = 1;
+            
             _mevent.Set();
 
             ThreadUtility.MemoryBarrier();
@@ -243,11 +254,11 @@ namespace Svelto.Tasks
         volatile bool _waitForflush;
         volatile bool _breakThread;
 
-        readonly ManualResetEventEx _mevent;
+        ManualResetEventEx _mevent;
 
         readonly Action    _lockingMechanism;
         readonly int       _interval;
-        readonly Stopwatch _watch;
+        Stopwatch          _watch;
         Action             _onThreadKilled;
 
 #if TASKS_PROFILER_ENABLED

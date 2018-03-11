@@ -92,14 +92,9 @@ namespace Svelto.Tasks
             return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
         }
 
-        public static void StopDefaultSchedulerTasks()
-        {
-            StandardSchedulers.StopSchedulers();
-        }
-
         public void StopAndCleanupAllDefaultSchedulerTasks()
         {
-            StopDefaultSchedulerTasks();
+            StandardSchedulers.KillSchedulers();
 
             _taskPool = null;
             _runner = null;

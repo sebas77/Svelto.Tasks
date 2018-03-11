@@ -29,24 +29,21 @@ namespace Svelto.Tasks.Internal
             flushingOperation.stopped = true;
         }
 
-        internal static GameObject InitializeGameobject(string name)
+        internal static void InitializeGameObject(string name, ref GameObject go)
         {
             var taskRunnerName = "TaskRunner.".FastConcat(name);
-            var go = GameObject.Find(taskRunnerName);
 
             if (go != null)
             {
                 // Destroy the old object before making a new one
                 Object.DestroyImmediate(go);
             }
-
+            
             go = new GameObject(taskRunnerName);
 #if UNITY_EDITOR
             if (Application.isPlaying)
 #endif
                 Object.DontDestroyOnLoad(go);
-
-            return go;
         }
 
         internal static IEnumerator Process(ThreadSafeQueue<IPausableTask> newTaskRoutines,

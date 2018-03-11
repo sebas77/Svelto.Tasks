@@ -1,5 +1,6 @@
 using Svelto.Tasks;
 using System.Collections;
+using Svelto.Utilities;
 
 public static class TaskRunnerExtensions
 {
@@ -26,6 +27,11 @@ public static class TaskRunnerExtensions
     public static ContinuationWrapper Run(this IEnumerator enumerator)
     {
         return TaskRunner.Instance.Run(enumerator);
+    }
+    
+    public static void Complete(this IEnumerator enumerator)
+    {
+        while (enumerator.MoveNext()) ThreadUtility.Yield();
     }
 }
 
