@@ -52,7 +52,7 @@ namespace Svelto.Tasks
             _condition = func;
         }
 
-        public void Completed()
+        internal void Completed()
         {
             _completed = true;
             ThreadUtility.MemoryBarrier();

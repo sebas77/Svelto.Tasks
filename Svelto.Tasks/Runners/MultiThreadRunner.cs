@@ -43,7 +43,7 @@ namespace Svelto.Tasks
             Kill(null);
         }
 
-        internal MultiThreadRunner(string name, bool relaxed)
+        public MultiThreadRunner(string name, bool relaxed = true)
         {
             _mevent = new ManualResetEventEx();
 
@@ -138,7 +138,7 @@ namespace Svelto.Tasks
                 if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
                     _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
-                for (var i = 0; i < _coroutines.Count && (false == _waitForflush || _breakThread); i++)
+                for (var i = 0; i < _coroutines.Count && (false == _breakThread); i++)
                 {
                     var enumerator = _coroutines[i];
 

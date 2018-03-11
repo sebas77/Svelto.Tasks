@@ -122,7 +122,7 @@ namespace Svelto.Tasks
 
         public void Stop()
         {
-            _stoppingThreads = _runners.Length;
+            _stoppingThreads = _taskRoutines.Length;
             
             for (int i = 0; i < _runners.Length; i++)
                 _runners[i].StopAllCoroutines();
