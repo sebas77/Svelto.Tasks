@@ -9,7 +9,7 @@ http://www.sebaslab.com/svelto-taskrunner-run-serial-and-parallel-asynchronous-t
 
 If you want to test it out right away with some pre made examples, please don't download this repository, but instead use this one: https://github.com/sebas77/Svelto.Tasks.Tests
 
-New Parallelism example: http://www.sebaslab.com/learning-svelto-tasks-example-million-points-example/
+New Parallelism example: https://github.com/sebas77/Svelto.Tasks.Examples.MillionPoints
 
 ## how to clone the repository:
 
