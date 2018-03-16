@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace Svelto.Tasks.Internal
 {
-    class ParallelRunEnumerator<T> : IEnumerator where T:IMultiThreadParallelizable
+    class ParallelRunEnumerator<T> : IEnumerator where T:struct, IMultiThreadParallelizable
     {
         public ParallelRunEnumerator(ref T job, int startIndex, int numberOfIterations)
         {
@@ -30,12 +30,12 @@ namespace Svelto.Tasks.Internal
         {}
 
         public object Current { get; }
+
+        readonly int _startIndex;
+        readonly int _numberOfITerations;
+        readonly T _job;
         
-        int _startIndex;
-        int _numberOfITerations;
         int _index;
         int _endIndex;
-        
-        T _job;
     }
 }
