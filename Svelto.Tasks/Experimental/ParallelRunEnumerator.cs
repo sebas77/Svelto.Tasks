@@ -13,28 +13,17 @@ namespace Svelto.Tasks.Internal
 
         public bool MoveNext()
         {
-            var endIndex = _startIndex + _numberOfITerations;
+            _endIndex = _startIndex + _numberOfITerations;
 
-            int i;
-            for (i = _startIndex; i < endIndex; i += 8)
-            {
-                _job.Update(i);
-                _job.Update(i + 1);
-                _job.Update(i + 2);
-                _job.Update(i + 3);
-                _job.Update(i + 4);
-                _job.Update(i + 5);
-                _job.Update(i + 6);
-                _job.Update(i + 7);
-            }
-            
-            var count = _numberOfITerations % 8;
-
-            i -= 8;
-            for (int j = i; j < i + count; j++)
-                _job.Update(j);
+            Loop();
 
             return false;
+        }
+
+        void Loop()
+        {
+            for (_index = _startIndex; _index < _endIndex; _index++)
+                _job.Update(_index);
         }
 
         public void Reset()
@@ -44,6 +33,9 @@ namespace Svelto.Tasks.Internal
         
         int _startIndex;
         int _numberOfITerations;
+        int _index;
+        int _endIndex;
+        
         T _job;
     }
 }

@@ -160,7 +160,8 @@ namespace Svelto.Tasks
             for (int i = 0; i < _runners.Length; i++)
                 _runners[i].Kill(DecrementRunningThread);
             
-            while (_disposingThreads > 0) ThreadUtility.TakeItEasy();
+            while (_disposingThreads > 0) 
+                ThreadUtility.TakeItEasy();
 
             _runners            = null;
             _parallelTasks      = null;
