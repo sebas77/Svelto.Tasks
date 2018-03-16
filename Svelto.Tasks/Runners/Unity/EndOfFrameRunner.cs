@@ -5,19 +5,19 @@ using UnityEngine;
 
 namespace Svelto.Tasks
 {
-    public class LateMonoRunner : MonoRunner
+    public class EndOfFrameRunner : MonoRunner
     {
-        public LateMonoRunner(string name)
+        public EndOfFrameRunner(string name)
         {
             UnityCoroutineRunner.InitializeGameObject(name, ref _go);
 
             var coroutines = new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
-            var runnerBehaviour = _go.AddComponent<RunnerBehaviourLate>();
+            var runnerBehaviour = _go.AddComponent<RunnerBehaviourEndOfFrame>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
 
             _info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
 
-            runnerBehaviour.StartLateCoroutine(UnityCoroutineRunner.Process
+            runnerBehaviour.StartEndOfFrameCoroutine(UnityCoroutineRunner.Process
                 (_newTaskRoutines, coroutines, _flushingOperation, _info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
@@ -32,10 +32,10 @@ namespace Svelto.Tasks
         protected override UnityCoroutineRunner.FlushingOperation flushingOperation
         { get { return _flushingOperation; } }
 
-        readonly ThreadSafeQueue<IPausableTask>          _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
+        readonly ThreadSafeQueue<IPausableTask>         _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
         readonly UnityCoroutineRunner.FlushingOperation _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
-        readonly UnityCoroutineRunner.RunningTasksInfo _info;
-        readonly GameObject                            _go;
+        readonly UnityCoroutineRunner.RunningTasksInfo  _info;
+        readonly GameObject                             _go;
 
         const int NUMBER_OF_INITIAL_COROUTINE = 0;
     }
