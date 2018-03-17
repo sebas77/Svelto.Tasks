@@ -265,7 +265,7 @@ namespace Svelto.Tasks.Internal
                         _onFail(new PausableTaskException(e));
                     else
                     {
-                       Utility.Console.LogError(e.ToString());
+                       Utility.Console.LogException(e);
                     }
 #if DEBUG
                     throw;

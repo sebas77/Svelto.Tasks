@@ -108,7 +108,7 @@ namespace Svelto.Tasks
             _numberOfConcurrentOperationsToRun = Math.Min(_parallelTasks.Length, _numberOfTasksAdded);
         }
         
-        public void Add<T>(ref T job, int iterations) where T:IMultiThreadParallelizable
+        public void Add<T>(ref T job, int iterations) where T:struct, IMultiThreadParallelizable
         {
             if (isRunning == true)
                 throw new MultiThreadedParallelTaskCollectionException("can't add tasks on a started MultiThreadedParallelTaskCollection");
@@ -160,7 +160,8 @@ namespace Svelto.Tasks
             for (int i = 0; i < _runners.Length; i++)
                 _runners[i].Kill(DecrementRunningThread);
             
-            while (_disposingThreads > 0) ThreadUtility.TakeItEasy();
+            while (_disposingThreads > 0) 
+                ThreadUtility.TakeItEasy();
 
             _runners            = null;
             _parallelTasks      = null;
