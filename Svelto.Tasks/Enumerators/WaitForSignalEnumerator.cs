@@ -45,10 +45,12 @@ namespace Svelto.Tasks.Enumerators
             
             _timeout -= (float)(DateTime.UtcNow - _then).TotalMilliseconds;
             _then = DateTime.UtcNow;
-            
+
             if (_timeout < 0)
                 Utility.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
-            
+
+            ThreadUtility.TakeItEasy();
+
             return !isDone;
         }
 
