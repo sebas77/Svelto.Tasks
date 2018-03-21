@@ -60,7 +60,7 @@ namespace Svelto.Tasks
             if (isStopping == true)
                 return true;
             
-#if TASKS_PROFILER_ENABLED
+#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
             return UnityCoroutineRunner.TASK_PROFILER.MonitorUpdateDuration(task, info.runnerName);
 #else
             return task.MoveNext();

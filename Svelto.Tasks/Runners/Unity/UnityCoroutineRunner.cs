@@ -4,7 +4,7 @@ using System.Collections;
 using Svelto.DataStructures;
 using UnityEngine;
 using Object = UnityEngine.Object;
-#if TASKS_PROFILER_ENABLED
+#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
 using Svelto.Tasks.Profiler;
 #endif
 
@@ -152,7 +152,7 @@ namespace Svelto.Tasks.Internal
                         }                        
 
                         bool result;
-#if TASKS_PROFILER_ENABLED
+#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
                         result = TASK_PROFILER.MonitorUpdateDuration(pausableTask, info.runnerName);
 #else
                         result = pausableTask.MoveNext();
@@ -248,7 +248,7 @@ namespace Svelto.Tasks.Internal
             FlushingOperation _flushingOperation;
         }
         
-#if TASKS_PROFILER_ENABLED
+#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
         public static readonly TaskProfiler TASK_PROFILER = new TaskProfiler();
 #endif        
     }
