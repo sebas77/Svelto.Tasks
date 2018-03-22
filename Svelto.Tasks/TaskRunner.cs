@@ -84,7 +84,7 @@ namespace Svelto.Tasks
         public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
         {
             return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator)
-                .ThreadSafeStart();
+                            .ThreadSafeStart();
         }
 
         public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)
@@ -92,13 +92,15 @@ namespace Svelto.Tasks
             return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
         }
 
-        public void StopAndCleanupAllDefaultSchedulerTasks()
+        public static void StopAndCleanupAllDefaultSchedulers()
         {
             StandardSchedulers.KillSchedulers();
 
-            _taskPool = null;
-            _runner = null;
-            _instance = null;
+            if (_instance != null)
+            {
+                _instance._taskPool = null;
+                _instance._runner   = null;
+            }
         }
 
 //TaskRunner is supposed to be used in the mainthread only
@@ -106,8 +108,8 @@ namespace Svelto.Tasks
 //Runners should be used directly on other threads 
 //than the main one
 
-        static void InitInstance()
-        {
+         static void InitInstance()
+         {
             _instance = new TaskRunner();
 #if UNITY_5_3_OR_NEWER || UNITY_5
             _instance._runner = StandardSchedulers.coroutineScheduler;
@@ -127,7 +129,7 @@ namespace Svelto.Tasks
 #endif
         }
 
-        IRunner _runner;
+        IRunner          _runner;
         PausableTaskPool _taskPool;
-    }
+     }
 }
