@@ -25,7 +25,7 @@ namespace Svelto.Tasks.Internal
         }
 
         IEnumerator       _mainRoutine;
-        WaitForEndOfFrame _waitForEndOfFrame;
+        readonly WaitForEndOfFrame _waitForEndOfFrame = new WaitForEndOfFrame();
     }
 }
 #endif
