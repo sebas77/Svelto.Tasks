@@ -3,10 +3,12 @@ namespace Svelto.Tasks
     public static class StandardSchedulers
     {
         static MultiThreadRunner _multiThreadScheduler;
+#if UNITY_5 || UNITY_5_3_OR_NEWER
         static CoroutineMonoRunner _coroutineScheduler;
         static PhysicMonoRunner _physicScheduler;
         static LateMonoRunner _lateScheduler;
         static UpdateMonoRunner _updateScheduler;
+#endif
 
         public static IRunner multiThreadScheduler { get { if (_multiThreadScheduler == null) _multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", true);
             return _multiThreadScheduler;
