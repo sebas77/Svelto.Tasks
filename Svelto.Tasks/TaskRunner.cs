@@ -100,6 +100,7 @@ namespace Svelto.Tasks
             {
                 _instance._taskPool = null;
                 _instance._runner   = null;
+                _instance = null;
             }
         }
 
