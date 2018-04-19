@@ -33,12 +33,8 @@ namespace Svelto.Tasks.Internal
         {
             var taskRunnerName = "TaskRunner.".FastConcat(name);
 
-            if (go != null)
-            {
-                // Destroy the old object before making a new one
-                Object.DestroyImmediate(go);
-            }
-            
+            DBC.Check.Require(GameObject.Find(taskRunnerName) == null, GAMEOBJECT_ALREADY_EXISTING_ERROR);
+
             go = new GameObject(taskRunnerName);
 #if UNITY_EDITOR
             if (Application.isPlaying)
@@ -251,6 +247,7 @@ namespace Svelto.Tasks.Internal
 #if TASKS_PROFILER_ENABLED && UNITY_EDITOR
         public static readonly TaskProfiler TASK_PROFILER = new TaskProfiler();
 #endif        
+        const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";
     }
 }
 #endif
