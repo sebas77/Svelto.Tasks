@@ -1,13 +1,19 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
-using UnityEngine;
 
 //StaggeredMonoRunner doesn't flush all the tasks at once, but it spread
 //them over "framesToSpread" frames;
 
 namespace Svelto.Tasks
 {
+    /// <summary>
+    /// while you can istantiate a MonoRunner, you should use the standard one
+    /// whenever possible. Istantiating multiple runners will defeat the
+    /// initial purpose to get away from the Unity monobehaviours
+    /// internal updates. MonoRunners are disposable though, so at
+    /// least be sure to dispose of them once done
+    /// </summary>
     public class StaggeredMonoRunner : MonoRunner
     {
         public StaggeredMonoRunner(string name, int maxTasksPerFrame)
@@ -66,7 +72,6 @@ namespace Svelto.Tasks
         readonly FlushingOperationStaggered            _flushingOperation;
         readonly UnityCoroutineRunner.RunningTasksInfo _info;
         readonly ThreadSafeQueue<IPausableTask>        _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
-        readonly GameObject                            _go;
 
         const int NUMBER_OF_INITIAL_COROUTINE = 3;
     }

@@ -2,6 +2,8 @@
 
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
+using UnityEngine;
+
 #if TASKS_PROFILER_ENABLED
 using Svelto.Tasks.Profiler;
 #endif
@@ -18,6 +20,7 @@ namespace Svelto.Tasks
         protected abstract UnityCoroutineRunner.RunningTasksInfo info { get; }
         protected abstract ThreadSafeQueue<IPausableTask> newTaskRoutines { get; }
         protected abstract UnityCoroutineRunner.FlushingOperation flushingOperation { get; }
+        protected GameObject _go;
         
         /// <summary>
         /// TaskRunner doesn't stop executing tasks between scenes
@@ -70,6 +73,8 @@ namespace Svelto.Tasks
         public void Dispose()
         {
             StopAllCoroutines();
+            
+            GameObject.DestroyImmediate(_go);
         }
     }
 }

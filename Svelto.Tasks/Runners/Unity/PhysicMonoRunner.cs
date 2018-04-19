@@ -1,10 +1,16 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
-using UnityEngine;
 
 namespace Svelto.Tasks
 {
+    /// <summary>
+    /// while you can istantiate a MonoRunner, you should use the standard one
+    /// whenever possible. Istantiating multiple runners will defeat the
+    /// initial purpose to get away from the Unity monobehaviours
+    /// internal updates. MonoRunners are disposable though, so at
+    /// least be sure to dispose of them once done
+    /// </summary>
     public class PhysicMonoRunner : MonoRunner
     {
         public PhysicMonoRunner(string name)
@@ -35,7 +41,6 @@ namespace Svelto.Tasks
         readonly ThreadSafeQueue<IPausableTask>         _newTaskRoutines   = new ThreadSafeQueue<IPausableTask>();
         readonly UnityCoroutineRunner.FlushingOperation _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
         readonly UnityCoroutineRunner.RunningTasksInfo  _info;
-        readonly GameObject                             _go;
 
         const int NUMBER_OF_INITIAL_COROUTINE = 3;
     }

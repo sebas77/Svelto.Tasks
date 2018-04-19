@@ -39,13 +39,13 @@ namespace Svelto.Tasks
             
 #if UNITY_5 || UNITY_5_3_OR_NEWER
             if (_coroutineScheduler != null)
-                _coroutineScheduler.StopAllCoroutines();
+                _coroutineScheduler.Dispose();
             if (_physicScheduler != null)
-                _physicScheduler.StopAllCoroutines();
+                _physicScheduler.Dispose();
             if (_lateScheduler != null)
-                _lateScheduler.StopAllCoroutines();
+                _lateScheduler.Dispose();
             if (_updateScheduler != null)
-                _updateScheduler.StopAllCoroutines();
+                _updateScheduler.Dispose();
             
             _coroutineScheduler = null;
             _physicScheduler = null;
