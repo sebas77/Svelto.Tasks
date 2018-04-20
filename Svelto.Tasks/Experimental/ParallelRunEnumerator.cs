@@ -29,7 +29,10 @@ namespace Svelto.Tasks.Internal
         public void Reset()
         {}
 
-        public object Current { get; }
+        public object Current
+        {
+            get { return null; }
+        }
 
         readonly int _startIndex;
         readonly int _numberOfITerations;

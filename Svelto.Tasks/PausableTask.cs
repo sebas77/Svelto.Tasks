@@ -432,7 +432,7 @@ namespace Svelto.Tasks.Internal
             
             if (_taskEnumerator != null && _taskEnumeratorJustSet == false)
             {
-                DBC.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead");
+                DBC.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead ".FastConcat(_name));
                 
                 task.Reset();
             }
