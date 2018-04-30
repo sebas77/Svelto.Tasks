@@ -40,19 +40,9 @@ namespace Svelto.Tasks
             _runner.paused = false;
         }
 
-        public ContinuationWrapper Run(Func<IEnumerator> taskGenerator)
-        {
-            return RunOnSchedule(_runner, taskGenerator);
-        }
-
         public ContinuationWrapper Run(IEnumerator task)
         {
             return RunOnSchedule(_runner, task);
-        }
-
-        public ContinuationWrapper RunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
-        {
-            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator).Start();
         }
 
         /// <summary>
@@ -71,20 +61,9 @@ namespace Svelto.Tasks
         /// </summary>
         /// <param name="taskGenerator"></param>
         /// <returns></returns>
-        public ContinuationWrapper ThreadSafeRun(Func<IEnumerator> taskGenerator)
-        {
-            return ThreadSafeRunOnSchedule(_runner, taskGenerator);
-        }
-
         public ContinuationWrapper ThreadSafeRun(IEnumerator task)
         {
             return ThreadSafeRunOnSchedule(_runner, task);
-        }
-
-        public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, Func<IEnumerator> taskGenerator)
-        {
-            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumeratorProvider(taskGenerator)
-                            .ThreadSafeStart();
         }
 
         public ContinuationWrapper ThreadSafeRunOnSchedule(IRunner runner, IEnumerator task)

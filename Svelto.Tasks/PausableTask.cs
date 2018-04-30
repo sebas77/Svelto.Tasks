@@ -146,6 +146,14 @@ namespace Svelto.Tasks.Internal
             ThreadUtility.MemoryBarrier();
         }
 
+        public bool isRunning
+        {
+            get
+            {
+                return _started == true && _completed == false;
+            }
+        }
+
         public ContinuationWrapper Start(Action<PausableTaskException> onFail = null, Action onStop = null)
         {
             _threadSafe = false;
