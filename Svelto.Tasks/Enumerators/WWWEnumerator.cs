@@ -1,4 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,14 +13,14 @@ namespace Svelto.Tasks.Enumerators
         {
             _www = www;
             _timeOut = timeOut;
-            _timePassed = 0;
+            _then = DateTime.Now;
         }
 
         public bool MoveNext()
         {
-            _timePassed += Time.deltaTime;
+            var timePassed = (float)(DateTime.Now - _then).TotalSeconds;
 
-            if (_timeOut > 0.0f && _timePassed > _timeOut)
+            if (_timeOut > 0.0f && timePassed > _timeOut)
                 return false;
 
             var result = _www.isDone == false;
@@ -47,9 +48,9 @@ namespace Svelto.Tasks.Enumerators
 
         public WWW www { get { return _www; }}
 
-        readonly WWW     _www;
-        readonly float   _timeOut;
-        float   _timePassed;
+        readonly WWW   _www;
+        readonly float _timeOut;
+        readonly DateTime       _then;
     }
 
     public class UnityWebRequestEnumerator : IEnumerator<UnityWebRequest>

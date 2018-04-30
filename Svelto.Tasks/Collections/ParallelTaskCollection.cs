@@ -81,8 +81,6 @@ namespace Svelto.Tasks
                     if (mustComplete)
                     {
                         isRunning = false;
-
-                        _index = 0;
                     }
                 }
                 
@@ -95,7 +93,6 @@ namespace Svelto.Tasks
         void ResetIndices()
         {
             _offset = 0;
-            _index = 0;
         }
 
         bool RunTasks()
@@ -103,7 +100,7 @@ namespace Svelto.Tasks
             var count = _listOfStacks.Count;
             while (count - _offset > 0)
             {
-                for (int index = _index; index < count - _offset; ++index)
+                for (int index = 0; index < count - _offset; ++index)
                 {
                     Stack<IEnumerator> stack = _listOfStacks[index];
 
@@ -146,11 +143,7 @@ namespace Svelto.Tasks
                             {
                                 IEnumerator result = StandardEnumeratorCheck(_current);
                                 if (result != null)
-                                {
                                     stack.Push(result); //push the new yielded task and execute it immediately
-
-                                    continue;
-                                }
                             }
                             else
                             //Break.It breaks only the current task collection 
@@ -164,15 +157,11 @@ namespace Svelto.Tasks
 
                                 return false;
                             }
-
-                            _index = index + 1;
-
-                            return true;
                         }
                     }
                 }
 
-                _index = 0;
+                return true;
             }
             return false;
         }
@@ -199,7 +188,6 @@ namespace Svelto.Tasks
         }
 
         object      _current;
-        int         _index;
         int         _offset;
 
         object  _currentWrapper;
