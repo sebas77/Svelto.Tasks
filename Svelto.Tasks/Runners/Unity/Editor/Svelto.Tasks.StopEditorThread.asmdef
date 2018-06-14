@@ -1,0 +1,12 @@
+{
+    "name": "Svelto.Tasks.StopEditorThread",
+    "references": [
+        "Svelto.Tasks"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}

@@ -1,0 +1,13 @@
+{
+    "name": "Svelto.Tasks.Profiler",
+    "references": [
+        "Svelto.Tasks",
+        "Svelto.Common"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}
