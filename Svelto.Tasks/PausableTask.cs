@@ -251,7 +251,7 @@ namespace Svelto.Tasks.Internal
             {
                 try
                 {
-                    DBC.Check.Assert(_started == true, _callStartFirstError);
+                    DBC.Tasks.Check.Assert(_started == true, _callStartFirstError);
                     
                     _completed = !_coroutine.MoveNext();
                     ThreadUtility.MemoryBarrier();
@@ -285,7 +285,7 @@ namespace Svelto.Tasks.Internal
             {
                 if (_pool != null)
                 {
-                    DBC.Check.Assert(_pendingRestart == false, "a pooled task cannot have a pending restart!");
+                    DBC.Tasks.Check.Assert(_pendingRestart == false, "a pooled task cannot have a pending restart!");
                     
                     _continuationWrapper.Completed();
                     _pool.PushTaskBack(this);
@@ -406,8 +406,8 @@ namespace Svelto.Tasks.Internal
         /// <param name="task"></param>
         void InternalStart()
         {
-            DBC.Check.Require(_pendingRestart == false, "a task has been reused while is pending to start");
-            DBC.Check.Require(_taskGenerator != null || _taskEnumerator != null, "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
+            DBC.Tasks.Check.Require(_pendingRestart == false, "a task has been reused while is pending to start");
+            DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null, "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
             
             Resume(); //if it's paused, must resume
             
@@ -436,11 +436,11 @@ namespace Svelto.Tasks.Internal
 
         void Restart(IEnumerator task)
         {
-            DBC.Check.Require(_runner != null, "SetScheduler function has never been called");
+            DBC.Tasks.Check.Require(_runner != null, "SetScheduler function has never been called");
             
             if (_taskEnumerator != null && _taskEnumeratorJustSet == false)
             {
-                DBC.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead ".FastConcat(_name));
+                DBC.Tasks.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead ".FastConcat(_name));
                 
                 task.Reset();
             }

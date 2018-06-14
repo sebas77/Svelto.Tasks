@@ -80,7 +80,7 @@ namespace Svelto.Tasks.Enumerators
 
         public bool isDone()
         {
-            DBC.Check.Require(_autoreset == false, "Can't check if done if the signal auto resets, change behaviour through the constructor parameter");
+            DBC.Tasks.Check.Require(_autoreset == false, "Can't check if done if the signal auto resets, change behaviour through the constructor parameter");
             
             return _signal;
         }

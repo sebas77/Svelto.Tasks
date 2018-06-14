@@ -33,7 +33,7 @@ namespace Svelto.Tasks.Internal
         {
             var taskRunnerName = "TaskRunner.".FastConcat(name);
 
-            DBC.Check.Require(GameObject.Find(taskRunnerName) == null, GAMEOBJECT_ALREADY_EXISTING_ERROR);
+            DBC.Tasks.Check.Require(GameObject.Find(taskRunnerName) == null, GAMEOBJECT_ALREADY_EXISTING_ERROR);
 
             go = new GameObject(taskRunnerName);
 #if UNITY_EDITOR
