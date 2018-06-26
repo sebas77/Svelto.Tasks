@@ -21,7 +21,6 @@ The folders Svelto.ECS, Svelto.Tasks and Svelto.Common, where present, are submo
 
 ![Robocraft](https://i.ytimg.com/vi/JGr1Em2Ip-c/maxresdefault.jpg)
 ![Robocraft Infinity](https://news.xbox.com/en-us/wp-content/uploads/Robocraft_Hero-hero.jpg)
-![Robocraft Royale](https://static.altchar.com/live/media/images/950x633_ct/7707_Robocraft_Royale_2bc6bb8ceab8ce0a1568fb37bd826b3f.jpg)!
 ![Cardlife](https://i.ytimg.com/vi/q2jaUZjnNyg/maxresdefault.jpg)
 
 **_Note: Dear Svelto Users : Although I am committed to help you and write articles as much as I can, I will never be able to keep all the documentation up to date. If you are a happy svelto user and you want to contribute, please feel free to update the github wiki! 🙏👊_**
