@@ -251,7 +251,9 @@ namespace Svelto.Tasks.Internal
             {
                 try
                 {
+#if DEBUG && !PROFILER                    
                     DBC.Tasks.Check.Assert(_started == true, _callStartFirstError);
+#endif  
                     
                     _completed = !_coroutine.MoveNext();
                     ThreadUtility.MemoryBarrier();
@@ -469,8 +471,9 @@ namespace Svelto.Tasks.Internal
             }
             else
                 _coroutine = taskc;
-            
+#if DEBUG && !PROFILER            
             _callStartFirstError = CALL_START_FIRST_ERROR.FastConcat(" task: ", ToString());
+#endif    
         }
 
         IRunner                       _runner;
@@ -501,7 +504,8 @@ namespace Svelto.Tasks.Internal
         volatile bool                 _explicitlyStopped;
         volatile bool                 _paused;
         volatile bool                 _pendingRestart;
-        
+#if DEBUG && !PROFILER        
         string                        _callStartFirstError;
+#endif    
     }
 }
