@@ -97,7 +97,7 @@ namespace Svelto.Tasks
 #endif
             _instance._taskPool = new PausableTaskPool();
 
-#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
+#if TASKS_PROFILER_ENABLED
             var debugTasksObject = UnityEngine.GameObject.Find("Svelto.Tasks.Profiler");
             if (debugTasksObject == null)
             {

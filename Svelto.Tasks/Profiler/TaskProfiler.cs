@@ -1,4 +1,5 @@
-//#define ENABLE_PIX_EVENTS
+#if DEBUG
+ //#define ENABLE_PIX_EVENTS
 
 using System.Collections;
 using System.Diagnostics;
@@ -59,3 +60,4 @@ namespace Svelto.Tasks.Profiler
         }
     }
 }
+#endif

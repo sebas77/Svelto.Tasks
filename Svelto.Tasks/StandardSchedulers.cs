@@ -10,7 +10,7 @@ namespace Svelto.Tasks
         static UpdateMonoRunner _updateScheduler;
 #endif
 
-        public static IRunner multiThreadScheduler { get { if (_multiThreadScheduler == null) _multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", true);
+        public static IRunner multiThreadScheduler { get { if (_multiThreadScheduler == null) _multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", false);
             return _multiThreadScheduler;
         } }
 

@@ -9,6 +9,10 @@ namespace Svelto.Tasks
     {
         public bool            isRunning { protected set; get; }
         public abstract object Current   { get; }
+        public int             count
+        {
+            get { return _listOfStacks.Count; }
+        }
 
         public abstract bool MoveNext();
         public abstract void Reset();
@@ -107,7 +111,7 @@ namespace Svelto.Tasks
         protected virtual void CheckForToken(object current)
         {}       
 
-        protected FasterList<Stack<IEnumerator>> _listOfStacks;
+        protected readonly FasterList<Stack<IEnumerator>> _listOfStacks;
 
         const int _INITIAL_STACK_COUNT = 3;
         const int _INITIAL_STACK_SIZE = 3;

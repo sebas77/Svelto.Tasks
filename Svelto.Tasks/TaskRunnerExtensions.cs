@@ -31,7 +31,15 @@ public static class TaskRunnerExtensions
     
     public static void Complete(this IEnumerator enumerator)
     {
-        while (enumerator.MoveNext()) ThreadUtility.Yield();
+        var quickIterations = 0;
+        
+        while (enumerator.MoveNext())
+        {
+            if (++quickIterations < 1000)
+                ThreadUtility.Yield();
+            else
+                ThreadUtility.TakeItEasy();
+        }
     }
 }
 

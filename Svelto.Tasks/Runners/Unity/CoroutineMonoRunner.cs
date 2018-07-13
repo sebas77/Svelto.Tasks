@@ -1,5 +1,4 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
@@ -16,33 +15,43 @@ namespace Svelto.Tasks
         public CoroutineMonoRunner(string name)
         {
             UnityCoroutineRunner.InitializeGameObject(name, ref _go);
-            var coroutines = new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
 
             RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
 
-            _info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
+            var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
 
             runnerBehaviour.StartCoroutine(UnityCoroutineRunner.Process
-                (_newTaskRoutines, coroutines, _flushingOperation, _info,
+                (_newTaskRoutines, _coroutines, _flushingOperation, info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
+        
+        public override void StartCoroutine(IPausableTask task)
+        {
+            paused = false;
 
-        protected override UnityCoroutineRunner.RunningTasksInfo info
-        { get { return _info; } }
+            if (ExecuteFirstTaskStep(task) == true)
+                _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
+        }
 
-        protected override ThreadSafeQueue<IPausableTask> newTaskRoutines
-        { get { return _newTaskRoutines; } }
+        bool ExecuteFirstTaskStep(IPausableTask task)
+        {
+            if (task == null)
+                return false;
 
-        protected override UnityCoroutineRunner.FlushingOperation flushingOperation
-        { get { return _flushingOperation; } }
-
-        readonly ThreadSafeQueue<IPausableTask>         _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
-        readonly UnityCoroutineRunner.FlushingOperation _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
-        readonly UnityCoroutineRunner.RunningTasksInfo  _info;
-      
-        const int NUMBER_OF_INITIAL_COROUTINE = 3;
+            //if the runner is not ready to run new tasks, it
+            //cannot run immediatly but it must be saved
+            //in the newTaskRoutines to be executed once possible
+            if (isStopping == true)
+                return true;
+            
+#if TASKS_PROFILER_ENABLED
+            return UnityCoroutineRunner.TASK_PROFILER.MonitorUpdateDuration(task, info.runnerName);
+#else
+            return task.MoveNext();
+#endif
+        }
     }
 }
 #endif

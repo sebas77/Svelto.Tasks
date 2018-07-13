@@ -19,7 +19,15 @@ namespace Svelto.Tasks
 
         public void StartCoroutine(IPausableTask task)
         {
-            while (task.MoveNext() == true) ThreadUtility.Yield();
+            var quickIterations = 0;
+        
+            while (task.MoveNext())
+            {
+                if (++quickIterations < 1000)
+                    ThreadUtility.Yield();
+                else
+                    ThreadUtility.TakeItEasy();
+            }
         }
 
         /// <summary>

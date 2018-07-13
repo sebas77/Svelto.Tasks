@@ -4,7 +4,7 @@ using System.Collections;
 using Svelto.DataStructures;
 using UnityEngine;
 using Object = UnityEngine.Object;
-#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
+#if TASKS_PROFILER_ENABLED
 using Svelto.Tasks.Profiler;
 #endif
 
@@ -70,101 +70,99 @@ namespace Svelto.Tasks.Internal
                 if (runnerBehaviourForUnityCoroutine != null)
                     runnerBehaviourForUnityCoroutine.StopAllCoroutines();
 
-                info.count = coroutines.Count;
+                UnityEngine.Profiling.Profiler.BeginSample(info.runnerName);
 
-                for (var i = 0; i < info.count; i++)
+                for (int i = 0;info.MoveNext(i, coroutines.Count);i++)
                 {
                     var pausableTask = coroutines[i];
 
-                        //let's spend few words on this. 
-                        //yielded YieldInstruction and AsyncOperation can 
-                        //only be processed internally by Unity. 
-                        //The simplest way to handle them is to hand them to Unity itself.
-                        //However while the Unity routine is processed, the rest of the 
-                        //coroutine is waiting for it. This would defeat the purpose 
-                        //of the parallel procedures. For this reason, a Parallel
-                        //task will mark the enumerator returned as ParallelYield which 
-                        //will change the way the routine is processed.
-                        //in this case the MonoRunner won't wait for the Unity routine 
-                        //to continue processing the next tasks.
-                        //Note that it is much better to return wrap AsyncOperation around
-                        //custom IEnumerator classes then returning them directly as
-                        //most of the time they don't need to be handled by Unity as
-                        //YieldInstructions do
-                        
-                        ///
-                        /// Handle special Unity instructions
-                        /// you should avoid them or wrap them
-                        /// around custom IEnumerator to avoid
-                        /// the cost of two allocations per instruction
-                        /// 
+                    //let's spend few words on this. 
+                    //yielded YieldInstruction and AsyncOperation can 
+                    //only be processed internally by Unity. 
+                    //The simplest way to handle them is to hand them to Unity itself.
+                    //However while the Unity routine is processed, the rest of the 
+                    //coroutine is waiting for it. This would defeat the purpose 
+                    //of the parallel procedures. For this reason, a Parallel
+                    //task will mark the enumerator returned as ParallelYield which 
+                    //will change the way the routine is processed.
+                    //in this case the MonoRunner won't wait for the Unity routine 
+                    //to continue processing the next tasks.
+                    //Note that it is much better to return wrap AsyncOperation around
+                    //custom IEnumerator classes then returning them directly as
+                    //most of the time they don't need to be handled by Unity as
+                    //YieldInstructions do
+                    
+                    ///
+                    /// Handle special Unity instructions
+                    /// you should avoid them or wrap them
+                    /// around custom IEnumerator to avoid
+                    /// the cost of two allocations per instruction
+                    /// 
 
-                        if (runnerBehaviourForUnityCoroutine != null && 
-                            flushingOperation.stopped == false)
+                    if (runnerBehaviourForUnityCoroutine != null && 
+                        flushingOperation.stopped == false)
+                    {
+                        var current = pausableTask.Current;
+
+                        if (current is YieldInstruction)
                         {
-                            var current = pausableTask.Current;
+                            var handItToUnity = new HandItToUnity
+                                (current, pausableTask, resumeOperation, flushingOperation);
 
-                            if (current is YieldInstruction)
-                            {
-                                var handItToUnity = new HandItToUnity
-                                    (current, pausableTask, resumeOperation, flushingOperation);
-
-                                //remove the special instruction. it will
-                                //be added back once Unity completes.
-                                coroutines.UnorderedRemoveAt(i--);
-
-                                info.count = coroutines.Count;
-
-                                var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
-                                    (handItToUnity.GetEnumerator());
-
-                                (pausableTask as PausableTask).onExplicitlyStopped = () =>
-                                {
-                                    runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
-                                    handItToUnity.ForceStop();
-                                };
-                                
-                                continue;
-                            }
-
-                            var parallelTask = (current as ParallelTaskCollection.ParallelTask);
-
-                            if (parallelTask != null && 
-                                parallelTask.current is YieldInstruction)
-                            {
-                                var handItToUnity = new HandItToUnity(parallelTask.current);
-
-                                parallelTask.Add(handItToUnity.WaitUntilIsDone());
-
-                                var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
-                                    (handItToUnity.GetEnumerator());
-                                
-                                (pausableTask as PausableTask).onExplicitlyStopped = () =>
-                                {
-                                    runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
-                                    handItToUnity.ForceStop();
-                                };
-                            }
-                        }                        
-
-                        bool result;
-#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
-                        result = TASK_PROFILER.MonitorUpdateDuration(pausableTask, info.runnerName);
-#else
-                        result = pausableTask.MoveNext();
-#endif
-                        if (result == false)
-                        {
-                            var disposable = pausableTask as IDisposable;
-                            if (disposable != null)
-                                disposable.Dispose();
-
+                            //remove the special instruction. it will
+                            //be added back once Unity completes.
                             coroutines.UnorderedRemoveAt(i--);
+
+                            var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
+                                (handItToUnity.GetEnumerator());
+
+                            (pausableTask as PausableTask).onExplicitlyStopped = () =>
+                            {
+                                runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                handItToUnity.ForceStop();
+                            };
+                            
+                            continue;
                         }
 
-                    info.count = coroutines.Count;
+                        var parallelTask = (current as ParallelTaskCollection.ParallelTask);
+
+                        if (parallelTask != null && 
+                            parallelTask.current is YieldInstruction)
+                        {
+                            var handItToUnity = new HandItToUnity(parallelTask.current);
+
+                            parallelTask.Add(handItToUnity.WaitUntilIsDone());
+
+                            var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
+                                (handItToUnity.GetEnumerator());
+                            
+                            (pausableTask as PausableTask).onExplicitlyStopped = () =>
+                            {
+                                runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                handItToUnity.ForceStop();
+                            };
+                        }
+                    }                        
+
+                    bool result;
+#if TASKS_PROFILER_ENABLED
+                   result = TASK_PROFILER.MonitorUpdateDuration(pausableTask, info.runnerName);
+#else
+                   result = pausableTask.MoveNext();
+#endif
+                   if (result == false)
+                   {
+                       var disposable = pausableTask as IDisposable;
+                       if (disposable != null)
+                           disposable.Dispose();
+
+                       coroutines.UnorderedRemoveAt(i--);
+                   }
                 }
 
+                UnityEngine.Profiling.Profiler.EndSample();
+                
                 if (flushingOperation.stopped == true && coroutines.Count == 0)
                 {   //once all the coroutines are flushed
                     //the loop can return accepting new tasks
@@ -177,8 +175,12 @@ namespace Svelto.Tasks.Internal
 
         public class RunningTasksInfo
         {
-            public int count;
             public string runnerName;
+
+            public virtual bool MoveNext(int i, int count)
+            {
+                return i < count;
+            }
         }
 
         internal delegate void FlushTasksDel(ThreadSafeQueue<IPausableTask> 
@@ -241,10 +243,10 @@ namespace Svelto.Tasks.Internal
             readonly Action<IPausableTask> _resumeOperation;
 
             bool              _isDone;
-            FlushingOperation _flushingOperation;
+            readonly FlushingOperation _flushingOperation;
         }
         
-#if TASKS_PROFILER_ENABLED && UNITY_EDITOR
+#if TASKS_PROFILER_ENABLED
         public static readonly TaskProfiler TASK_PROFILER = new TaskProfiler();
 #endif        
         const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";

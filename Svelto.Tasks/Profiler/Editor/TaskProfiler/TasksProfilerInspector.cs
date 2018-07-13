@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+#if UNITY_EDITOR && TASKS_PROFILER_ENABLED
 using System;
 using System.Collections.Generic;
 using UnityEditor;
