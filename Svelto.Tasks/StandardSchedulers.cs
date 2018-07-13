@@ -1,3 +1,7 @@
+#if UNITY_5 || UNITY_5_3_OR_NEWER
+using Svelto.Tasks.Unity;
+#endif
+
 namespace Svelto.Tasks
 {
     public static class StandardSchedulers

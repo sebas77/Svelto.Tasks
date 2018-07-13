@@ -1,14 +1,14 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 
 using Svelto.DataStructures;
-using Svelto.Tasks.Internal;
+using Svelto.Tasks.Internal.Unity;
 using UnityEngine;
 
 #if TASKS_PROFILER_ENABLED
 using Svelto.Tasks.Profiler;
 #endif
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Unity
 {
     /// <summary>
     /// while you can istantiate a MonoRunner, you should use the standard one

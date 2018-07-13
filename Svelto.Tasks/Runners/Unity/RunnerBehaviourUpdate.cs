@@ -2,7 +2,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace Svelto.Tasks.Internal
+namespace Svelto.Tasks.Internal.Unity
 {
     class RunnerBehaviourUpdate : MonoBehaviour
     {

@@ -1,7 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using Svelto.Tasks.Internal;
+using Svelto.Tasks.Internal.Unity;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Unity
 {
     /// <summary>
     /// while you can istantiate a MonoRunner, you should use the standard one

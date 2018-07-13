@@ -1,8 +1,8 @@
-#if UNITY_5 || UNITY_5_3_OR_NEWER
-using Svelto.DataStructures;
-using Svelto.Tasks.Internal;
+using Svelto.Tasks.Internal.Unity;
 
-namespace Svelto.Tasks
+#if UNITY_5 || UNITY_5_3_OR_NEWER
+
+namespace Svelto.Tasks.Unity
 {
     public class UpdateMonoRunner : MonoRunner
     {

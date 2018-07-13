@@ -8,8 +8,7 @@ using Object = UnityEngine.Object;
 using Svelto.Tasks.Profiler;
 #endif
 
-
-namespace Svelto.Tasks.Internal
+namespace Svelto.Tasks.Internal.Unity
 {
     public static class UnityCoroutineRunner
     {

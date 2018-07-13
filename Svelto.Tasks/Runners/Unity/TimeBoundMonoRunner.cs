@@ -1,10 +1,8 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Diagnostics;
-using Svelto.DataStructures;
-using Svelto.Tasks.Internal;
+using Svelto.Tasks.Internal.Unity;
 
-
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Unity
 {
     /// <summary>
     //StaggeredMonoRunner doesn't flush all the tasks at once, but it spread
