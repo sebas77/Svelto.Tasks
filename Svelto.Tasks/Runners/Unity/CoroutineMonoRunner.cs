@@ -12,9 +12,9 @@ namespace Svelto.Tasks.Unity
     /// </summary>
     public class CoroutineMonoRunner : MonoRunner
     {
-        public CoroutineMonoRunner(string name)
+        public CoroutineMonoRunner(string name, bool mustSurvive = false)
         {
-            UnityCoroutineRunner.InitializeGameObject(name, ref _go);
+            UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();

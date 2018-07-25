@@ -10,11 +10,11 @@ namespace Svelto.Tasks.Unity
     /// </summary>
     public class TimeBoundMonoRunner : MonoRunner
     {
-        public TimeBoundMonoRunner(string name, float maxMilliseconds)
+        public TimeBoundMonoRunner(string name, float maxMilliseconds, bool mustSurvive = false)
         {
             _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
 
-            UnityCoroutineRunner.InitializeGameObject(name, ref _go);
+            UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();

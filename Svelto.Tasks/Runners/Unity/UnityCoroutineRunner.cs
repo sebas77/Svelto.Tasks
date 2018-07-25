@@ -4,9 +4,6 @@ using System.Collections;
 using Svelto.DataStructures;
 using UnityEngine;
 using Object = UnityEngine.Object;
-#if TASKS_PROFILER_ENABLED
-using Svelto.Tasks.Profiler;
-#endif
 
 namespace Svelto.Tasks.Internal.Unity
 {
@@ -28,16 +25,15 @@ namespace Svelto.Tasks.Internal.Unity
             flushingOperation.stopped = true;
         }
 
-        internal static void InitializeGameObject(string name, ref GameObject go)
+        internal static void InitializeGameObject(string name, ref GameObject go, bool mustSurvive)
         {
             var taskRunnerName = "TaskRunner.".FastConcat(name);
 
             DBC.Tasks.Check.Require(GameObject.Find(taskRunnerName) == null, GAMEOBJECT_ALREADY_EXISTING_ERROR);
 
             go = new GameObject(taskRunnerName);
-#if UNITY_EDITOR
-            if (Application.isPlaying)
-#endif
+
+            if (mustSurvive)
                 Object.DontDestroyOnLoad(go);
         }
 
@@ -146,9 +142,15 @@ namespace Svelto.Tasks.Internal.Unity
 
                     bool result;
 #if TASKS_PROFILER_ENABLED
-                   result = TASK_PROFILER.MonitorUpdateDuration(pausableTask, info.runnerName);
+                   result = Svelto.Tasks.Profiler.TASK_PROFILER.MonitorUpdateDuration(pausableTask, info.runnerName);
 #else
+#if UNITY_EDITOR || PROFILER
+                    UnityEngine.Profiling.Profiler.BeginSample("UnityCoroutineRunner ".FastConcat(pausableTask.ToString()));
+#endif                    
                    result = pausableTask.MoveNext();
+#if UNITY_EDITOR || PROFILER
+                    UnityEngine.Profiling.Profiler.EndSample();
+#endif
 #endif
                    if (result == false)
                    {

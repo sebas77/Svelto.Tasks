@@ -25,6 +25,11 @@ namespace Svelto.Tasks.Unity
         public int  numberOfRunningTasks { get { return _coroutines.Count; } }
         
         protected GameObject _go;
+
+        ~MonoRunner()
+        {
+            StopAllCoroutines();
+        }
         
         /// <summary>
         /// TaskRunner doesn't stop executing tasks between scenes

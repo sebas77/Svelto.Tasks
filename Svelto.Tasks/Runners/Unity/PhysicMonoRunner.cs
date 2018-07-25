@@ -13,9 +13,9 @@ namespace Svelto.Tasks.Unity
     /// </summary>
     public class PhysicMonoRunner : MonoRunner
     {
-        public PhysicMonoRunner(string name)
+        public PhysicMonoRunner(string name, bool mustSurvive = false)
         {
-            UnityCoroutineRunner.InitializeGameObject(name, ref _go);
+            UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourPhysic>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();

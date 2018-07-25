@@ -24,13 +24,13 @@ namespace Svelto.Tasks
             get
             {
                 ThreadUtility.MemoryBarrier();
-                return _waitForflush;
+                return _runnerData._waitForflush;
             }
         }
 
         public int numberOfRunningTasks
         {
-            get { return _coroutines.Count; }
+            get { return _runnerData.Count; }
         }
 
         public override string ToString()
@@ -38,20 +38,20 @@ namespace Svelto.Tasks
             return _name;
         }
 
+        ~MultiThreadRunner()
+        {
+            Dispose();
+        }
+
         public void Dispose()
         {
             Kill(null);
         }
 
-        public MultiThreadRunner(string name, bool relaxed = true)
+        public MultiThreadRunner(string name, bool relaxed = true, int intervalInMs = 0)
         {
-            _mevent = new ManualResetEventEx();
-
-            if (relaxed)
-                _lockingMechanism = RelaxedLockingMechanism;
-            else
-                _lockingMechanism = QuickLockingMechanism;
-
+            var runnerData = new RunnerData(relaxed, intervalInMs);
+            _runnerData = runnerData;
 #if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
             //threadpool doesn't work well with Unity apparently
             //it seems to choke when too meany threads are started
@@ -59,7 +59,7 @@ namespace Svelto.Tasks
                                     {
                                         _name = name;
 
-                                        RunCoroutineFiber();
+                                        runnerData.RunCoroutineFiber();
                                     });
 
             thread.IsBackground = true;
@@ -70,18 +70,15 @@ namespace Svelto.Tasks
             {
                 _name = name;
 
-                RunCoroutineFiber();
+                RunCoroutineFiber(ref runnerData);
             }, TaskCreationOptions.LongRunning);
 
             thread.Start();
 #endif
         }
 
-        public MultiThreadRunner(string name, int intervalInMS) : this(name, false)
-        {
-            _interval = intervalInMS;
-            _watch    = new Stopwatch();
-        }
+        public MultiThreadRunner(string name, int intervalInMS) : this(name, false, intervalInMS)
+        {}
 
         public void StartCoroutineThreadSafe(IPausableTask task)
         {
@@ -92,171 +89,206 @@ namespace Svelto.Tasks
         {
             paused = false;
 
-            _newTaskRoutines.Enqueue(task);
-
-            ThreadUtility.MemoryBarrier();
-            if (_isAlive == false)
-            {
-                _isAlive = true;
-
-                UnlockThread();
-            }
+            _runnerData._newTaskRoutines.Enqueue(task);
+            _runnerData.UnlockThread();
         }
 
         public void StopAllCoroutines()
         {
-            _newTaskRoutines.Clear();
-
-            _waitForflush = true;
+            _runnerData._newTaskRoutines.Clear();
+            _runnerData._waitForflush = true;
 
             ThreadUtility.MemoryBarrier();
         }
 
         public void Kill(Action onThreadKilled)
         {
-            if (_mevent != null) //already disposed
-            {
-                _onThreadKilled = onThreadKilled;
-
-                _breakThread = true;
-
-                UnlockThread();
-
-                if (_watch != null)
-                {
-                    _watch.Stop();
-                    _watch = null;
-                }
-            }
+            _runnerData.Kill(onThreadKilled);
         }
 
-        void RunCoroutineFiber()
+        class RunnerData
         {
-            while (_breakThread == false)
+            public readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
+            public volatile bool _waitForflush;
+
+            volatile bool _isAlive;
+            volatile bool _breakThread;
+            
+            readonly FasterList<IPausableTask> _coroutines;
+            readonly int _interval;
+            readonly bool _relaxed;
+            
+            ManualResetEventEx _mevent;
+            Action             _onThreadKilled;
+            Stopwatch          _watch;
+            int                _interlock;
+
+            public RunnerData(bool relaxed, int interval)
+            {
+                _mevent          = new ManualResetEventEx();
+                _relaxed         = relaxed;
+                _watch           = new Stopwatch();
+                _coroutines      = new FasterList<IPausableTask>();
+                _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
+                _interval        = interval;
+            }
+
+            public int Count
+            {
+                get
+                {
+                    ThreadUtility.MemoryBarrier();
+                    return _coroutines.Count;
+                }
+            }
+
+            void QuickLockingMechanism()
+            {
+                var quickIterations = 0;
+
+                while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
+                {
+                    //yielding here was slower on the 1 M points simulation
+                    if (++quickIterations < 1000)
+                        ThreadUtility.Yield();
+                    else
+                        ThreadUtility.TakeItEasy();
+
+                    //this is quite arbitrary at the moment as 
+                    //DateTime allocates a lot in UWP .Net Native
+                    //and stopwatch casues several issues
+                    if (++quickIterations > 20000)
+                    {
+                        RelaxedLockingMechanism();
+                        break;
+                    }
+                }
+
+                _interlock = 0;
+            }
+
+            void RelaxedLockingMechanism()
+            {
+                _mevent.Wait();
+
+                _mevent.Reset();
+            }
+
+            void WaitForInterval()
+            {
+                var quickIterations = 0;
+                _watch.Start();
+
+                while (_watch.ElapsedMilliseconds < _interval)
+                    if (++quickIterations < 1000)
+                        ThreadUtility.Yield();
+                    else
+                        ThreadUtility.TakeItEasy();
+
+                _watch.Reset();
+            }
+
+            public void UnlockThread()
             {
                 ThreadUtility.MemoryBarrier();
-                if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
-                    _coroutines.AddRange(_newTaskRoutines.DequeueAll());
-
-                for (var i = 0; i < _coroutines.Count && (false == _breakThread); i++)
+                if (_isAlive == false)
                 {
-                    var enumerator = _coroutines[i];
+                    _isAlive = true;
+                    _interlock = 1;
+
+                    _mevent.Set();
+
+                    ThreadUtility.MemoryBarrier();
+                }
+            }
+
+            public void Kill(Action onThreadKilled)
+            {
+                if (_mevent != null) //already disposed
+                {
+                    _onThreadKilled = onThreadKilled;
+
+                    _breakThread = true;
+
+                    UnlockThread();
+
+                    if (_watch != null)
+                    {
+                        _watch.Stop();
+                        _watch = null;
+                    }
+                }
+            }
+
+            internal void RunCoroutineFiber()
+            {
+                while (_breakThread == false)
+                {
+                    ThreadUtility.MemoryBarrier();
+                    if (_newTaskRoutines.Count > 0 && false == _waitForflush
+                    ) //don't start anything while flushing
+                        _coroutines.AddRange(_newTaskRoutines.DequeueAll());
+
+                    for (var i = 0; i < _coroutines.Count && false == _breakThread; i++)
+                    {
+                        var enumerator = _coroutines[i];
 
 #if TASKS_PROFILER_ENABLED
-                    bool result = _taskProfiler.MonitorUpdateDuration(enumerator, _name);
-#else
-                    var result = enumerator.MoveNext();
+                        bool result = _taskProfiler.MonitorUpdateDuration(enumerator, _name);
+    #else
+                        var result = enumerator.MoveNext();
 #endif
-                    if (result == false)
-                    {
-                        var disposable = enumerator as IDisposable;
-                        if (disposable != null)
-                            disposable.Dispose();
-
-                        _coroutines.UnorderedRemoveAt(i--);
-                    }
-                }
-
-                ThreadUtility.MemoryBarrier();
-                if (_breakThread == false)
-                {
-                    if (_interval > 0 && _waitForflush == false) WaitForInterval();
-
-                    if (_coroutines.Count == 0)
-                    {
-                        _waitForflush = false;
-
-                        if (_newTaskRoutines.Count == 0)
+                        if (result == false)
                         {
-                            _isAlive = false;
+                            var disposable = enumerator as IDisposable;
+                            if (disposable != null)
+                                disposable.Dispose();
 
-                            _lockingMechanism();
+                            _coroutines.UnorderedRemoveAt(i--);
                         }
+                    }
 
-                        ThreadUtility.MemoryBarrier();
+                    ThreadUtility.MemoryBarrier();
+                    if (_breakThread == false)
+                    {
+                        if (_interval > 0 && _waitForflush == false) WaitForInterval();
+
+                        if (_coroutines.Count == 0)
+                        {
+                            _waitForflush = false;
+
+                            if (_newTaskRoutines.Count == 0)
+                            {
+                                _isAlive = false;
+
+                                if (_relaxed)
+                                    RelaxedLockingMechanism();
+                                else
+                                    QuickLockingMechanism();
+                            }
+
+                            ThreadUtility.MemoryBarrier();
+                        }
                     }
                 }
-            }
 
-            if (_onThreadKilled != null)
-                _onThreadKilled();
+                if (_onThreadKilled != null)
+                    _onThreadKilled();
 
-            if (_mevent != null)
-            {
-                _mevent.Dispose();
-                _mevent = null;
-                ThreadUtility.MemoryBarrier();
-            }
-        }
-
-        void WaitForInterval()
-        {
-            _watch.Start();
-            while (_watch.ElapsedMilliseconds < _interval)
-                ThreadUtility.Yield();
-
-            _watch.Reset();
-        }
-
-        void QuickLockingMechanism()
-        {
-            var quickIterations = 0;
-
-            while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
-            {   //yielding here was slower on the 1 M points simulation
-                if (++quickIterations < 1000)
-                    ThreadUtility.Yield();
-                else
-                    ThreadUtility.TakeItEasy();
-                    
-                //this is quite arbitrary at the moment as 
-                //DateTime allocates a lot in UWP .Net Native
-                //and stopwatch casues several issues
-                if (++quickIterations > 20000)
+                if (_mevent != null)
                 {
-                    RelaxedLockingMechanism();
-                    break;
+                    _mevent.Dispose();
+                    _mevent = null;
+                    ThreadUtility.MemoryBarrier();
                 }
             }
-
-            _interlock = 0;
         }
 
-        void RelaxedLockingMechanism()
-        {
-            _mevent.Wait();
-
-            _mevent.Reset();
-        }
-
-        void UnlockThread()
-        {
-            _interlock = 1;
-
-            _mevent.Set();
-
-            ThreadUtility.MemoryBarrier();
-        }
-
-        readonly FasterList<IPausableTask>      _coroutines      = new FasterList<IPausableTask>();
-        readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
-
-        string _name;
-        int    _interlock;
-
-        volatile bool _isAlive;
-        volatile bool _waitForflush;
-        volatile bool _breakThread;
-
-        ManualResetEventEx _mevent;
-
-        readonly Action _lockingMechanism;
-        readonly int    _interval;
-        Stopwatch       _watch;
-        Action          _onThreadKilled;
+        string     _name;
+        RunnerData _runnerData;
 
 #if TASKS_PROFILER_ENABLED
-        readonly TaskProfiler _taskProfiler = new TaskProfiler();
+            public readonly TaskProfiler _taskProfiler = new TaskProfiler();
 #endif
     }
 }
