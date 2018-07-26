@@ -1,4 +1,4 @@
-#if TASKS_PROFILER_ENABLED
+#if UNITY_EDITOR && TASKS_PROFILER_ENABLED
 using Svelto.DataStructures;
 using UnityEngine;
 

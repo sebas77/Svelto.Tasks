@@ -4,9 +4,6 @@ using System.Threading;
 using Svelto.DataStructures;
 using Svelto.Utilities;
 
-#if TASKS_PROFILER_ENABLED
-using Svelto.Tasks.Profiler;
-#endif
 #if NETFX_CORE
 using System.Threading.Tasks;
 #endif
@@ -50,19 +47,13 @@ namespace Svelto.Tasks
 
         public MultiThreadRunner(string name, bool relaxed = true, int intervalInMs = 0)
         {
-            var runnerData = new RunnerData(relaxed, intervalInMs);
+            _name = name;
+            var runnerData = new RunnerData(relaxed, intervalInMs, name);
             _runnerData = runnerData;
 #if !NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
             //threadpool doesn't work well with Unity apparently
             //it seems to choke when too meany threads are started
-            var thread = new Thread(() =>
-                                    {
-                                        _name = name;
-
-                                        runnerData.RunCoroutineFiber();
-                                    });
-
-            thread.IsBackground = true;
+            var thread = new Thread(() => runnerData.RunCoroutineFiber()) {IsBackground = true};
 
             thread.Start();
 #else
@@ -108,22 +99,7 @@ namespace Svelto.Tasks
 
         class RunnerData
         {
-            public readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
-            public volatile bool _waitForflush;
-
-            volatile bool _isAlive;
-            volatile bool _breakThread;
-            
-            readonly FasterList<IPausableTask> _coroutines;
-            readonly int _interval;
-            readonly bool _relaxed;
-            
-            ManualResetEventEx _mevent;
-            Action             _onThreadKilled;
-            Stopwatch          _watch;
-            int                _interlock;
-
-            public RunnerData(bool relaxed, int interval)
+            public RunnerData(bool relaxed, int interval, string name)
             {
                 _mevent          = new ManualResetEventEx();
                 _relaxed         = relaxed;
@@ -131,6 +107,7 @@ namespace Svelto.Tasks
                 _coroutines      = new FasterList<IPausableTask>();
                 _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
                 _interval        = interval;
+                _name = name;
             }
 
             public int Count
@@ -225,8 +202,7 @@ namespace Svelto.Tasks
                 while (_breakThread == false)
                 {
                     ThreadUtility.MemoryBarrier();
-                    if (_newTaskRoutines.Count > 0 && false == _waitForflush
-                    ) //don't start anything while flushing
+                    if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
                         _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
                     for (var i = 0; i < _coroutines.Count && false == _breakThread; i++)
@@ -234,8 +210,8 @@ namespace Svelto.Tasks
                         var enumerator = _coroutines[i];
 
 #if TASKS_PROFILER_ENABLED
-                        bool result = _taskProfiler.MonitorUpdateDuration(enumerator, _name);
-    #else
+                        bool result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _name);
+#else
                         var result = enumerator.MoveNext();
 #endif
                         if (result == false)
@@ -282,13 +258,25 @@ namespace Svelto.Tasks
                     ThreadUtility.MemoryBarrier();
                 }
             }
+            
+            public readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
+            public volatile bool                           _waitForflush;
+
+            volatile bool _isAlive;
+            volatile bool _breakThread;
+            
+            readonly FasterList<IPausableTask> _coroutines;
+            readonly int                       _interval;
+            readonly bool                      _relaxed;
+            readonly string _name;
+            
+            ManualResetEventEx _mevent;
+            Action             _onThreadKilled;
+            Stopwatch          _watch;
+            int                _interlock;
         }
 
-        string     _name;
-        RunnerData _runnerData;
-
-#if TASKS_PROFILER_ENABLED
-            public readonly TaskProfiler _taskProfiler = new TaskProfiler();
-#endif
+        string              _name;
+        readonly RunnerData _runnerData;
     }
 }

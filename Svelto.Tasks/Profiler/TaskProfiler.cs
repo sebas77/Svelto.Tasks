@@ -1,4 +1,4 @@
-#if DEBUG
+#if DEBUG && TASKS_PROFILER_ENABLED
  //#define ENABLE_PIX_EVENTS
 
 using System.Collections;
@@ -12,14 +12,14 @@ namespace Svelto.Tasks.Profiler
 {
     public sealed class TaskProfiler
     {
-        readonly Stopwatch _stopwatch = new Stopwatch();
+        static readonly Stopwatch _stopwatch = new Stopwatch();
         
         static object LOCK_OBJECT = new object();
 
         internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
             new ThreadSafeDictionary<string, TaskInfo>();
 
-        public bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
+        public static bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
         {
             var key = tickable.ToString().FastConcat(runnerName);
 #if ENABLE_PIX_EVENTS            

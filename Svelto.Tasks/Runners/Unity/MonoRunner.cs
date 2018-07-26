@@ -63,11 +63,12 @@ namespace Svelto.Tasks.Unity
             GameObject.DestroyImmediate(_go);
         }
         
-        protected readonly ThreadSafeQueue<IPausableTask>         _newTaskRoutines   = new ThreadSafeQueue<IPausableTask>();
-        protected readonly FasterList<IPausableTask> _coroutines = new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
+        protected readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
+        protected readonly FasterList<IPausableTask> _coroutines =
+            new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
         
-        protected UnityCoroutineRunner.FlushingOperation _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
-        
+        protected UnityCoroutineRunner.FlushingOperation _flushingOperation =
+            new UnityCoroutineRunner.FlushingOperation();
         
         const int NUMBER_OF_INITIAL_COROUTINE = 3;
     }

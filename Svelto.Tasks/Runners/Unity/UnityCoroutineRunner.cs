@@ -54,8 +54,7 @@ namespace Svelto.Tasks.Internal.Unity
             RunningTasksInfo info,
             FlushTasksDel flushTaskDel,
             RunnerBehaviour runnerBehaviourForUnityCoroutine,
-            Action<IPausableTask> 
-            resumeOperation)
+            Action<IPausableTask> resumeOperation)
         {
             while (true)
             {
@@ -142,7 +141,7 @@ namespace Svelto.Tasks.Internal.Unity
 
                     bool result;
 #if TASKS_PROFILER_ENABLED
-                   result = Svelto.Tasks.Profiler.TASK_PROFILER.MonitorUpdateDuration(pausableTask, info.runnerName);
+                   result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, info.runnerName);
 #else
 #if UNITY_EDITOR || PROFILER
                     UnityEngine.Profiling.Profiler.BeginSample("UnityCoroutineRunner ".FastConcat(pausableTask.ToString()));
@@ -247,9 +246,6 @@ namespace Svelto.Tasks.Internal.Unity
             readonly FlushingOperation _flushingOperation;
         }
         
-#if TASKS_PROFILER_ENABLED
-        public static readonly TaskProfiler TASK_PROFILER = new TaskProfiler();
-#endif        
         const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";
     }
 }

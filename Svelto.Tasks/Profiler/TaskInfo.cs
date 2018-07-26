@@ -73,6 +73,6 @@ namespace Svelto.Tasks.Profiler
         string _threadInfo;
 
         //use a queue to averave out the last 30 frames
-        Queue<double> _updateFrameTimes;
+        readonly Queue<double> _updateFrameTimes;
     }
 }

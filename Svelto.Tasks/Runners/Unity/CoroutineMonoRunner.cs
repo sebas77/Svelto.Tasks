@@ -19,10 +19,10 @@ namespace Svelto.Tasks.Unity
             RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
 
-            var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
+            _info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
 
             runnerBehaviour.StartCoroutine(UnityCoroutineRunner.Process
-                (_newTaskRoutines, _coroutines, _flushingOperation, info,
+                (_newTaskRoutines, _coroutines, _flushingOperation, _info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
@@ -47,11 +47,13 @@ namespace Svelto.Tasks.Unity
                 return true;
             
 #if TASKS_PROFILER_ENABLED
-            return UnityCoroutineRunner.TASK_PROFILER.MonitorUpdateDuration(task, info.runnerName);
+            return Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(task, _info.runnerName);
 #else
             return task.MoveNext();
 #endif
         }
+        
+        UnityCoroutineRunner.RunningTasksInfo _info;
     }
 }
 #endif
