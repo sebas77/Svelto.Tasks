@@ -8,6 +8,8 @@ namespace Svelto.Tasks.Internal.Unity
     {
         void Update()
         {
+            if (_earlyMainRoutine != null)
+                _earlyMainRoutine.MoveNext();
             if (_mainRoutine != null)
                 _mainRoutine.MoveNext();
         }
@@ -16,7 +18,13 @@ namespace Svelto.Tasks.Internal.Unity
         {
             _mainRoutine = enumerator;
         }
+        
+        public void StartEarlyUpdateCoroutine(IEnumerator enumerator)
+        {
+            _earlyMainRoutine = enumerator;
+        }
 
+        IEnumerator _earlyMainRoutine;
         IEnumerator _mainRoutine;
     }
 }

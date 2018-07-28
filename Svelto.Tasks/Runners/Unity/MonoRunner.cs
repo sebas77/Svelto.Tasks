@@ -24,7 +24,7 @@ namespace Svelto.Tasks.Unity
         public bool isStopping { get { return _flushingOperation.stopped; } }
         public int  numberOfRunningTasks { get { return _coroutines.Count; } }
         
-        protected GameObject _go;
+        protected internal GameObject _go;
 
         ~MonoRunner()
         {
