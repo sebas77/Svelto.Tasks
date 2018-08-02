@@ -199,63 +199,69 @@ namespace Svelto.Tasks
 
             internal void RunCoroutineFiber()
             {
-                while (_breakThread == false)
+                using (var platformProfiler = new PlatformProfiler(_name))
                 {
-                    ThreadUtility.MemoryBarrier();
-                    if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
-                        _coroutines.AddRange(_newTaskRoutines.DequeueAll());
-
-                    for (var i = 0; i < _coroutines.Count && false == _breakThread; i++)
+                    while (_breakThread == false)
                     {
-                        var enumerator = _coroutines[i];
+                        ThreadUtility.MemoryBarrier();
+                        if (_newTaskRoutines.Count > 0 && false == _waitForflush) //don't start anything while flushing
+                            _coroutines.AddRange(_newTaskRoutines.DequeueAll());
 
+                        for (var i = 0; i < _coroutines.Count && false == _breakThread; i++)
+                        {
+                            var enumerator = _coroutines[i];
 #if TASKS_PROFILER_ENABLED
-                        bool result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _name);
+                            bool result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _name);
 #else
-                        var result = enumerator.MoveNext();
-#endif
-                        if (result == false)
-                        {
-                            var disposable = enumerator as IDisposable;
-                            if (disposable != null)
-                                disposable.Dispose();
-
-                            _coroutines.UnorderedRemoveAt(i--);
-                        }
-                    }
-
-                    ThreadUtility.MemoryBarrier();
-                    if (_breakThread == false)
-                    {
-                        if (_interval > 0 && _waitForflush == false) WaitForInterval();
-
-                        if (_coroutines.Count == 0)
-                        {
-                            _waitForflush = false;
-
-                            if (_newTaskRoutines.Count == 0)
+                            bool result;
+                            using (platformProfiler.Sample(enumerator.ToString()))
                             {
-                                _isAlive = false;
-
-                                if (_relaxed)
-                                    RelaxedLockingMechanism();
-                                else
-                                    QuickLockingMechanism();
+                                result = enumerator.MoveNext();
                             }
+#endif                            
+                            if (result == false)
+                            {
+                                var disposable = enumerator as IDisposable;
+                                if (disposable != null)
+                                    disposable.Dispose();
 
-                            ThreadUtility.MemoryBarrier();
+                                _coroutines.UnorderedRemoveAt(i--);
+                            }
+                        }
+
+                        ThreadUtility.MemoryBarrier();
+                        if (_breakThread == false)
+                        {
+                            if (_interval > 0 && _waitForflush == false) WaitForInterval();
+
+                            if (_coroutines.Count == 0)
+                            {
+                                _waitForflush = false;
+
+                                if (_newTaskRoutines.Count == 0)
+                                {
+                                    _isAlive = false;
+
+                                    if (_relaxed)
+                                        RelaxedLockingMechanism();
+                                    else
+                                        QuickLockingMechanism();
+                                }
+
+                                ThreadUtility.MemoryBarrier();
+                            }
                         }
                     }
-                }
 
-                if (_onThreadKilled != null)
-                    _onThreadKilled();
+                    if (_onThreadKilled != null)
+                        _onThreadKilled();
 
-                if (_mevent != null)
-                {
-                    _mevent.Dispose();
-                    _mevent = null;
-                    ThreadUtility.MemoryBarrier();
+                    if (_mevent != null)
+                    {
+                        _mevent.Dispose();
+                        _mevent = null;
+                        ThreadUtility.MemoryBarrier();
+                    }
                 }
             }
             

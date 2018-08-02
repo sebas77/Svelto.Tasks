@@ -20,7 +20,7 @@ namespace Svelto.Tasks.Unity
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
             var info = new TimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
 
-            runnerBehaviour.StartUpdateCoroutine(UnityCoroutineRunner.Process
+            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));

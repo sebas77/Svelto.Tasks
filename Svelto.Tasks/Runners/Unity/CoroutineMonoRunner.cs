@@ -21,8 +21,8 @@ namespace Svelto.Tasks.Unity
 
             _info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
 
-            runnerBehaviour.StartCoroutine(UnityCoroutineRunner.Process
-                (_newTaskRoutines, _coroutines, _flushingOperation, _info,
+            runnerBehaviour.StartCoroutine(new UnityCoroutineRunner.Process(
+                _newTaskRoutines, _coroutines, _flushingOperation, _info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
@@ -49,11 +49,18 @@ namespace Svelto.Tasks.Unity
 #if TASKS_PROFILER_ENABLED
             return Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(task, _info.runnerName);
 #else
-            return task.MoveNext();
+#if UNITY_EDITOR || PROFILER
+            UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName.FastConcat("+", task.ToString()));
 #endif
+            var value =  task.MoveNext();
+#if UNITY_EDITOR || PROFILER                    
+            UnityEngine.Profiling.Profiler.EndSample();
+#endif
+            return value;
+#endif            
         }
-        
-        UnityCoroutineRunner.RunningTasksInfo _info;
+
+        readonly UnityCoroutineRunner.RunningTasksInfo _info;
     }
 }
 #endif

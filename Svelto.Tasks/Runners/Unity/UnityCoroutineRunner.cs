@@ -37,38 +37,46 @@ namespace Svelto.Tasks.Internal.Unity
                 Object.DontDestroyOnLoad(go);
         }
 
-        internal static IEnumerator Process(ThreadSafeQueue<IPausableTask> newTaskRoutines,
-                                            FasterList<IPausableTask> coroutines, 
-                                            FlushingOperation flushingOperation,
-                                            RunningTasksInfo info, 
-                                            FlushTasksDel flushTaskDel)
+        internal class Process : IEnumerator
         {
-            return Process(newTaskRoutines, coroutines, 
-                flushingOperation, info, flushTaskDel, null, null);
-        }
+            readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
+            readonly FasterList<IPausableTask>      _coroutines;
+            readonly FlushingOperation              _flushingOperation;
+            readonly RunningTasksInfo               _info;
+            readonly FlushTasksDel                  _flushTaskDel;
+            readonly RunnerBehaviour                _runnerBehaviourForUnityCoroutine;
+            readonly Action<IPausableTask>          _resumeOperation;
 
-        internal static IEnumerator Process(
-            ThreadSafeQueue<IPausableTask> newTaskRoutines,
-            FasterList<IPausableTask> coroutines, 
-            FlushingOperation flushingOperation,
-            RunningTasksInfo info,
-            FlushTasksDel flushTaskDel,
-            RunnerBehaviour runnerBehaviourForUnityCoroutine,
-            Action<IPausableTask> resumeOperation)
-        {
-            while (true)
+            public Process( ThreadSafeQueue<IPausableTask> newTaskRoutines,
+                            FasterList<IPausableTask>      coroutines, 
+                            FlushingOperation              flushingOperation,
+                            RunningTasksInfo               info,
+                            FlushTasksDel                  flushTaskDel,
+                            RunnerBehaviour                runnerBehaviourForUnityCoroutine = null,
+                            Action<IPausableTask>          resumeOperation = null)
             {
-                if (false == flushingOperation.stopped) //don't start anything while flushing
-                    flushTaskDel(newTaskRoutines, coroutines, flushingOperation);
+                this._newTaskRoutines = newTaskRoutines;
+                this._coroutines = coroutines;
+                this._flushingOperation = flushingOperation;
+                this._info = info;
+                this._flushTaskDel = flushTaskDel;
+                this._runnerBehaviourForUnityCoroutine = runnerBehaviourForUnityCoroutine;
+                this._resumeOperation = resumeOperation;
+            }
+
+            public bool MoveNext()
+            {
+                if (false == _flushingOperation.stopped) //don't start anything while flushing
+                    _flushTaskDel(_newTaskRoutines, _coroutines, _flushingOperation);
                 else
-                if (runnerBehaviourForUnityCoroutine != null)
-                    runnerBehaviourForUnityCoroutine.StopAllCoroutines();
+                if (_runnerBehaviourForUnityCoroutine != null)
+                    _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
 
-                UnityEngine.Profiling.Profiler.BeginSample(info.runnerName);
+                UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName);
 
-                for (int i = 0;info.MoveNext(i, coroutines.Count);i++)
+                for (int i = 0;_info.MoveNext(i, _coroutines.Count);i++)
                 {
-                    var pausableTask = coroutines[i];
+                    var pausableTask = _coroutines[i];
 
                     //let's spend few words on this. 
                     //yielded YieldInstruction and AsyncOperation can 
@@ -93,26 +101,26 @@ namespace Svelto.Tasks.Internal.Unity
                     /// the cost of two allocations per instruction
                     /// 
 
-                    if (runnerBehaviourForUnityCoroutine != null && 
-                        flushingOperation.stopped == false)
+                    if (_runnerBehaviourForUnityCoroutine != null && 
+                        _flushingOperation.stopped == false)
                     {
                         var current = pausableTask.Current;
 
                         if (current is YieldInstruction)
                         {
                             var handItToUnity = new HandItToUnity
-                                (current, pausableTask, resumeOperation, flushingOperation);
+                                (current, pausableTask, _resumeOperation, _flushingOperation);
 
                             //remove the special instruction. it will
                             //be added back once Unity completes.
-                            coroutines.UnorderedRemoveAt(i--);
+                            _coroutines.UnorderedRemoveAt(i--);
 
-                            var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
+                            var coroutine = _runnerBehaviourForUnityCoroutine.StartCoroutine
                                 (handItToUnity.GetEnumerator());
 
                             (pausableTask as PausableTask).onExplicitlyStopped = () =>
                             {
-                                runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                _runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
                                 handItToUnity.ForceStop();
                             };
                             
@@ -128,12 +136,12 @@ namespace Svelto.Tasks.Internal.Unity
 
                             parallelTask.Add(handItToUnity.WaitUntilIsDone());
 
-                            var coroutine = runnerBehaviourForUnityCoroutine.StartCoroutine
+                            var coroutine = _runnerBehaviourForUnityCoroutine.StartCoroutine
                                 (handItToUnity.GetEnumerator());
                             
                             (pausableTask as PausableTask).onExplicitlyStopped = () =>
                             {
-                                runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                _runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
                                 handItToUnity.ForceStop();
                             };
                         }
@@ -141,15 +149,15 @@ namespace Svelto.Tasks.Internal.Unity
 
                     bool result;
 #if TASKS_PROFILER_ENABLED
-                   result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, info.runnerName);
-#else
+                   result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
+#else 
 #if UNITY_EDITOR || PROFILER
-                    UnityEngine.Profiling.Profiler.BeginSample("UnityCoroutineRunner ".FastConcat(pausableTask.ToString()));
+                   UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName.FastConcat("+",pausableTask.ToString()));
 #endif                    
                    result = pausableTask.MoveNext();
-#if UNITY_EDITOR || PROFILER
-                    UnityEngine.Profiling.Profiler.EndSample();
-#endif
+#if UNITY_EDITOR || PROFILER                    
+                   UnityEngine.Profiling.Profiler.EndSample();
+#endif                    
 #endif
                    if (result == false)
                    {
@@ -157,20 +165,27 @@ namespace Svelto.Tasks.Internal.Unity
                        if (disposable != null)
                            disposable.Dispose();
 
-                       coroutines.UnorderedRemoveAt(i--);
+                       _coroutines.UnorderedRemoveAt(i--);
                    }
                 }
 
                 UnityEngine.Profiling.Profiler.EndSample();
                 
-                if (flushingOperation.stopped == true && coroutines.Count == 0)
+                if (_flushingOperation.stopped == true && _coroutines.Count == 0)
                 {   //once all the coroutines are flushed
                     //the loop can return accepting new tasks
-                    flushingOperation.stopped = false;
+                    _flushingOperation.stopped = false;
                 }
 
-                yield return null;
+                return true;
             }
+
+            public void Reset()
+            {
+                throw new NotImplementedException();
+            }
+
+            public object Current { get; private set; }
         }
 
         public class RunningTasksInfo

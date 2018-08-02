@@ -15,7 +15,7 @@ namespace Svelto.Tasks.Unity
 
             var info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
 
-            runnerBehaviour.StartUpdateCoroutine(UnityCoroutineRunner.Process
+            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));

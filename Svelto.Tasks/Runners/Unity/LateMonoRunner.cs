@@ -14,7 +14,7 @@ namespace Svelto.Tasks.Unity
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
             var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
 
-            runnerBehaviour.StartLateCoroutine(UnityCoroutineRunner.Process
+            runnerBehaviour.StartLateCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
