@@ -1,4 +1,4 @@
-#if DEBUG && TASKS_PROFILER_ENABLED
+#if TASKS_PROFILER_ENABLED
  //#define ENABLE_PIX_EVENTS
 
 using System.Collections;

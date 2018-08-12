@@ -1,3 +1,4 @@
+#if TASKS_PROFILER_ENABLED
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -76,3 +77,4 @@ namespace Svelto.Tasks.Profiler
         readonly Queue<double> _updateFrameTimes;
     }
 }
+#endif

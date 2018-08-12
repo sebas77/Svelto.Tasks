@@ -151,11 +151,11 @@ namespace Svelto.Tasks.Internal.Unity
 #if TASKS_PROFILER_ENABLED
                    result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
 #else 
-#if UNITY_EDITOR || PROFILER
+#if PROFILER
                    UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName.FastConcat("+",pausableTask.ToString()));
 #endif                    
                    result = pausableTask.MoveNext();
-#if UNITY_EDITOR || PROFILER                    
+#if PROFILER                    
                    UnityEngine.Profiling.Profiler.EndSample();
 #endif                    
 #endif

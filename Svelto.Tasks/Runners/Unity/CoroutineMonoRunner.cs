@@ -49,11 +49,11 @@ namespace Svelto.Tasks.Unity
 #if TASKS_PROFILER_ENABLED
             return Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(task, _info.runnerName);
 #else
-#if UNITY_EDITOR || PROFILER
+#if PROFILER
             UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName.FastConcat("+", task.ToString()));
 #endif
             var value =  task.MoveNext();
-#if UNITY_EDITOR || PROFILER                    
+#if PROFILER                    
             UnityEngine.Profiling.Profiler.EndSample();
 #endif
             return value;
