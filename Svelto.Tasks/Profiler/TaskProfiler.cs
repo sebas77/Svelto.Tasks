@@ -10,7 +10,7 @@ using Svelto.DataStructures;
 
 namespace Svelto.Tasks.Profiler
 {
-    public sealed class TaskProfiler
+    public static class TaskProfiler
     {
         static readonly Stopwatch _stopwatch = new Stopwatch();
         

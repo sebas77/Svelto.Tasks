@@ -1,13 +1,10 @@
 using System;
-#if UNITY_5_3_OR_NEWER
-using UnityEngine.Profiling;
-#endif
 namespace Svelto.Tasks
 {
 #if UNITY_5_3_OR_NEWER    
     class PlatformProfiler : IDisposable
     {
-        readonly CustomSampler sampler;
+        readonly UnityEngine.Profiling.CustomSampler sampler;
 
         public PlatformProfiler(string name)
         {
@@ -16,19 +13,19 @@ namespace Svelto.Tasks
 
         public void Dispose()
         {
-            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.EndThreadProfiling();
         }
 
         public DisposableStruct Sample(string samplerName)
         {
-            return new DisposableStruct(CustomSampler.Create(samplerName));
+            return new DisposableStruct(UnityEngine.Profiling.CustomSampler.Create(samplerName));
         }
 
         internal struct DisposableStruct : IDisposable
         {
-            readonly CustomSampler _sampler;
+            readonly UnityEngine.Profiling.CustomSampler _sampler;
 
-            public DisposableStruct(CustomSampler customSampler)
+            public DisposableStruct(UnityEngine.Profiling.CustomSampler customSampler)
             {
                 _sampler = customSampler;
                 _sampler.Begin();

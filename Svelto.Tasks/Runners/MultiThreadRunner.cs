@@ -211,7 +211,7 @@ namespace Svelto.Tasks
                         {
                             var enumerator = _coroutines[i];
 #if TASKS_PROFILER_ENABLED
-                            bool result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _name);
+                            bool result = Profiler.TaskProfiler.MonitorUpdateDuration(enumerator, _name);
 #else
                             bool result;
                             using (platformProfiler.Sample(enumerator.ToString()))
