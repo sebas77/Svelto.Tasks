@@ -55,14 +55,14 @@ namespace Svelto.Tasks.Internal.Unity
                             RunnerBehaviour                runnerBehaviourForUnityCoroutine = null,
                             Action<IPausableTask>          resumeOperation = null)
             {
-                this._newTaskRoutines = newTaskRoutines;
-                this._coroutines = coroutines;
-                this._flushingOperation = flushingOperation;
-                this._info = info;
-                this._flushTaskDel = flushTaskDel;
-                this._runnerBehaviourForUnityCoroutine = runnerBehaviourForUnityCoroutine;
-                this._resumeOperation = resumeOperation;
-            }
+                _newTaskRoutines = newTaskRoutines;
+                _coroutines = coroutines;
+                _flushingOperation = flushingOperation;
+                _info = info;
+                _flushTaskDel = flushTaskDel;
+                _runnerBehaviourForUnityCoroutine = runnerBehaviourForUnityCoroutine;
+                _resumeOperation = resumeOperation;
+            }    
 
             public bool MoveNext()
             {
@@ -74,35 +74,26 @@ namespace Svelto.Tasks.Internal.Unity
 
                 UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName);
 
-                for (int i = 0;_info.MoveNext(i, _coroutines.Count);i++)
+                for (int i = 0; _info.MoveNext(ref i, _coroutines.Count) && i < _coroutines.Count; ++i)
                 {
                     var pausableTask = _coroutines[i];
 
-                    //let's spend few words on this. 
-                    //yielded YieldInstruction and AsyncOperation can 
-                    //only be processed internally by Unity. 
-                    //The simplest way to handle them is to hand them to Unity itself.
-                    //However while the Unity routine is processed, the rest of the 
-                    //coroutine is waiting for it. This would defeat the purpose 
-                    //of the parallel procedures. For this reason, a Parallel
-                    //task will mark the enumerator returned as ParallelYield which 
-                    //will change the way the routine is processed.
-                    //in this case the MonoRunner won't wait for the Unity routine 
-                    //to continue processing the next tasks.
-                    //Note that it is much better to return wrap AsyncOperation around
-                    //custom IEnumerator classes then returning them directly as
-                    //most of the time they don't need to be handled by Unity as
+                    //let's spend few words on this. yielded YieldInstruction and AsyncOperation can
+                    //only be processed internally by Unity. The simplest way to handle them is to hand them to Unity
+                    //itself. However while the Unity routine is processed, the rest of the coroutine is waiting for it.
+                    //This would defeat the purpose of the parallel procedures. For this reason, a Parallel task will
+                    //mark the enumerator returned as ParallelYield which will change the way the routine is processed.
+                    //in this case the MonoRunner won't wait for the Unity routine to continue processing the next
+                    //tasks. Note that it is much better to return wrap AsyncOperation around custom IEnumerator classes
+                    //then returning them directly as most of the time they don't need to be handled by Unity as
                     //YieldInstructions do
-                    
+
                     ///
-                    /// Handle special Unity instructions
-                    /// you should avoid them or wrap them
-                    /// around custom IEnumerator to avoid
-                    /// the cost of two allocations per instruction
+                    /// Handle special Unity instructions you should avoid them or wrap them around custom IEnumerator
+                    /// to avoid the cost of two allocations per instruction
                     /// 
 
-                    if (_runnerBehaviourForUnityCoroutine != null && 
-                        _flushingOperation.stopped == false)
+                    if (_runnerBehaviourForUnityCoroutine != null && _flushingOperation.stopped == false)
                     {
                         var current = pausableTask.Current;
 
@@ -192,9 +183,9 @@ namespace Svelto.Tasks.Internal.Unity
         {
             public string runnerName;
 
-            public virtual bool MoveNext(int i, int count)
+            public virtual bool MoveNext(ref int index, int count)
             {
-                return i < count;
+                return true;
             }
         }
 
@@ -257,7 +248,7 @@ namespace Svelto.Tasks.Internal.Unity
             readonly IPausableTask         _task;
             readonly Action<IPausableTask> _resumeOperation;
 
-            bool              _isDone;
+            bool                       _isDone;
             readonly FlushingOperation _flushingOperation;
         }
         
