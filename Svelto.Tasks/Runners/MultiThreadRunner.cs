@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.DataStructures;
+using Svelto.Profiler;
 using Svelto.Utilities;
 
 #if NETFX_CORE
