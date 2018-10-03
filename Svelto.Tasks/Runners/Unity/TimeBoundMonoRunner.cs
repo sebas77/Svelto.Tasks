@@ -9,6 +9,18 @@ namespace Svelto.Tasks.Unity
     /// </summary>
     public class TimeBoundMonoRunner : MonoRunner
     {
+        public float maxMilliseconds
+        {
+            get
+            {
+                return _info.maxMilliseconds;
+            }
+            set
+            {
+                _info.maxMilliseconds = value;
+            }
+        }
+
         // Greedy means that the runner will try to occupy the whole maxMilliseconds interval, by looping among all tasks until all are completed or maxMilliseconds passed
         public TimeBoundMonoRunner(string name, float maxMilliseconds, bool mustSurvive = false)
         {
@@ -18,21 +30,22 @@ namespace Svelto.Tasks.Unity
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-            UnityCoroutineRunner.RunningTasksInfo info;
-            
-            info = new TimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
+
+            _info = new TimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
 
             runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
-                (_newTaskRoutines, _coroutines, _flushingOperation, info,
+                (_newTaskRoutines, _coroutines, _flushingOperation, _info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
 
         class TimeBoundRunningInfo : UnityCoroutineRunner.RunningTasksInfo
         {
+            public float maxMilliseconds;
+
             public TimeBoundRunningInfo(float maxMilliseconds)
             {
-                _maxMilliseconds = maxMilliseconds;
+                this.maxMilliseconds = maxMilliseconds;
             }
             
             public override bool MoveNext(ref int index, int count)
@@ -43,16 +56,17 @@ namespace Svelto.Tasks.Unity
                     _stopWatch.Start();
                 }
 
-                if (_stopWatch.ElapsedMilliseconds > _maxMilliseconds)
+                if (_stopWatch.ElapsedMilliseconds > maxMilliseconds)
                     return false;
                  
                 return true;
             }
             
             readonly Stopwatch _stopWatch = new Stopwatch();
-            readonly float _maxMilliseconds;
 
         }
+
+        readonly TimeBoundRunningInfo _info;
     }
 }
 #endif

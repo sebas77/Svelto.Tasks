@@ -14,15 +14,6 @@ public static class TaskRunnerExtensions
     {
         return TaskRunner.Instance.RunOnScheduler(runner, enumerator);
     }
-    /// <summary>
-    /// all the instructions are executed on the selected runner
-    /// </summary>
-    /// <param name="taskGenerator"></param>
-    /// <returns></returns>
-    public static ContinuationWrapper ThreadSafeRunOnScheduler(this IEnumerator enumerator, IRunner runner)
-    {
-        return TaskRunner.Instance.ThreadSafeRunOnScheduler(runner, enumerator);
-    }
 
     public static ContinuationWrapper Run(this IEnumerator enumerator)
     {

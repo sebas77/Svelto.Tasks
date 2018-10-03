@@ -156,20 +156,6 @@ namespace Svelto.Tasks.Internal
 
         public ContinuationWrapper Start(Action<PausableTaskException> onFail = null, Action onStop = null)
         {
-            _threadSafe = false;
-
-            _onStop = onStop;
-            _onFail = onFail;
-            
-            InternalStart();
-
-            return _continuationWrapper;
-        }
-
-        public ContinuationWrapper ThreadSafeStart(Action<PausableTaskException> onFail = null, Action onStop = null)
-        {
-            _threadSafe = true;
-
             _onStop = onStop;
             _onFail = onFail;
             
@@ -338,7 +324,6 @@ namespace Svelto.Tasks.Internal
             _completed = false;
             _started = false;
             _explicitlyStopped = false;
-            _threadSafe = false;
             _compilerGenerated = false;
             _pendingRestart = false;
             _name = string.Empty;
@@ -453,10 +438,7 @@ namespace Svelto.Tasks.Internal
             _started = true;
             ThreadUtility.MemoryBarrier();
 
-            if (_threadSafe == false)
-                _runner.StartCoroutine(this);
-            else
-                _runner.StartCoroutineThreadSafe(this);
+            _runner.StartCoroutine(this);
         }
 
         void SetTask(IEnumerator task)
@@ -484,7 +466,6 @@ namespace Svelto.Tasks.Internal
         ContinuationWrapper           _continuationWrapper;
         ContinuationWrapper           _pendingContinuationWrapper;
         
-        bool                          _threadSafe;
         bool                          _compilerGenerated;
         bool                          _taskEnumeratorJustSet;
 

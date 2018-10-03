@@ -18,10 +18,13 @@ namespace Svelto.Tasks.Internal.Unity
 
         IEnumerator WaitForEndOfFrameLoop()
         {
-            yield return _waitForEndOfFrame;
-            
-            if (_mainRoutine != null)
-                _mainRoutine.MoveNext();
+            while (true)
+            {
+                yield return _waitForEndOfFrame;
+
+                if (_mainRoutine != null)
+                    _mainRoutine.MoveNext();
+            }
         }
 
         IEnumerator       _mainRoutine;

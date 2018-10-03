@@ -81,7 +81,7 @@ namespace Svelto.Tasks
                 Action ptcOnOnComplete = DecrementStoppingThread;
                 //start them
                 for (int i = 0; i < _numberOfConcurrentOperationsToRun; i++)
-                    _taskRoutines[i].ThreadSafeStart(onStop: ptcOnOnComplete);
+                    _taskRoutines[i].Start(onStop: ptcOnOnComplete);
             }
             
             //wait for completition, I am not using signaling as this Collection could be yielded by a main thread runner

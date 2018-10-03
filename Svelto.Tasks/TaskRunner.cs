@@ -55,21 +55,6 @@ namespace Svelto.Tasks
             return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
         }
 
-        /// <summary>
-        /// all the instructions are executed on the selected runner
-        /// </summary>
-        /// <param name="taskGenerator"></param>
-        /// <returns></returns>
-        public ContinuationWrapper ThreadSafeRun(IEnumerator task)
-        {
-            return ThreadSafeRunOnScheduler(_runner, task);
-        }
-
-        public ContinuationWrapper ThreadSafeRunOnScheduler(IRunner runner, IEnumerator task)
-        {
-            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).ThreadSafeStart();
-        }
-
         public static void StopAndCleanupAllDefaultSchedulers()
         {
             StandardSchedulers.KillSchedulers();

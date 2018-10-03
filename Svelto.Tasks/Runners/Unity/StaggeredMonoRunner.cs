@@ -5,44 +5,49 @@ using Svelto.Tasks.Internal.Unity;
 namespace Svelto.Tasks.Unity
 {
     /// <summary>
-    //StaggeredMonoRunner doesn't flush all the tasks at once, but it spread
-    //them over "framesToSpread" frames;
+    //StaggeredMonoRunner doesn't flush all the tasks at once, runs maxIterationPerFrame
     /// </summary>
     public class StaggeredMonoRunner : MonoRunner
     {
-        public StaggeredMonoRunner(string name, int maxTasksPerFrame, bool mustSurvive = false)
+        public StaggeredMonoRunner(string name, int maxIterationPerFrame, bool mustSurvive = false)
         {
-            _flushingOperation = new FlushingOperationStaggered(maxTasksPerFrame);
-
+            _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
+            
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-            var info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
+            var info = new StaggeredRunningInfo(maxIterationPerFrame) { runnerName = name };
 
             runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,
-                 StaggeredTasksFlushing,
+                 UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
 
-        static void StaggeredTasksFlushing(
-            ThreadSafeQueue<IPausableTask> newTaskRoutines, 
-            FasterList<IPausableTask> coroutines, 
-            UnityCoroutineRunner.FlushingOperation flushingOperation)
+        class StaggeredRunningInfo : UnityCoroutineRunner.RunningTasksInfo
         {
-            if (newTaskRoutines.Count > 0)
-                newTaskRoutines.DequeueInto(coroutines, ((FlushingOperationStaggered)flushingOperation).maxTasksPerFrame);
-        }
-
-        class FlushingOperationStaggered:UnityCoroutineRunner.FlushingOperation
-        {
-            public readonly int maxTasksPerFrame;
-
-            public FlushingOperationStaggered(int maxTasksPerFrame)
+            public StaggeredRunningInfo(float maxTasksPerFrame)
             {
-                this.maxTasksPerFrame = maxTasksPerFrame;
+                _maxTasksPerFrame = maxTasksPerFrame;
             }
+            
+            public override bool MoveNext(ref int index, int count)
+            {
+                if (_iterations > _maxTasksPerFrame)
+                {
+                    _iterations = 0;
+
+                    return false;
+                }
+
+                _iterations++;
+
+                return true;
+            }
+
+            int _iterations;
+            readonly float _maxTasksPerFrame;
         }
     }
 }

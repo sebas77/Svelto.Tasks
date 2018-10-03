@@ -8,7 +8,6 @@ namespace Svelto.Tasks
         bool    isStopping { get; }
 
         void	StartCoroutine(IPausableTask task);
-        void    StartCoroutineThreadSafe(IPausableTask task);
         void 	StopAllCoroutines();
 
         int numberOfRunningTasks { get; }

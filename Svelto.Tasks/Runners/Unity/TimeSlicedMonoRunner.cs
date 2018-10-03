@@ -10,6 +10,18 @@ namespace Svelto.Tasks.Unity
     /// </summary>
     public class TimeSlicedMonoRunner : MonoRunner
     {
+        public float maxMilliseconds
+        {
+            get
+            {
+                return _info.maxMilliseconds;
+            }
+            set
+            {
+                _info.maxMilliseconds = value;
+            }
+        }
+
         public TimeSlicedMonoRunner(string name, float maxMilliseconds, bool mustSurvive = false)
         {
             _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
@@ -18,21 +30,22 @@ namespace Svelto.Tasks.Unity
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-            UnityCoroutineRunner.RunningTasksInfo info;
             
-            info = new GreedyTimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
+            _info = new GreedyTimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
             
             runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
-                (_newTaskRoutines, _coroutines, _flushingOperation, info,
+                (_newTaskRoutines, _coroutines, _flushingOperation, _info,
                  UnityCoroutineRunner.StandardTasksFlushing,
                  runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
 
         class GreedyTimeBoundRunningInfo : UnityCoroutineRunner.RunningTasksInfo
         {
+            public float maxMilliseconds;
+
             public GreedyTimeBoundRunningInfo(float maxMilliseconds)
             {
-                _maxMilliseconds = maxMilliseconds;
+                this.maxMilliseconds = maxMilliseconds;
             }
 
             public override bool MoveNext(ref int index, int count)
@@ -43,7 +56,7 @@ namespace Svelto.Tasks.Unity
                     _stopWatch.Start();
                 }
 
-                if (_stopWatch.ElapsedMilliseconds > _maxMilliseconds)
+                if (_stopWatch.ElapsedMilliseconds > maxMilliseconds)
                     return false;
 
                 if (index == count)
@@ -53,9 +66,10 @@ namespace Svelto.Tasks.Unity
             }
 
             readonly Stopwatch _stopWatch = new Stopwatch();
-            readonly float     _maxMilliseconds;
 
         }
+
+        readonly GreedyTimeBoundRunningInfo _info;
     }
 }
 #endif
