@@ -245,11 +245,10 @@ namespace Svelto.Tasks.Internal
                     ThreadUtility.MemoryBarrier();
                     
                     var current = _coroutine.Current;
-                    if (current == Break.It ||
-                        current == Break.AndStop)
+                    if ((current == Break.It ||
+                         current == Break.AndStop) && _onStop != null)
                     {
-                        if (_onStop != null)
-                            _onStop();
+                        _onStop();
                     }
                 }
                 catch (Exception e)
@@ -261,6 +260,7 @@ namespace Svelto.Tasks.Internal
                         _onFail(new PausableTaskException(e));
                     else
                     {
+                       Utility.Console.LogError("Svelto.Tasks task threw an exception: ", ToString());
                        Utility.Console.LogException(e);
                     }
 #if DEBUG

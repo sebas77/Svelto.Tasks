@@ -10,14 +10,14 @@ namespace Svelto.Tasks.Profiler
 {
     public struct TaskInfo
     {
-        const int NUM_UPDATE_TYPES = 3;
         const int NUM_FRAMES_TO_AVERAGE = 10;
 
         public string taskName { get { return _threadInfo.FastConcat(_taskName); } }
         public double lastUpdateDuration { get { return _lastUpdateDuration; } }
         public double minUpdateDuration { get { return _minUpdateDuration; } }
         public double maxUpdateDuration { get { return _maxUpdateDuration; } }
-        public double averageUpdateDuration { get { return _updateFrameTimes.Count == 0 ? 0 : _accumulatedUpdateDuration / _updateFrameTimes.Count; } }
+        public double currentUpdateDuration { get { return _updateFrameTimes.Count == 0 ? 0 : _currentUpdateDuration / _updateFrameTimes.Count; } }
+        public double averageUpdateDuration { get { return _averageUpdateDuration / _totaleFrames; } }
 
         public TaskInfo(IEnumerator task) : this()
         {
@@ -25,7 +25,12 @@ namespace Svelto.Tasks.Profiler
 
             _updateFrameTimes = new Queue<double>();
 
-            ResetDurations();
+            _currentUpdateDuration = 0;
+            _averageUpdateDuration = 0;
+            _minUpdateDuration     = 0;
+            _maxUpdateDuration     = 0;
+            _totaleFrames          = 0;
+            _updateFrameTimes.Clear();
         }
 
         public void AddUpdateDuration(double updateDuration)
@@ -38,17 +43,6 @@ namespace Svelto.Tasks.Profiler
             _threadInfo = threadInfo;
         }
 
-        void ResetDurations()
-        {
-            for (var i = 0; i < NUM_UPDATE_TYPES; i++)
-            {
-                _accumulatedUpdateDuration = 0;
-                _minUpdateDuration = 0;
-                _maxUpdateDuration = 0;
-                _updateFrameTimes.Clear();
-            }
-        }
-
         void AddUpdateDurationForType(double updateDuration)
         {
             if ((updateDuration < _minUpdateDuration) || (Math.Abs(_minUpdateDuration) < double.Epsilon))
@@ -57,17 +51,22 @@ namespace Svelto.Tasks.Profiler
                 _maxUpdateDuration = updateDuration;
 
             if (_updateFrameTimes.Count == NUM_FRAMES_TO_AVERAGE)
-                _accumulatedUpdateDuration -= _updateFrameTimes.Dequeue();
+                _currentUpdateDuration -= _updateFrameTimes.Dequeue();
 
-            _accumulatedUpdateDuration += updateDuration;
+            _currentUpdateDuration += updateDuration;
+            _averageUpdateDuration += updateDuration;
             _updateFrameTimes.Enqueue(updateDuration);
             _lastUpdateDuration = updateDuration;
+            _totaleFrames++;
         }
 
-        double _accumulatedUpdateDuration;
+        double _currentUpdateDuration;
+        double _averageUpdateDuration;
         double _lastUpdateDuration;
         double _maxUpdateDuration;
         double _minUpdateDuration;
+
+        double _totaleFrames;
 
         readonly string _taskName;
 

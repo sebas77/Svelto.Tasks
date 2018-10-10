@@ -12,13 +12,9 @@ namespace Svelto.Tasks.Unity
     {
         public float maxMilliseconds
         {
-            get
-            {
-                return _info.maxMilliseconds;
-            }
             set
             {
-                _info.maxMilliseconds = value;
+                _info.maxMilliseconds = (long) (value * 10000);
             }
         }
 
@@ -41,14 +37,14 @@ namespace Svelto.Tasks.Unity
 
         class GreedyTimeBoundRunningInfo : UnityCoroutineRunner.RunningTasksInfo
         {
-            public float maxMilliseconds;
+            public long maxMilliseconds;
 
             public GreedyTimeBoundRunningInfo(float maxMilliseconds)
             {
-                this.maxMilliseconds = maxMilliseconds;
+                this.maxMilliseconds = (long) (maxMilliseconds * 10000);
             }
 
-            public override bool MoveNext(ref int index, int count)
+            public override bool MoveNext(ref int index, int count, object current)
             {
                 if (index == 0)
                 {
@@ -56,8 +52,13 @@ namespace Svelto.Tasks.Unity
                     _stopWatch.Start();
                 }
 
-                if (_stopWatch.ElapsedMilliseconds > maxMilliseconds)
+                if (_stopWatch.ElapsedTicks > maxMilliseconds || current == Break.AndResumeNextIteration)
+                {
+                    _stopWatch.Reset();
+                    _stopWatch.Start();
+                    
                     return false;
+                }
 
                 if (index == count)
                     index = 0;

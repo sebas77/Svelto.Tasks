@@ -18,7 +18,7 @@ namespace Svelto.Tasks.Profiler
 
         internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
             new ThreadSafeDictionary<string, TaskInfo>();
-
+ 
         public static bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
         {
             var key = tickable.ToString().FastConcat(runnerName);

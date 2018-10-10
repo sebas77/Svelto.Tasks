@@ -74,7 +74,8 @@ namespace Svelto.Tasks.Internal.Unity
 
                 UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName);
 
-                for (int i = 0; _info.MoveNext(ref i, _coroutines.Count) && i < _coroutines.Count; ++i)
+                object current = null;
+                for (int i = 0; _info.MoveNext(ref i, _coroutines.Count, current) && i < _coroutines.Count; ++i)
                 {
                     var pausableTask = _coroutines[i];
 
@@ -93,10 +94,31 @@ namespace Svelto.Tasks.Internal.Unity
                     /// to avoid the cost of two allocations per instruction
                     /// 
 
-                    if (_runnerBehaviourForUnityCoroutine != null && _flushingOperation.stopped == false)
-                    {
-                        var current = pausableTask.Current;
+                   bool result;
+#if TASKS_PROFILER_ENABLED
+                   result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
+#else 
+#if PROFILER
+                   UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName.FastConcat("+",pausableTask.ToString()));
+#endif                    
+                   result = pausableTask.MoveNext();
+#if PROFILER                    
+                   UnityEngine.Profiling.Profiler.EndSample();
+#endif                    
+#endif
+                    current = pausableTask.Current;
+                    
+                   if (result == false)
+                   {
+                       var disposable = pausableTask as IDisposable;
+                       if (disposable != null)
+                           disposable.Dispose();
 
+                       _coroutines.UnorderedRemoveAt(i--);
+                   }
+                   else
+                   if (_runnerBehaviourForUnityCoroutine != null && _flushingOperation.stopped == false)
+                    {
                         if (current is YieldInstruction)
                         {
                             var handItToUnity = new HandItToUnity
@@ -136,27 +158,6 @@ namespace Svelto.Tasks.Internal.Unity
                                 handItToUnity.ForceStop();
                             };
                         }
-                    }                        
-
-                    bool result;
-#if TASKS_PROFILER_ENABLED
-                   result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
-#else 
-#if PROFILER
-                   UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName.FastConcat("+",pausableTask.ToString()));
-#endif                    
-                   result = pausableTask.MoveNext();
-#if PROFILER                    
-                   UnityEngine.Profiling.Profiler.EndSample();
-#endif                    
-#endif
-                   if (result == false)
-                   {
-                       var disposable = pausableTask as IDisposable;
-                       if (disposable != null)
-                           disposable.Dispose();
-
-                       _coroutines.UnorderedRemoveAt(i--);
                    }
                 }
 
@@ -183,7 +184,7 @@ namespace Svelto.Tasks.Internal.Unity
         {
             public string runnerName;
 
-            public virtual bool MoveNext(ref int index, int count)
+            public virtual bool MoveNext(ref int index, int count, object current)
             {
                 return true;
             }

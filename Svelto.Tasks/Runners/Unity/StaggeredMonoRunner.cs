@@ -32,7 +32,7 @@ namespace Svelto.Tasks.Unity
                 _maxTasksPerFrame = maxTasksPerFrame;
             }
             
-            public override bool MoveNext(ref int index, int count)
+            public override bool MoveNext(ref int index, int count, object current)
             {
                 if (_iterations > _maxTasksPerFrame)
                 {

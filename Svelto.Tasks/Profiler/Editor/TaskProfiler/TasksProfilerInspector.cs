@@ -14,6 +14,7 @@ namespace Svelto.Tasks.Profiler
     {
         enum SORTING_OPTIONS
         {
+            CURRENT,
             AVERAGE,
             MIN,
             MAX,
@@ -21,19 +22,18 @@ namespace Svelto.Tasks.Profiler
             NONE
         }
 
-        static bool _showTickTasks;
-
         static string _systemNameSearchTerm = string.Empty;
 
         float _axisUpperBounds = 2f;
 
-        string updateTitle = "Update".PadRight(15, ' ');
+        string avgTitle = "Avg".PadRight(15, ' ');
+        string updateTitle = "Now".PadRight(15, ' ');
         string minTitle = "Min".PadRight(15, ' ');
         string maxTitle = "Max";
         
         TasksMonitor _tasksMonitor;
         Queue<float> _taskMonitorData;
-        SORTING_OPTIONS _sortingOption = SORTING_OPTIONS.AVERAGE;
+        SORTING_OPTIONS _sortingOption = SORTING_OPTIONS.CURRENT;
 
         const int SYSTEM_MONITOR_DATA_LENGTH = 300;
 
@@ -86,8 +86,6 @@ namespace Svelto.Tasks.Profiler
                 }
                 ProfilerEditorLayout.EndHorizontal();
 
-                _showTickTasks = EditorGUILayout.Foldout(_showTickTasks, "Tasks Ticks");
-         //       if (_showTickTasks && ShouldShowSystems(tasks))
                 {
                     ProfilerEditorLayout.BeginVerticalBox();
                     {
@@ -158,14 +156,12 @@ namespace Svelto.Tasks.Profiler
             }
 
             string title =
-                updateTitle
-                    .FastConcat(minTitle)
-                    .FastConcat(maxTitle);
+                avgTitle.FastConcat(updateTitle, minTitle, maxTitle);
 
             ProfilerEditorLayout.BeginHorizontal();
             {
                 EditorGUILayout.LabelField("Task Name", EditorStyles.boldLabel);
-                EditorGUILayout.TextArea(title, EditorStyles.boldLabel, GUILayout.MaxWidth(200));
+                EditorGUILayout.TextArea(title, EditorStyles.boldLabel, GUILayout.MaxWidth(300));
             }
             ProfilerEditorLayout.EndHorizontal();
 
@@ -178,14 +174,15 @@ namespace Svelto.Tasks.Profiler
                 {
                     ProfilerEditorLayout.BeginHorizontal();
                     {
+                        var cur = string.Format("{0:0.000}", taskInfo.currentUpdateDuration).PadRight(15);
                         var avg = string.Format("{0:0.000}", taskInfo.averageUpdateDuration).PadRight(15);
                         var min = string.Format("{0:0.000}", taskInfo.minUpdateDuration).PadRight(15);
                         var max = string.Format("{0:0.000}", taskInfo.maxUpdateDuration);
 
-                        string output = avg.FastConcat(min).FastConcat(max);
+                        string output = cur.FastConcat(avg.FastConcat(min).FastConcat(max));
 
                         EditorGUILayout.LabelField(taskInfo.taskName);
-                        EditorGUILayout.TextArea(output, GetTaskStyle(), GUILayout.MaxWidth(200));
+                        EditorGUILayout.TextArea(output, GetTaskStyle(), GUILayout.MaxWidth(300));
                     }
                     ProfilerEditorLayout.EndHorizontal();
 
@@ -206,19 +203,18 @@ namespace Svelto.Tasks.Profiler
             return style;
         }
 
-        static bool ShouldShowSystems(TaskInfo[] tasks)
-        {
-            return tasks.Length > 0;
-        }
-
 #region Sorting Tasks
         void SortUpdateTasks(TaskInfo[] tasks)
         {
             switch (_sortingOption)
             {
+                case SORTING_OPTIONS.CURRENT:
+                    Array.Sort(tasks,
+                        (task1, task2) => task2.currentUpdateDuration.CompareTo(task1.currentUpdateDuration));
+                    break;
                 case SORTING_OPTIONS.AVERAGE:
                     Array.Sort(tasks,
-                        (task1, task2) => task2.averageUpdateDuration.CompareTo(task1.averageUpdateDuration));
+                               (task1, task2) => task2.currentUpdateDuration.CompareTo(task1.averageUpdateDuration));
                     break;
                 case SORTING_OPTIONS.MIN:
                     Array.Sort(tasks,
