@@ -2,9 +2,9 @@
 using System.Collections;
 using UnityEngine;
 
-namespace Svelto.Tasks.Internal.Unity
+namespace Svelto.Tasks.Unity.Internal
 {
-    class RunnerBehaviourEndOfFrame : MonoBehaviour
+    public class RunnerBehaviourEndOfFrame : MonoBehaviour
     {
         void Awake()
         {

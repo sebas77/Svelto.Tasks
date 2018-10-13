@@ -1,7 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 
 using Svelto.DataStructures;
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 using UnityEngine;
 
 #if TASKS_PROFILER_ENABLED
@@ -11,8 +11,8 @@ using Svelto.Tasks.Profiler;
 namespace Svelto.Tasks.Unity
 {
     /// <summary>
-    /// while you can istantiate a MonoRunner, you should use the standard one
-    /// whenever possible. Istantiating multiple runners will defeat the
+    /// while you can instantiate a MonoRunner, you should use the standard one
+    /// whenever possible. Instantiating multiple runners will defeat the
     /// initial purpose to get away from the Unity monobehaviours
     /// internal updates. MonoRunners are disposable though, so at
     /// least be sure to dispose of them once done
@@ -24,7 +24,7 @@ namespace Svelto.Tasks.Unity
         public bool isStopping { get { return _flushingOperation.stopped; } }
         public int  numberOfRunningTasks { get { return _coroutines.Count; } }
         
-        protected internal GameObject _go;
+        public GameObject _go;
 
         ~MonoRunner()
         {
@@ -44,19 +44,14 @@ namespace Svelto.Tasks.Unity
             _newTaskRoutines.Clear();
         }
 
-        public virtual void StartCoroutineThreadSafe(IPausableTask task)
+        public virtual void StartCoroutine(IPausableTask task)
         {
             paused = false;
 
             _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
 
-        public virtual void StartCoroutine(IPausableTask task)
-        {
-            StartCoroutineThreadSafe(task);
-        }
-
-        public void Dispose()
+        public virtual void Dispose()
         {
             StopAllCoroutines();
             

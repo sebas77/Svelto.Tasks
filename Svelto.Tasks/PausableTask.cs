@@ -260,8 +260,8 @@ namespace Svelto.Tasks.Internal
                         _onFail(new PausableTaskException(e));
                     else
                     {
-                       Utility.Console.LogError("Svelto.Tasks task threw an exception: ", ToString());
-                       Utility.Console.LogException(e);
+                       Utilities.Console.LogError("Svelto.Tasks task threw an exception: ", ToString());
+                       Utilities.Console.LogException(e);
                     }
 #if DEBUG
                     throw;

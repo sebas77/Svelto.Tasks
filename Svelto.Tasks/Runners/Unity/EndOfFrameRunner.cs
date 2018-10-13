@@ -1,5 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
@@ -11,7 +11,7 @@ namespace Svelto.Tasks.Unity
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourEndOfFrame>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-            var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
+            var info = new UnityCoroutineRunner.StandardRunningTaskInfo() { runnerName = name };
 
             runnerBehaviour.StartEndOfFrameCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,

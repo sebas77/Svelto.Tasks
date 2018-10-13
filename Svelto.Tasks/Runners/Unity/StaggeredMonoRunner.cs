@@ -1,15 +1,16 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using Svelto.DataStructures;
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
     /// <summary>
-    //StaggeredMonoRunner doesn't flush all the tasks at once, runs maxIterationPerFrame
+    //StaggeredMonoRunner runs not more than maxTasksPerIteration tasks in one single iteration.
+    //Several tasks must run on this runner to make sense. TaskCollections are considered
+    //single tasks, so they don't count (may change in future)
     /// </summary>
     public class StaggeredMonoRunner : MonoRunner
     {
-        public StaggeredMonoRunner(string name, int maxIterationPerFrame, bool mustSurvive = false)
+        public StaggeredMonoRunner(string name, int maxTasksPerIteration, bool mustSurvive = false)
         {
             _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
             
@@ -17,7 +18,7 @@ namespace Svelto.Tasks.Unity
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-            var info = new StaggeredRunningInfo(maxIterationPerFrame) { runnerName = name };
+            var info = new StaggeredRunningInfo(maxTasksPerIteration) { runnerName = name };
 
             runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,
@@ -27,14 +28,14 @@ namespace Svelto.Tasks.Unity
 
         class StaggeredRunningInfo : UnityCoroutineRunner.RunningTasksInfo
         {
-            public StaggeredRunningInfo(float maxTasksPerFrame)
+            public StaggeredRunningInfo(float maxTasksPerIteration)
             {
-                _maxTasksPerFrame = maxTasksPerFrame;
+                _maxTasksPerIteration = maxTasksPerIteration;
             }
             
-            public override bool MoveNext(ref int index, int count, object current)
+            public override bool CanMoveNext(ref int index, int count, object current)
             {
-                if (_iterations > _maxTasksPerFrame)
+                if (_iterations >= _maxTasksPerIteration)
                 {
                     _iterations = 0;
 
@@ -46,8 +47,13 @@ namespace Svelto.Tasks.Unity
                 return true;
             }
 
+            public override void Reset()
+            {
+                _iterations = 0;
+            }
+
             int _iterations;
-            readonly float _maxTasksPerFrame;
+            readonly float _maxTasksPerIteration;
         }
     }
 }

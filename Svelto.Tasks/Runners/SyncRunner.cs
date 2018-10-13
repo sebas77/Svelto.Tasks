@@ -12,22 +12,9 @@ namespace Svelto.Tasks
         public bool paused { set; get; }
         public bool isStopping { private set; get; }
 
-        public void StartCoroutineThreadSafe(IPausableTask task)
-        {
-            StartCoroutine(task);
-        }
-
         public void StartCoroutine(IPausableTask task)
         {
-            var quickIterations = 0;
-        
-            while (task.MoveNext())
-            {
-                if (++quickIterations < 1000)
-                    ThreadUtility.Yield();
-                else
-                    ThreadUtility.TakeItEasy();
-            }
+            task.Complete();
         }
 
         /// <summary>

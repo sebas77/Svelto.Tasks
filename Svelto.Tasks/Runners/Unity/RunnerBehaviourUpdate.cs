@@ -2,11 +2,11 @@
 using System.Collections;
 using UnityEngine;
 
-namespace Svelto.Tasks.Internal.Unity
+namespace Svelto.Tasks.Unity.Internal
 {
-    class RunnerBehaviourUpdate : MonoBehaviour
+    public class RunnerBehaviourUpdate : MonoBehaviour
     {
-        void Update()
+        public void Update()
         {
             if (_earlyMainRoutine != null)
                 _earlyMainRoutine.MoveNext();

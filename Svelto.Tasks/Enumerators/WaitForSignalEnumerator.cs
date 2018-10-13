@@ -21,8 +21,7 @@ namespace Svelto.Tasks.Enumerators
             _autoreset = autoreset;
             _name = name;
             ThreadUtility.MemoryBarrier();
-        }
-        
+        }        
         public WaitForSignalEnumerator(string name, Func<bool> extraCondition, float timeout = 100, bool autoreset = true):this(name, timeout, autoreset)
         {
             _extraCondition = extraCondition;
@@ -47,7 +46,7 @@ namespace Svelto.Tasks.Enumerators
             _then = DateTime.UtcNow;
 
             if (_timeout < 0)
-                Utility.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
+                Svelto.Utilities.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
 
             ThreadUtility.TakeItEasy();
 

@@ -1,4 +1,4 @@
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 
@@ -13,7 +13,7 @@ namespace Svelto.Tasks.Unity
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
 
-            var info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
+            var info = new UnityCoroutineRunner.StandardRunningTaskInfo { runnerName = name };
 
             runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,

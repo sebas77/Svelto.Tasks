@@ -1,5 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
@@ -14,12 +14,13 @@ namespace Svelto.Tasks.Unity
     {
         public CoroutineMonoRunner(string name, bool mustSurvive = false)
         {
+            _platformProfiler = new Svelto.Common.PlatformProfiler(name);
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
 
-            _info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
+            _info = new UnityCoroutineRunner.StandardRunningTaskInfo { runnerName = name };
 
             runnerBehaviour.StartCoroutine(new UnityCoroutineRunner.Process(
                 _newTaskRoutines, _coroutines, _flushingOperation, _info,
@@ -49,18 +50,25 @@ namespace Svelto.Tasks.Unity
 #if TASKS_PROFILER_ENABLED
             return Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(task, _info.runnerName);
 #else
-#if PROFILER
-            UnityEngine.Profiling.Profiler.BeginSample(_info.runnerName.FastConcat("+", task.ToString()));
-#endif
-            var value =  task.MoveNext();
-#if PROFILER                    
-            UnityEngine.Profiling.Profiler.EndSample();
-#endif
+            bool value;
+            using (_platformProfiler.Sample(_info.runnerName.FastConcat("+", task.ToString())))
+            {
+                value = task.MoveNext();
+            }
+
             return value;
 #endif            
         }
 
+        public override void Dispose()
+        {
+            _platformProfiler.Dispose();
+            
+            base.Dispose();
+        }
+
         readonly UnityCoroutineRunner.RunningTasksInfo _info;
+        readonly Svelto.Common.PlatformProfiler _platformProfiler;
     }
 }
 #endif

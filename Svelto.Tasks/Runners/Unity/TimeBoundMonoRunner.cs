@@ -1,11 +1,13 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Diagnostics;
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
     /// <summary>
-    //TimeBoundMonoRunner ensures that the tasks won't take more than maxMilliseconds
+    //TimeBoundMonoRunner ensures that the tasks running won't take more than maxMilliseconds per iteration
+    //Several tasks must run on this runner to make sense. TaskCollections are considered
+    //single tasks, so they don't count (may change in future)
     /// </summary>
     public class TimeBoundMonoRunner : MonoRunner
     {
@@ -44,20 +46,20 @@ namespace Svelto.Tasks.Unity
                 this.maxMilliseconds = (long) (maxMilliseconds * 10000);
             }
             
-            public override bool MoveNext(ref int index, int count, object current)
+            public override bool CanMoveNext(ref int index, int count, object current)
             {
-                if (index == 0)
-                {
-                    _stopWatch.Reset();
-                    _stopWatch.Start();
-                }
-
                 if (_stopWatch.ElapsedTicks > maxMilliseconds)
                     return false;
                  
                 return true;
             }
-            
+
+            public override void Reset()
+            {
+                _stopWatch.Reset();
+                _stopWatch.Start();
+            }
+
             readonly Stopwatch _stopWatch = new Stopwatch();
 
         }

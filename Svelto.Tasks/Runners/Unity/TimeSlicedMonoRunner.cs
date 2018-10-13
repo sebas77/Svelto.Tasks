@@ -1,12 +1,14 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Diagnostics;
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
     /// <summary>
     //TimeSlicedMonoRunner ensures that the tasks run up to the maxMilliseconds time. If a task takes less than it, the
-    //next ones will be executed until maxMilliseconds is reached
+    //next ones will be executed until maxMilliseconds is reached.
+    //TimeSlicedMonoRunner can work on single tasks, this means that it would force the task to run up to maxMilliseconds
+    //per frame, unless Break.AndResumeIteration is returned.
     /// </summary>
     public class TimeSlicedMonoRunner : MonoRunner
     {
@@ -44,13 +46,11 @@ namespace Svelto.Tasks.Unity
                 this.maxMilliseconds = (long) (maxMilliseconds * 10000);
             }
 
-            public override bool MoveNext(ref int index, int count, object current)
+            public override bool CanMoveNext(ref int index, int count, object current)
             {
-                if (index == 0)
-                {
-                    _stopWatch.Reset();
-                    _stopWatch.Start();
-                }
+                //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
+                if (index == count)
+                    index = 0;
 
                 if (_stopWatch.ElapsedTicks > maxMilliseconds || current == Break.AndResumeNextIteration)
                 {
@@ -59,11 +59,14 @@ namespace Svelto.Tasks.Unity
                     
                     return false;
                 }
-
-                if (index == count)
-                    index = 0;
                 
                 return true;
+            }
+
+            public override void Reset()
+            {
+                _stopWatch.Reset();
+                _stopWatch.Start();
             }
 
             readonly Stopwatch _stopWatch = new Stopwatch();

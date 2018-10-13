@@ -1,6 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.DataStructures;
-using Svelto.Tasks.Internal.Unity;
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
@@ -12,7 +12,7 @@ namespace Svelto.Tasks.Unity
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourLate>();
             var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
-            var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
+            var info = new UnityCoroutineRunner.StandardRunningTaskInfo() { runnerName = name };
 
             runnerBehaviour.StartLateCoroutine(new UnityCoroutineRunner.Process
                 (_newTaskRoutines, _coroutines, _flushingOperation, info,

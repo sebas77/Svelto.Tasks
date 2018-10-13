@@ -1,7 +1,8 @@
-using System;
-#if PROFILER || !DEBUG
+#if DISABLE_DBC || !DEBUG || PROFILER
+#define DISABLE_CHECKS
 using System.Diagnostics;
 #endif
+using System;
 namespace DBC.Tasks
 {
 	/// <summary>
@@ -58,7 +59,7 @@ namespace DBC.Tasks
 		/// <summary>
 		/// Precondition check.
 		/// </summary>
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Require(bool assertion, string message)
@@ -78,7 +79,7 @@ namespace DBC.Tasks
 		/// Precondition check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Require(bool assertion, string message, Exception inner)
@@ -98,7 +99,7 @@ namespace DBC.Tasks
 		/// Precondition check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Require(bool assertion)
@@ -118,7 +119,7 @@ namespace DBC.Tasks
 		/// Postcondition check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Ensure(bool assertion, string message)
@@ -138,7 +139,7 @@ namespace DBC.Tasks
 		/// Postcondition check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Ensure(bool assertion, string message, Exception inner)
@@ -158,7 +159,7 @@ namespace DBC.Tasks
 		/// Postcondition check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Ensure(bool assertion)
@@ -178,7 +179,7 @@ namespace DBC.Tasks
 		/// Invariant check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Invariant(bool assertion, string message)
@@ -198,7 +199,7 @@ namespace DBC.Tasks
 		/// Invariant check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Invariant(bool assertion, string message, Exception inner)
@@ -218,7 +219,7 @@ namespace DBC.Tasks
 		/// Invariant check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Invariant(bool assertion)
@@ -237,7 +238,7 @@ namespace DBC.Tasks
 		/// <summary>
 		/// Assertion check.
 		/// </summary>
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Assert(bool assertion, string message)
@@ -257,7 +258,7 @@ namespace DBC.Tasks
 		/// Assertion check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Assert(bool assertion, string message, Exception inner)
@@ -277,7 +278,7 @@ namespace DBC.Tasks
 		/// Assertion check.
 		/// </summary>
 		/// 
-#if PROFILER || !DEBUG
+#if DISABLE_CHECKS
 		[Conditional("__NEVER_DEFINED__")]
 #endif
 		public static void Assert(bool assertion)
