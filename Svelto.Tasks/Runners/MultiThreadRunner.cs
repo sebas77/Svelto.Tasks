@@ -47,8 +47,34 @@ namespace Svelto.Tasks
 
         public MultiThreadRunner(string name, bool relaxed = true, float intervalInMs = 0)
         {
-            _name = name;
-            var runnerData = new RunnerData(relaxed, intervalInMs, name);
+            var runnerData = new RunnerData(relaxed, intervalInMs, name, false);
+            
+            Init(name, runnerData);
+        }
+
+        /// <summary>
+        /// This constructor helps when the thread must run very tight, cache friendly tasks that won't
+        /// allow the CPU to start new threads. It can improve massive parallelism
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="tightTasks"></param>
+        public MultiThreadRunner(string name, bool tightTasks)
+        {
+            var runnerData = new RunnerData(false, 0, name, tightTasks);
+            
+            Init(name, runnerData);
+        }
+
+        public MultiThreadRunner(string name, int intervalInMS)
+        {
+            var runnerData = new RunnerData(true, intervalInMS, name, false);
+            
+            Init(name, runnerData);
+        }
+        
+        void Init(string name, RunnerData runnerData)
+        {
+            _name       = name;
             _runnerData = runnerData;
 #if !NETFX_CORE
             //threadpool doesn't work well with Unity apparently
@@ -58,9 +84,6 @@ namespace Svelto.Tasks
             Task.Factory.StartNew(() => runnerData.RunCoroutineFiber(), TaskCreationOptions.LongRunning);
 #endif
         }
-
-        public MultiThreadRunner(string name, int intervalInMS) : this(name, false, intervalInMS)
-        {}
 
         public void StartCoroutine(IPausableTask task)
         {
@@ -85,7 +108,7 @@ namespace Svelto.Tasks
 
         class RunnerData
         {
-            public RunnerData(bool relaxed, float interval, string name)
+            public RunnerData(bool relaxed, float interval, string name, bool isRunningTightTasks)
             {
                 _mevent          = new ManualResetEventEx();
                 _relaxed         = relaxed;
@@ -93,7 +116,8 @@ namespace Svelto.Tasks
                 _coroutines      = new FasterList<IPausableTask>();
                 _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
                 _interval        = (long) (interval * 10000);
-                _name = name;
+                _name             = name;
+                _isRunningTightTasks = isRunningTightTasks;
             }
 
             public int Count
@@ -211,7 +235,7 @@ namespace Svelto.Tasks
                                 _coroutines.UnorderedRemoveAt(i--);
                             }
                         }
-
+                        
                         if (_breakThread == false)
                         {
                             if (_interval > 0 && _waitForFlush == false) 
@@ -232,6 +256,11 @@ namespace Svelto.Tasks
                                 }
 
                                 ThreadUtility.MemoryBarrier();
+                            }
+                            else
+                            {
+                                if (_isRunningTightTasks)
+                                    ThreadUtility.Yield();
                             }
                         }
                     }
@@ -258,15 +287,17 @@ namespace Svelto.Tasks
             readonly FasterList<IPausableTask> _coroutines;
             readonly long                      _interval;
             readonly bool                      _relaxed;
-            readonly string _name;
+            readonly string                    _name;
+            readonly bool                      _isRunningTightTasks;
             
             ManualResetEventEx _mevent;
             Action             _onThreadKilled;
             Stopwatch          _watch;
             int                _interlock;
+            
         }
 
         string              _name;
-        readonly RunnerData _runnerData;
+        RunnerData _runnerData;
     }
 }
