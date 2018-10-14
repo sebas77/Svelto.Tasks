@@ -113,7 +113,8 @@ namespace Svelto.Tasks
                 while (Interlocked.CompareExchange(ref _interlock, 1, 1) != 1)
                 {
                     //yielding here was slower on the 1 M points simulation
-                    ThreadUtility.Wait(quickIterations++);
+                    if (quickIterations++ > 1000)
+                        ThreadUtility.Wait(quickIterations);
 
                     //this is quite arbitrary at the moment as 
                     //DateTime allocates a lot in UWP .Net Native
@@ -187,7 +188,7 @@ namespace Svelto.Tasks
                     {
                         ThreadUtility.MemoryBarrier();
                         if (_newTaskRoutines.Count > 0 && false == _waitForFlush) //don't start anything while flushing
-                            _coroutines.AddRange(_newTaskRoutines.DequeueAll());
+                            _newTaskRoutines.DequeueAllInto(_coroutines);
 
                         for (var i = 0; i < _coroutines.Count && false == _breakThread; i++)
                         {
@@ -224,7 +225,7 @@ namespace Svelto.Tasks
                                 {
                                     _isAlive = false;
 
-                                    if (_relaxed)
+                                   if (_relaxed)
                                         RelaxedLockingMechanism();
                                     else
                                         QuickLockingMechanism();
