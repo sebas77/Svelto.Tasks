@@ -52,7 +52,7 @@ namespace Svelto.Tasks.Enumerators
                 return false;
             }
             
-            ThreadUtility.TakeItEasy();
+            ThreadUtility.Yield();
 
             return !isDone;
         }
