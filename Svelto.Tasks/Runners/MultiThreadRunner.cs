@@ -4,7 +4,7 @@ using System.Threading;
 using Svelto.DataStructures;
 using Svelto.Utilities;
 
-#if NETFX_CORE || NET_STANDARD_2_0 || NETSTANDARD2_0
+#if NETFX_CORE
 using System.Threading.Tasks;
 #endif
 
@@ -45,32 +45,33 @@ namespace Svelto.Tasks
             Kill(null);
         }
 
-        public MultiThreadRunner(string name, bool relaxed = true, float intervalInMs = 0)
-        {
-            var runnerData = new RunnerData(relaxed, intervalInMs, name, false);
-            
-            Init(name, runnerData);
-        }
-
         /// <summary>
-        /// This constructor helps when the thread must run very tight, cache friendly tasks that won't
-        /// allow the CPU to start new threads. It can improve massive parallelism
+        /// when the thread must run very tight and cache friendly tasks that won't
+        /// allow the CPU to start new threads, passing the tightTasks as true
+        /// would force the thread to yield after every iteration. Relaxed to true
+        /// would let the runner be less reactive on new tasks added  
         /// </summary>
         /// <param name="name"></param>
         /// <param name="tightTasks"></param>
-        public MultiThreadRunner(string name, bool tightTasks)
+        public MultiThreadRunner(string name, bool relaxed, bool tightTasks = false)
         {
-            var runnerData = new RunnerData(false, 0, name, tightTasks);
+            var runnerData = new RunnerData(relaxed, 0, name, tightTasks);
+            
+            Init(name, runnerData);
+        }
+        
+        /// <summary>
+        /// Start a Multithread runner that won't take 100% of the CPU
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="intervalInMs"></param>
+        public MultiThreadRunner(string name, float intervalInMs)
+        {
+            var runnerData = new RunnerData(true, intervalInMs, name, false);
             
             Init(name, runnerData);
         }
 
-        public MultiThreadRunner(string name, int intervalInMS)
-        {
-            var runnerData = new RunnerData(true, intervalInMS, name, false);
-            
-            Init(name, runnerData);
-        }
         
         void Init(string name, RunnerData runnerData)
         {

@@ -7,36 +7,27 @@ namespace Svelto.Tasks.Enumerators
     {
         public WaitForSecondsEnumerator(float seconds)
         {
-            _seconds = seconds;
-            _future = DateTime.UtcNow.AddSeconds(seconds);
+            _wait = new ReusableWaitForSecondsEnumerator(seconds); 
         }
 
         public bool MoveNext()
         {
-            if (_future <= DateTime.UtcNow)
-            {
-                Reset();
-                return false;
-            }
-
-            return true;
+            return _wait.MoveNext();
         }
 
         public void Reset()
         {
-            _future = DateTime.UtcNow.AddSeconds(_seconds);
+            _wait.Reset();
         }
 
         public void Reset(float seconds)
         {
-            _seconds = seconds;
-            _future = DateTime.UtcNow.AddSeconds(_seconds);
+            _wait.Reset(seconds);
         }
 
         public object Current { get { return null; } }
 
-        DateTime _future;
-        float _seconds;
+        ReusableWaitForSecondsEnumerator _wait;
     }
 }
 

@@ -25,15 +25,15 @@ namespace Svelto.Tasks
 
         public MultiThreadedParallelTaskCollection()
         {
-            InitializeThreadsAndData((uint) Environment.ProcessorCount);
+            InitializeThreadsAndData((uint) Environment.ProcessorCount, false);
         }
 
-        public MultiThreadedParallelTaskCollection(uint numberOfThreads)
+        public MultiThreadedParallelTaskCollection(uint numberOfThreads, bool runningTightTasks)
         {
-            InitializeThreadsAndData(numberOfThreads);
+            InitializeThreadsAndData(numberOfThreads, runningTightTasks);
         }
 
-        void InitializeThreadsAndData(uint numberOfThreads)
+        void InitializeThreadsAndData(uint numberOfThreads, bool runningTightTasks)
         {
             _runners       = new MultiThreadRunner[numberOfThreads];
             _taskRoutines  = new ITaskRoutine[numberOfThreads];
@@ -42,7 +42,7 @@ namespace Svelto.Tasks
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
             for (int i = 0; i < numberOfThreads; i++)
-                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), true);
+                _runners[i] = new MultiThreadRunner("MultiThreadedParallelTask #".FastConcat(i), runningTightTasks);
 
             Action ptcOnOnComplete = DecrementConcurrentOperationsCounter;
             Func<Exception, bool> ptcOnOnException = (e) =>
