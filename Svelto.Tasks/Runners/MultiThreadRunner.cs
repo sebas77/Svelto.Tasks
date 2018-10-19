@@ -53,7 +53,7 @@ namespace Svelto.Tasks
         /// </summary>
         /// <param name="name"></param>
         /// <param name="tightTasks"></param>
-        public MultiThreadRunner(string name, bool relaxed, bool tightTasks = false)
+        public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false)
         {
             var runnerData = new RunnerData(relaxed, 0, name, tightTasks);
             

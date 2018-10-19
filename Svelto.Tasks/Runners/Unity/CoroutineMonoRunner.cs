@@ -1,5 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using Svelto.Tasks.Unity.Internal;
+using UnityEngine;
 
 namespace Svelto.Tasks.Unity
 {
@@ -18,14 +20,14 @@ namespace Svelto.Tasks.Unity
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
-            var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
+            _runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
 
             _info = new UnityCoroutineRunner.StandardRunningTaskInfo { runnerName = name };
 
             runnerBehaviour.StartCoroutine(new UnityCoroutineRunner.Process(
                 _newTaskRoutines, _coroutines, _flushingOperation, _info,
                  UnityCoroutineRunner.StandardTasksFlushing,
-                 runnerBehaviourForUnityCoroutine, StartCoroutine));
+                _runnerBehaviourForUnityCoroutine, StartCoroutine));
         }
         
         public override void StartCoroutine(IPausableTask task)
@@ -33,7 +35,21 @@ namespace Svelto.Tasks.Unity
             paused = false;
 
             if (ExecuteFirstTaskStep(task) == true)
-                _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
+            {
+                if (task.Current is YieldInstruction == false)
+                    _newTaskRoutines.Enqueue(task);
+                else
+                {
+                    _runnerBehaviourForUnityCoroutine.StartCoroutine(SupportYieldInstruction(task));
+                }
+            }
+        }
+
+        IEnumerator SupportYieldInstruction(IPausableTask task)
+        {
+            yield return task.Current;
+            
+            _newTaskRoutines.Enqueue(task);
         }
 
         bool ExecuteFirstTaskStep(IPausableTask task)
@@ -41,8 +57,7 @@ namespace Svelto.Tasks.Unity
             if (task == null)
                 return false;
 
-            //if the runner is not ready to run new tasks, it
-            //cannot run immediatly but it must be saved
+            //if the runner is not ready to run new tasks, it cannot run immediately but it must be saved
             //in the newTaskRoutines to be executed once possible
             if (isStopping == true)
                 return true;
@@ -69,6 +84,7 @@ namespace Svelto.Tasks.Unity
 
         readonly UnityCoroutineRunner.RunningTasksInfo _info;
         readonly Svelto.Common.PlatformProfiler _platformProfiler;
+        RunnerBehaviour _runnerBehaviourForUnityCoroutine;
     }
 }
 #endif

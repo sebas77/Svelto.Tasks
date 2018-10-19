@@ -25,7 +25,11 @@ public static class TaskRunnerExtensions
         var quickIterations = 0;
         
         while (enumerator.MoveNext())
-            ThreadUtility.Wait(quickIterations++);
+            if ((quickIterations & 127) == 0)
+            {
+                quickIterations = 0;
+                ThreadUtility.Yield();
+            }
     }
 }
 

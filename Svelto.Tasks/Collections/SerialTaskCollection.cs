@@ -134,7 +134,7 @@ namespace Svelto.Tasks
                            {
                                stack.Push(result); //push the new yielded task and execute it immediately
 
-                                continue;
+                               continue;
                            }
                         }
                         else

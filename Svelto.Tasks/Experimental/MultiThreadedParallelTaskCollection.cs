@@ -28,7 +28,7 @@ namespace Svelto.Tasks
             InitializeThreadsAndData((uint) Environment.ProcessorCount, false);
         }
 
-        public MultiThreadedParallelTaskCollection(uint numberOfThreads, bool runningTightTasks)
+        public MultiThreadedParallelTaskCollection(uint numberOfThreads, bool runningTightTasks = false)
         {
             InitializeThreadsAndData(numberOfThreads, runningTightTasks);
         }

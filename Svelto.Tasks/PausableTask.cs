@@ -279,17 +279,15 @@ namespace Svelto.Tasks.Internal
                     _pool.PushTaskBack(this);
                 }
                 else
-                //TaskRoutine case only!! This is the most risky part of this code
-                //when the code enters here, another thread could be about to
-                //set a pending restart!
+                //TaskRoutine case only!! This is the most risky part of this code when the code enters here, another
+                //thread could be about to set a pending restart!
                 {
                     ThreadUtility.MemoryBarrier();
                     if (_pendingRestart == true)
                     {
                         _pendingContinuationWrapper.Completed();
                         
-                        //start new coroutine using this task
-                        //this will put _started to true (it was already though)
+                        //start new coroutine using this task this will put _started to true (it was already though)
                         //it uses the current runner to start the pending task
                         Restart(_pendingEnumerator);
                     }
@@ -330,10 +328,7 @@ namespace Svelto.Tasks.Internal
         }
 
         /// <summary>
-        /// Clean up task on complete
-        /// This function doesn't need to
-        /// reset any state, is only to
-        /// release resources!!!
+        /// Clean up task on complete. This function doesn't need to reset any state, is only to release resources!!!
         /// </summary>
         internal void CleanUpOnRecycle()
         {
@@ -349,8 +344,7 @@ namespace Svelto.Tasks.Internal
         }
 
         /// <summary>
-        /// Clean up task on Restart 
-        /// can happen only through ITaskRoutine
+        /// Clean up task on Restart can happen only through ITaskRoutine
         /// </summary>
         void CleanUpOnRestart()
         {
@@ -382,13 +376,11 @@ namespace Svelto.Tasks.Internal
         }
 
         /// <summary>
-        /// A Pausable Task cannot be recycled from the pool if hasn't been
-        /// previously completed.
-        /// A task can actually be restarted, but this will stop the previous
-        /// enumeration, even if the enumerator didn't change.
-        /// However since an enumerator can be enumerated on another runner
-        /// a task cannot set as completed immediatly, but it must wait for
-        /// the next MoveNext. This is what the Pending logic is about.
+        /// A PausableTask cannot be recycled from the pool if hasn't been previously completed.
+        /// A task can actually be restarted, but this will stop the previous enumeration, even if the enumerator didn't
+        /// change.
+        /// However since an enumerator can be enumerated on another runner a task cannot set as completed immediately,
+        /// but it must wait for the next MoveNext. This is what the Pending logic is about.
         /// </summary>
         /// <param name="task"></param>
         void InternalStart()
@@ -413,7 +405,7 @@ namespace Svelto.Tasks.Internal
                 
                  _continuationWrapper = new ContinuationWrapper();
                 
-                ThreadUtility.MemoryBarrier();
+                 ThreadUtility.MemoryBarrier();
 
                  return;
             }
