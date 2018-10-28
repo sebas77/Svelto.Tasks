@@ -138,19 +138,14 @@ namespace Svelto.Tasks
             void QuickLockingMechanism()
             {
                 var quickIterations = 0;
-
-                while (Volatile.Read(ref _interlock) != 1 && quickIterations < 5000)
+                var frequency = 1024;
+                
+                while (Volatile.Read(ref _interlock) != 1 && quickIterations < 4096)
                 {
-                    //yielding here was slower on the 1 M points simulation
-                    if (quickIterations++ > 1000)
-                        ThreadUtility.Wait(quickIterations);
+                    ThreadUtility.Wait(ref quickIterations, frequency);
 
                     if (Volatile.Read(ref _breakThread) == true)
                         return;
-
-                    //this is quite arbitrary at the moment as 
-                    //DateTime allocates a lot in UWP .Net Native
-                    //and stopwatch casues several issues
                 }
                 
                 if (_interlock == 0 && Volatile.Read(ref _breakThread) == false)
@@ -173,7 +168,7 @@ namespace Svelto.Tasks
 
                 while (_watch.ElapsedTicks < _interval)
                 {
-                    ThreadUtility.Wait(quickIterations++);
+                    ThreadUtility.Wait(ref quickIterations);
 
                     if (Volatile.Read(ref _breakThread) == true) return;
                 }
@@ -241,7 +236,7 @@ namespace Svelto.Tasks
                             else
                             {
                                 if (_isRunningTightTasks)
-                                    ThreadUtility.Yield();
+                                    ThreadUtility.Wait(ref _yieldingCount, 16);
                             }
                         }
                     }
@@ -273,7 +268,8 @@ namespace Svelto.Tasks
             Action             _onThreadKilled;
             Stopwatch          _watch;
             int                _interlock;
-            System.Action      LockingMechanism;
+            readonly System.Action      LockingMechanism;
+            int _yieldingCount;
         }
 
         string     _name;
