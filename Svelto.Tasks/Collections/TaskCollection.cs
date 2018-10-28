@@ -8,15 +8,11 @@ namespace Svelto.Tasks
     public abstract class TaskCollection: IEnumerator
     {
         public bool            isRunning { protected set; get; }
-        public abstract object Current   { get; }
-        public int             count
-        {
-            get { return _listOfStacks.Count; }
-        }
+        public virtual object  Current { get; protected set; }
+        public int             count { get { return _listOfStacks.Count; } }
 
         public abstract bool MoveNext();
-        public abstract void Reset();
-
+        
         public void Clear()
         {
             _listOfStacks.Clear();
@@ -32,7 +28,7 @@ namespace Svelto.Tasks
             return this;
         }
 
-        public TaskCollection Add(IEnumerator enumerator)
+        public virtual TaskCollection Add(IEnumerator enumerator)
         {
             if (enumerator == null)
                 throw new ArgumentNullException();
@@ -46,6 +42,7 @@ namespace Svelto.Tasks
                 stack.Clear();
 
             stack.Push(enumerator);
+            
             _listOfStacks.Add(stack);
 
             return this;
@@ -54,7 +51,7 @@ namespace Svelto.Tasks
         /// <summary>
         /// Restore the list of stacks to their original state
         /// </summary>
-        public void SafeReset()
+        public virtual void Reset()
         {
             var count = _listOfStacks.Count;
             for (int index = 0; index < count; ++index)

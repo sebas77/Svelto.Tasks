@@ -93,6 +93,8 @@ namespace Svelto.Tasks
         void ResetIndices()
         {
             _offset = 0;
+            
+            isRunning = false;
         }
 
         bool RunTasks()

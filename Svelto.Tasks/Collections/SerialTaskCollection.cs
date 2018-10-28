@@ -38,10 +38,11 @@ namespace Svelto.Tasks
 
         public override void Reset()
         {
-            for (int i = 0; i < base._listOfStacks.Count; i++)
-                _listOfStacks[i].Peek().Reset();
+            base.Reset();
             
             _index = 0;
+
+            isRunning = false;
         }
 
         public new void Clear()
@@ -59,6 +60,9 @@ namespace Svelto.Tasks
             {
                 if (RunTasks())
                     return true;
+                
+                isRunning = false;
+                _index = 0;
                 
                 if (onComplete != null)
                     onComplete();
@@ -80,10 +84,6 @@ namespace Svelto.Tasks
                 throw;
             }
             
-            isRunning = false;
-
-            _index = 0;
-
             return false;
         }
 

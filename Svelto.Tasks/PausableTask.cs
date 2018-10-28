@@ -110,13 +110,10 @@ namespace Svelto.Tasks.Internal
         public ITaskRoutine SetEnumerator(IEnumerator taskEnumerator)
         {
             _taskGenerator = null;
-            if (_taskEnumerator != taskEnumerator)
-                _taskEnumeratorJustSet = true;
+            _taskEnumeratorJustSet = true;
             _taskEnumerator = taskEnumerator;
 #if DEBUG && !PROFILER
             _compilerGenerated = taskEnumerator.GetType().IsCompilerGenerated();
-#else
-            _compilerGenerated = false;
 #endif
             return this;
         }
@@ -177,6 +174,7 @@ namespace Svelto.Tasks.Internal
 
         public override string ToString()
         {
+#if PLATFORM_PROFILER            
             if (_name == string.Empty)
             {
                 if (_taskGenerator == null && _taskEnumerator == null)
@@ -193,6 +191,9 @@ namespace Svelto.Tasks.Internal
             }
 
             return _name;
+#else
+            return string.Empty;
+#endif
         }
 
         /// <summary>
@@ -240,7 +241,6 @@ namespace Svelto.Tasks.Internal
 #if DEBUG && !PROFILER                    
                     DBC.Tasks.Check.Assert(_started == true, _callStartFirstError);
 #endif  
-                    
                     _completed = !_coroutine.MoveNext();
                     ThreadUtility.MemoryBarrier();
                     
@@ -322,7 +322,9 @@ namespace Svelto.Tasks.Internal
             _completed = false;
             _started = false;
             _explicitlyStopped = false;
+#if DEBUG && !PROFILER            
             _compilerGenerated = false;
+#endif    
             _pendingRestart = false;
             _name = string.Empty;
         }
@@ -419,7 +421,9 @@ namespace Svelto.Tasks.Internal
             
             if (_taskEnumerator != null && _taskEnumeratorJustSet == false)
             {
+#if DEBUG && !PROFILER                
                 DBC.Tasks.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead ".FastConcat(_name));
+#endif    
                 
                 task.Reset();
             }
@@ -453,12 +457,14 @@ namespace Svelto.Tasks.Internal
         IRunner                       _runner;
         IEnumerator                   _coroutine;
 
-        readonly SerialTaskCollection _coroutineWrapper;
+        internal readonly SerialTaskCollection _coroutineWrapper;
         
         ContinuationWrapper           _continuationWrapper;
         ContinuationWrapper           _pendingContinuationWrapper;
-        
+
+#if DEBUG && !PROFILER        
         bool                          _compilerGenerated;
+#endif    
         bool                          _taskEnumeratorJustSet;
 
         IEnumerator                   _pendingEnumerator;

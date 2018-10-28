@@ -27,14 +27,11 @@ namespace Svelto.Tasks.Unity
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
-            var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
             
             _info = new GreedyTimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
             
             runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
-                (_newTaskRoutines, _coroutines, _flushingOperation, _info,
-                 UnityCoroutineRunner.StandardTasksFlushing,
-                 runnerBehaviourForUnityCoroutine, StartCoroutine));
+                (_newTaskRoutines, _coroutines, _flushingOperation, _info));
         }
 
         class GreedyTimeBoundRunningInfo : UnityCoroutineRunner.RunningTasksInfo

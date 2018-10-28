@@ -1,5 +1,4 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
@@ -11,16 +10,11 @@ namespace Svelto.Tasks.Unity
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourLate>();
-            var runnerBehaviourForUnityCoroutine = _go.AddComponent<RunnerBehaviour>();
             var info = new UnityCoroutineRunner.StandardRunningTaskInfo() { runnerName = name };
 
             runnerBehaviour.StartLateCoroutine(new UnityCoroutineRunner.Process
-                (_newTaskRoutines, _coroutines, _flushingOperation, info,
-                 UnityCoroutineRunner.StandardTasksFlushing,
-                 runnerBehaviourForUnityCoroutine, StartCoroutine));
+                (_newTaskRoutines, _coroutines, _flushingOperation, info));
         }
-
-        const int NUMBER_OF_INITIAL_COROUTINE = 3;
     }
 }
 #endif

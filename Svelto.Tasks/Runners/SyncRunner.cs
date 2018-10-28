@@ -1,12 +1,10 @@
-
-using Svelto.Utilities;
-
 namespace Svelto.Tasks
 {
-    //Be sure you know what you are doing when you are using
-    //the Sync runner, it will stall the current thread!
-    //Depending by the case, it may be better to
-    //use the ManualResetEventEx synchronization instead.
+    
+    /// <summary>
+    /// Be sure you know what you are doing when you are using the Sync runner, it will stall the current thread!
+    /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead. 
+    /// </summary>
     public class SyncRunner : IRunner
     {
         public bool paused { set; get; }
@@ -18,8 +16,8 @@ namespace Svelto.Tasks
         }
 
         /// <summary>
-        /// TaskRunner doesn't stop executing tasks between scenes
-        /// it's the final user responsability to stop the tasks if needed
+        /// TaskRunner doesn't stop executing tasks between scenes it's the final user responsibility to stop the
+        /// tasks if needed
         /// </summary>
         public void StopAllCoroutines()
         {}
