@@ -88,6 +88,9 @@ namespace Svelto.Tasks
 
         public void StartCoroutine(IPausableTask task)
         {
+            if (_runnerData == null)
+                throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
+            
             paused = false;
 
             _runnerData._newTaskRoutines.Enqueue(task);
@@ -96,6 +99,9 @@ namespace Svelto.Tasks
 
         public void StopAllCoroutines()
         {
+            if (_runnerData == null)
+                throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
+            
             _runnerData._newTaskRoutines.Clear();
             _runnerData._waitForFlush = true;
 
@@ -105,6 +111,7 @@ namespace Svelto.Tasks
         public void Kill(Action onThreadKilled)
         {
             _runnerData.Kill(onThreadKilled);
+            _runnerData = null;
         }
 
         class RunnerData
@@ -274,5 +281,11 @@ namespace Svelto.Tasks
 
         string     _name;
         RunnerData _runnerData;
+    }
+
+    public class MultiThreadRunnerException : Exception
+    {
+        public MultiThreadRunnerException(string message): base(message)
+        {}
     }
 }

@@ -176,7 +176,7 @@ namespace Svelto.Tasks
             _parallelTasks      = null;
             onComplete          = null;
             _numberOfTasksAdded = 0;
-            isRunning = false;
+            isRunning           = false;
             
             ThreadUtility.MemoryBarrier();
         }
