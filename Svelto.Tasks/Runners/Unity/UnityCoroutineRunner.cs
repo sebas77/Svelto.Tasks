@@ -7,7 +7,7 @@ using Object = UnityEngine.Object;
 
 namespace Svelto.Tasks.Unity.Internal
 {
-    public static partial class UnityCoroutineRunner
+    public static class UnityCoroutineRunner
     {
         public static void StopRoutines(FlushingOperation
             flushingOperation)
@@ -54,20 +54,26 @@ namespace Svelto.Tasks.Unity.Internal
             {
                 using (_platformProfiler.Sample(_info.runnerName))
                 {
-                    if (false == _flushingOperation.stopped) //don't start anything while flushing
-                        _newTaskRoutines.DequeueAllInto(_coroutines);
+                    if (_newTaskRoutines.Count > 0 
+                     && false == _flushingOperation.stopped) //don't start anything while flushing
+                        _newTaskRoutines.DequeueAllInto(_coroutines); 
                     
                     _info.Reset();
                     
-                    for (int i = 0; i < _coroutines.Count && 
-                                    _info.CanMoveNext(ref i, _coroutines.Count, _coroutines[i].Current); ++i)
+                    int i = 0;
+
+                    while (i < _coroutines.Count //check before to get current
+                         && _info.CanMoveNext(ref i, _coroutines.Count, _coroutines[i].Current))
+                    {
                         using (_platformProfiler.Sample(_coroutines[i].ToString()))
                             StandardCoroutineProcess.StandardCoroutineIteration(ref i, _coroutines);
+                        
+                        ++i;
+                    }
                 }
 
                 if (_flushingOperation.stopped == true && _coroutines.Count == 0)
-                {   //once all the coroutines are flushed
-                    //the loop can return accepting new tasks
+                {   //once all the coroutines are flushed the loop can return accepting new tasks
                     _flushingOperation.stopped = false;
                 }
 
@@ -100,10 +106,6 @@ namespace Svelto.Tasks.Unity.Internal
             public override void Reset()
             {}
         }
-
-        internal delegate void FlushTasksDel(ThreadSafeQueue<IPausableTask> 
-            newTaskRoutines, FasterList<IPausableTask> coroutines, 
-            FlushingOperation flushingOperation);
 
         public class FlushingOperation
         {

@@ -115,27 +115,36 @@ namespace Svelto.Tasks.Unity
 
                         //remove the coroutine yielding the special instruction. it will be added back once Unity
                         //completes. When it's resumed use the StartCoroutine function, the first step is executed
-                        //immediatly, giving the chance to step beyond the current Yieldinstruction
-                        _coroutines.UnorderedRemoveAt(index--);
+                        //immediately, giving the chance to step beyond the current Yieldinstruction
+                        _coroutines.UnorderedRemoveAt(index);
                         
                         var coroutine = _runnerBehaviourForUnityCoroutine.StartCoroutine
                             (handItToUnity.GetEnumerator());
 
-                        (pausableTask as PausableTask).onExplicitlyStopped = () =>
+                        (pausableTask as PausableTask).onTaskHasBeenInterrupted += () =>
                                                                              {
                                                                                  _runnerBehaviourForUnityCoroutine
                                                                                     .StopCoroutine(coroutine);
                                                                                  
-                                                                                 handItToUnity.ForceStop();
+                                                                                 handItToUnity.Done();
                                                                              };
 
-                         return _coroutines.Count > 0;
+                        return index < _coroutines.Count;
                     }
+                    
+#if DEBUG                    
+                    var parallelTask = (current as ParallelTaskCollection.ParallelTask);
+
+                    if (parallelTask != null &&
+                        parallelTask.current is YieldInstruction)
+                    {
+                        throw new CoroutineMonoRunnerException("ParallelTaskCollection doesn't support Unity yield instructions");
+                    }
+#endif                    
+
                 }
                 else
-                {
                     _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
-                }
 
                 return true;
             }
@@ -174,12 +183,12 @@ namespace Svelto.Tasks.Unity
             {
                 yield return _current;
 
-                ForceStop();
+                Done();
             }
             
             //The task must be added back in the collection even if
             //it's just to check if must stop
-            public void ForceStop()
+            public void Done()
             {
                 _isDone = true;
                 
@@ -200,13 +209,16 @@ namespace Svelto.Tasks.Unity
             readonly object                _current;
             readonly IPausableTask         _task;
             readonly Action<IPausableTask> _resumeOperation;
-
-            bool                       _isDone;
             readonly UnityCoroutineRunner.FlushingOperation _flushingOperation;
 
-            public HandItToUnity()
-            {}
+            bool                       _isDone;
         }
+    }
+
+    public class CoroutineMonoRunnerException : Exception
+    {
+        public CoroutineMonoRunnerException(string message): base(message)
+        {}
     }
 }
 #endif
