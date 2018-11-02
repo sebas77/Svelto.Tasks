@@ -100,7 +100,7 @@ namespace Svelto.Tasks
         public void StopAllCoroutines()
         {
             if (_runnerData == null)
-                throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
+                throw new MultiThreadRunnerException("Trying to stop tasks on a killed runner");
             
             _runnerData._newTaskRoutines.Clear();
             _runnerData._waitForFlush = true;
@@ -110,6 +110,9 @@ namespace Svelto.Tasks
 
         public void Kill(Action onThreadKilled)
         {
+            if (_runnerData == null)
+                throw new MultiThreadRunnerException("Trying to kill an already killed runner");
+            
             _runnerData.Kill(onThreadKilled);
             _runnerData = null;
         }
