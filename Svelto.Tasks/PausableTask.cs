@@ -176,7 +176,10 @@ namespace Svelto.Tasks.Internal
             OnTaskInterrupted();
             
             InternalStart();
-
+            
+            _syncPoint = false;
+            ThreadUtility.MemoryBarrier();
+            
             return _continuationWrapper;
         }
 
@@ -409,42 +412,34 @@ namespace Svelto.Tasks.Internal
         /// <param name="task"></param>
         void InternalStart()
         {
-            try
+            DBC.Tasks.Check.Require(_pendingRestart == false, "a task has been reused while is pending to start");
+            DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null,
+                                    "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
+
+            Resume(); //if it's paused, must resume
+
+            var originalEnumerator = _taskEnumerator ?? _taskGenerator();
+
+            //TaskRoutine case only!!
+            bool isTaskRoutineIsAlreadyIn = _pool      == null
+                                         && _completed == false
+                                         && _started   == true;
+
+            if (isTaskRoutineIsAlreadyIn == true
+             && _explicitlyStopped       == true)
             {
-                DBC.Tasks.Check.Require(_pendingRestart == false, "a task has been reused while is pending to start");
-                DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null,
-                                        "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
+                //Stop() Start() cauess this (previous continuation wrapper will stop before to start the new one)
+                //Start() Start() will not make the _continuationWrapper stop until the task is really completed
+                _pendingEnumerator          = originalEnumerator;
+                _pendingContinuationWrapper = _continuationWrapper;
+                _pendingRestart             = true;
 
-                Resume(); //if it's paused, must resume
+                _continuationWrapper = new ContinuationWrapper();
 
-                var originalEnumerator = _taskEnumerator ?? _taskGenerator();
-
-                //TaskRoutine case only!!
-                bool isTaskRoutineIsAlreadyIn = _pool      == null
-                                             && _completed == false
-                                             && _started   == true;
-
-                if (isTaskRoutineIsAlreadyIn == true
-                 && _explicitlyStopped       == true)
-                {
-                    //Stop() Start() cauess this (previous continuation wrapper will stop before to start the new one)
-                    //Start() Start() will not make the _continuationWrapper stop until the task is really completed
-                    _pendingEnumerator          = originalEnumerator;
-                    _pendingContinuationWrapper = _continuationWrapper;
-                    _pendingRestart             = true;
-
-                    _continuationWrapper = new ContinuationWrapper();
-
-                    return;
-                }
-
-                Restart(originalEnumerator, isTaskRoutineIsAlreadyIn);
+                return;
             }
-            finally
-            {
-                _syncPoint = false;
-                ThreadUtility.MemoryBarrier();
-            }
+
+            Restart(originalEnumerator, isTaskRoutineIsAlreadyIn);
         }
 
         void Restart(IEnumerator task, bool isTaskRoutineIsAlreadyIn)

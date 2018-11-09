@@ -9,6 +9,7 @@ namespace Svelto.Tasks
     {
         public bool paused { set; get; }
         public bool isStopping { private set; get; }
+        public bool isKilled { get { return false; } }
 
         public void StartCoroutine(IPausableTask task)
         {

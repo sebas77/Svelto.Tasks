@@ -22,6 +22,7 @@ namespace Svelto.Tasks.Unity
     {
         public bool paused { set; get; }
         public bool isStopping { get { return _flushingOperation.stopped; } }
+        public bool isKilled { get {return _go == null;} }
         public int  numberOfRunningTasks { get { return _coroutines.Count; } }
         
         public GameObject _go;
@@ -56,6 +57,7 @@ namespace Svelto.Tasks.Unity
             StopAllCoroutines();
             
             GameObject.DestroyImmediate(_go);
+            _go = null;
         }
         
         protected readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();

@@ -26,6 +26,11 @@ namespace Svelto.Tasks
             }
         }
 
+        public bool isKilled
+        {
+            get { return _runnerData == null; }
+        }
+
         public int numberOfRunningTasks
         {
             get { return _runnerData.Count; }
