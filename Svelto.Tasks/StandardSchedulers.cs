@@ -37,7 +37,7 @@ namespace Svelto.Tasks
 
         internal static void KillSchedulers()
         {
-            if (_multiThreadScheduler != null)
+            if (_multiThreadScheduler != null && multiThreadScheduler.isKilled == false)
                 _multiThreadScheduler.Dispose();
             _multiThreadScheduler = null;
             
