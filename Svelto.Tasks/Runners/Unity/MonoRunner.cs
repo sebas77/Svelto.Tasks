@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 
+using System;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
 using UnityEngine;
@@ -58,6 +59,7 @@ namespace Svelto.Tasks.Unity
             
             GameObject.DestroyImmediate(_go);
             _go = null;
+            GC.SuppressFinalize(this);
         }
         
         protected readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();

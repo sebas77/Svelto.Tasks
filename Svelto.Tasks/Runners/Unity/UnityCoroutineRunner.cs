@@ -30,29 +30,29 @@ namespace Svelto.Tasks.Unity.Internal
                 Object.DontDestroyOnLoad(go);
         }
 
-        internal class Process : IEnumerator
+        internal class Process<RunningInfo> : IEnumerator where RunningInfo: IRunningTasksInfo
         {
             readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
             readonly FasterList<IPausableTask>      _coroutines;
             readonly FlushingOperation              _flushingOperation;
-            readonly RunningTasksInfo               _info;
-            readonly Svelto.Common.PlatformProfiler _platformProfiler;
+            readonly RunningInfo                    _info;
 
             public Process( ThreadSafeQueue<IPausableTask> newTaskRoutines,
                             FasterList<IPausableTask>      coroutines, 
                             FlushingOperation              flushingOperation,
-                            RunningTasksInfo               info)
+                            RunningInfo                    info)
             {
                 _newTaskRoutines = newTaskRoutines;
                 _coroutines = coroutines;
                 _flushingOperation = flushingOperation;
                 _info = info;
-                _platformProfiler = new Svelto.Common.PlatformProfiler(_info.runnerName);
             }    
 
             public bool MoveNext()
             {
-                using (_platformProfiler.Sample(_info.runnerName))
+#if ENABLE_PLATFORM_PROFILER                
+                using (var _platformProfiler = new Svelto.Common.PlatformProfiler(_info.runnerName))
+#endif
                 {
                     if (_newTaskRoutines.Count > 0 
                      && false == _flushingOperation.stopped) //don't start anything while flushing
@@ -60,15 +60,43 @@ namespace Svelto.Tasks.Unity.Internal
                     
                     _info.Reset();
                     
-                    int i = 0;
+                    int index = 0;
 
-                    while (i < _coroutines.Count //check before to get current
-                         && _info.CanMoveNext(ref i, _coroutines.Count, _coroutines[i].Current))
+                    if (_coroutines.Count == 0) return true;
+
+                    IPausableTask pausableTask;
+                    bool result;
+                    
+                    while (true)
                     {
-                        using (_platformProfiler.Sample(_coroutines[i].ToString()))
-                            StandardCoroutineProcess.StandardCoroutineIteration(ref i, _coroutines);
+                        pausableTask = _coroutines[index];
+
+                        if (_info.CanProcessThis(ref index) == false) break;
                         
-                        ++i;
+#if ENABLE_PLATFORM_PROFILER                        
+                        using (_platformProfiler.Sample(_coroutines[index].ToString()))
+#endif
+                        {
+#if TASKS_PROFILER_ENABLED
+                            result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
+#else
+                            result = pausableTask.MoveNext();
+#endif
+                        }
+                        
+                        if (result == false)
+                        {
+                            var disposable = pausableTask as IDisposable;
+                            if (disposable != null)
+                                disposable.Dispose();
+
+                            _coroutines.UnorderedRemoveAt(index);
+                        }
+                        else
+                            index++;
+
+                        if (_coroutines.Count == 0 ||
+                            _info.CanMoveNext(ref index, pausableTask.Current) == false || index >= _coroutines.Count) break;
                     }
                 }
 
@@ -81,30 +109,27 @@ namespace Svelto.Tasks.Unity.Internal
             }
 
             public void Reset()
-            {
-                throw new NotImplementedException();
-            }
+            {}
 
             public object Current { get; private set; }
         }
 
-        public abstract class RunningTasksInfo
+        sealed public class RunningTasksInfo:IRunningTasksInfo
         {
-            public string runnerName;
-
-            public abstract bool CanMoveNext(ref int index, int count, object current);
-            public abstract void Reset();
-        }
-
-        public sealed class StandardRunningTaskInfo : RunningTasksInfo
-        {
-            public override bool CanMoveNext(ref int index, int count, object current)
+            public bool CanMoveNext(ref int nextIndex, object currentResult)
             {
                 return true;
             }
 
-            public override void Reset()
+            public bool CanProcessThis(ref int index)
+            {
+                return true;
+            }
+
+            public void Reset()
             {}
+
+            public string runnerName { get; set; }
         }
 
         public class FlushingOperation
@@ -113,6 +138,14 @@ namespace Svelto.Tasks.Unity.Internal
         }
 
         const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";
+    }
+
+    public interface IRunningTasksInfo
+    {
+        bool CanMoveNext(ref int nextIndex, object currentResult);
+        bool CanProcessThis(ref int index);
+        void Reset();
+        string runnerName { get; }
     }
 }
 #endif

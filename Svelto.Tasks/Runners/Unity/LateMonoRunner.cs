@@ -10,9 +10,9 @@ namespace Svelto.Tasks.Unity
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourLate>();
-            var info = new UnityCoroutineRunner.StandardRunningTaskInfo() { runnerName = name };
+            var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
 
-            runnerBehaviour.StartLateCoroutine(new UnityCoroutineRunner.Process
+            runnerBehaviour.StartLateCoroutine(new UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, info));
         }
     }

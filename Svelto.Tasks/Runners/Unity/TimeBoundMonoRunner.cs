@@ -30,11 +30,11 @@ namespace Svelto.Tasks.Unity
 
             _info = new TimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
 
-            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process
+            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process<TimeBoundRunningInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, _info));
         }
 
-        class TimeBoundRunningInfo : UnityCoroutineRunner.RunningTasksInfo
+        class TimeBoundRunningInfo : IRunningTasksInfo
         {
             public long maxMilliseconds;
 
@@ -43,7 +43,7 @@ namespace Svelto.Tasks.Unity
                 this.maxMilliseconds = (long) (maxMilliseconds * 10000);
             }
             
-            public override bool CanMoveNext(ref int index, int count, object current)
+            public bool CanMoveNext(ref int nextIndex, object currentResult)
             {
                 if (_stopWatch.ElapsedTicks > maxMilliseconds)
                     return false;
@@ -51,11 +51,18 @@ namespace Svelto.Tasks.Unity
                 return true;
             }
 
-            public override void Reset()
+            public bool CanProcessThis(ref int index)
+            {
+                return true;
+            }
+
+            public void Reset()
             {
                 _stopWatch.Reset();
                 _stopWatch.Start();
             }
+
+            public string runnerName { get; set; }
 
             readonly Stopwatch _stopWatch = new Stopwatch();
 

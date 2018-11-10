@@ -29,7 +29,7 @@ namespace Svelto.Tasks.Unity
             _info = new CoroutineRunningInfo(_runnerBehaviourForUnityCoroutine, _flushingOperation, _coroutines,
                                              StartCoroutine) {runnerName = name};
 
-            runnerBehaviour.StartCoroutine(new UnityCoroutineRunner.Process(
+            runnerBehaviour.StartCoroutine(new UnityCoroutineRunner.Process<CoroutineRunningInfo>(
                 _newTaskRoutines, _coroutines, _flushingOperation, _info));
         }
         
@@ -71,7 +71,7 @@ namespace Svelto.Tasks.Unity
             base.Dispose();
         }
 
-        class CoroutineRunningInfo : UnityCoroutineRunner.RunningTasksInfo
+        sealed class CoroutineRunningInfo : IRunningTasksInfo
         {
             public CoroutineRunningInfo(RunnerBehaviour                        runnerBehaviourForUnityCoroutine,
                                         UnityCoroutineRunner.FlushingOperation flushingOperation,
@@ -84,7 +84,12 @@ namespace Svelto.Tasks.Unity
                 _resumeOperation = startCoroutine;
             }
 
-            public override bool CanMoveNext(ref int index, int count, object current)
+            public bool CanMoveNext(ref int nextIndex, object currentResult)
+            {
+                return true;
+            }
+
+            public bool CanProcessThis(ref int index)
             {
                 //let's spend few words on this. yielded YieldInstruction and AsyncOperation can
                 //only be processed internally by Unity. The simplest way to handle them is to hand them to Unity
@@ -101,35 +106,35 @@ namespace Svelto.Tasks.Unity
                 /// to avoid the cost of two allocations per instruction. THIS MUST BE DONE AS FIRST STEP
                 /// AS THE VERY FIRST RETURN OF THE ENUMERATOR CAN BE A YIELDINSTRUCTION ITSELF!
                 ///
-                ///
+
+                IPausableTask pausableTask = _coroutines[index];
+                var current = pausableTask.Current;
+                
                 if (current == null) return true;
                 
                 if (_flushingOperation.stopped == false)
                 {
                     if (current is YieldInstruction)
                     {
-                        var pausableTask = _coroutines[index];
-                        
                         var handItToUnity = new HandItToUnity
                             (current, pausableTask, _resumeOperation, _flushingOperation);
 
                         //remove the coroutine yielding the special instruction. it will be added back once Unity
                         //completes. When it's resumed use the StartCoroutine function, the first step is executed
                         //immediately, giving the chance to step beyond the current Yieldinstruction
-                        _coroutines.UnorderedRemoveAt(index);
+                        _coroutines.UnorderedRemoveAt(index--);
                         
                         var coroutine = _runnerBehaviourForUnityCoroutine.StartCoroutine
                             (handItToUnity.GetEnumerator());
 
                         (pausableTask as PausableTask).onTaskHasBeenInterrupted += () =>
-                                                                             {
-                                                                                 _runnerBehaviourForUnityCoroutine
-                                                                                    .StopCoroutine(coroutine);
-                                                                                 
-                                                                                 handItToUnity.Done();
-                                                                             };
+                                       {
+                                           _runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                           
+                                           handItToUnity.Done();
+                                       };
 
-                        return index < _coroutines.Count;
+                        return _coroutines.Count > 0;
                     }
                     
 #if DEBUG                    
@@ -149,8 +154,10 @@ namespace Svelto.Tasks.Unity
                 return true;
             }
 
-            public override void Reset()
+            public void Reset()
             {}
+
+            public string runnerName { get; set; }
 
             readonly float                                  _maxTasksPerIteration;
             readonly RunnerBehaviour                        _runnerBehaviourForUnityCoroutine;
@@ -159,7 +166,7 @@ namespace Svelto.Tasks.Unity
             readonly Action<IPausableTask>                  _resumeOperation;
         }
 
-        readonly UnityCoroutineRunner.RunningTasksInfo _info;
+        readonly CoroutineRunningInfo                  _info;
         readonly Svelto.Common.PlatformProfiler        _platformProfiler;
         readonly Action<IPausableTask>                 _resumeOperation;
 
