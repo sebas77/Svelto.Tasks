@@ -5,7 +5,7 @@ namespace Svelto.Tasks.Unity
 {
     public class LateMonoRunner : MonoRunner
     {
-        public LateMonoRunner(string name, bool mustSurvive = false)
+        public LateMonoRunner(string name, bool mustSurvive = false):base(name)
         {
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 

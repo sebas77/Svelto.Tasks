@@ -20,7 +20,7 @@ namespace Svelto.Tasks.Unity
         }
 
         // Greedy means that the runner will try to occupy the whole maxMilliseconds interval, by looping among all tasks until all are completed or maxMilliseconds passed
-        public TimeBoundMonoRunner(string name, float maxMilliseconds, bool mustSurvive = false)
+        public TimeBoundMonoRunner(string name, float maxMilliseconds, bool mustSurvive = false):base(name)
         {
             _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
 
@@ -28,7 +28,10 @@ namespace Svelto.Tasks.Unity
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
 
-            _info = new TimeBoundRunningInfo(maxMilliseconds) { runnerName = name };
+            _info = new TimeBoundRunningInfo(maxMilliseconds)
+            {
+                runnerName = name
+            };
 
             runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process<TimeBoundRunningInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, _info));

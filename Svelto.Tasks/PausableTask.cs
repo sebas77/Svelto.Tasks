@@ -19,6 +19,10 @@ namespace Svelto.Tasks
         public PausableTaskException(Exception e)
             : base(e.ToString(), e)
         { }
+        
+        public PausableTaskException(string message, Exception e)
+            : base(message.FastConcat(" -", e.ToString()), e)
+        { }
     }
 
     public interface IPausableTask:IEnumerator
@@ -241,89 +245,126 @@ namespace Svelto.Tasks.Internal
             /// - _pool
             /// - _pendingRestart
             /// - _started
+            ///
             /// 
-            ThreadUtility.MemoryBarrier();
-            
-            if (_completed == false && _syncPoint == false)
+            try
             {
-                if (_explicitlyStopped == true || _runner.isStopping == true)
-                {
-                    _completed = true;
+                ThreadUtility.MemoryBarrier();
 
-                    if (_onStop != null)
-                        _onStop();
-                }
-                else
-                    if (_runner.paused == false && _paused == false)
+                if (_completed == false && _syncPoint == false)
+                {
+                    if (_explicitlyStopped == true || _runner.isStopping == true)
                     {
-                        try
+                        _completed = true;
+
+                        if (_onStop != null)
+                        {
+                            try
+                            {
+                                _onStop();
+                            }
+                            catch (Exception onStopException)
+                            {
+                                Utilities.Console.LogError("Svelto.Tasks task OnStop callback threw an exception ", ToString());
+                                Utilities.Console.LogException(onStopException);
+                            }
+                        }
+                    }
+                    else
+                        if (_runner.paused == false && _paused == false)
                         {
 #if DEBUG && !PROFILER
                             DBC.Tasks.Check.Assert(_started == true, _callStartFirstError);
 #endif
-                            _completed = !_coroutine.MoveNext();
-                            ThreadUtility.MemoryBarrier();
-
-                            var current = _coroutine.Current;
-                            if ((current == Break.It ||
-                                 current == Break.AndStop) && _onStop != null)
+                            try
                             {
-                                _onStop();
+                                _completed = !_coroutine.MoveNext();
+                                
+                                ThreadUtility.MemoryBarrier();
+                                
+                                var current = _coroutine.Current;
+                                if ((current == Break.It ||
+                                     current == Break.AndStop) && _onStop != null)
+                                {
+                                    try
+                                    {
+                                        _onStop();
+                                    }
+                                    catch (Exception onStopException)
+                                    {
+                                        Utilities.Console.LogError("Svelto.Tasks task OnStop callback threw an exception ", ToString());
+                                        Utilities.Console.LogException(onStopException);
+                                    }
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                _completed = true;
+
+                                if (_onFail != null && (e is TaskYieldsIEnumerableException) == false)
+                                {
+                                    try
+                                    {
+                                        _onFail(new PausableTaskException(e));
+                                    }
+                                    catch (Exception onFailException)
+                                    {
+                                        Utilities.Console.LogError("Svelto.Tasks task OnFail callback threw an exception ", ToString());
+                                        Utilities.Console.LogException(onFailException);
+                                    }
+                                }
+                                else
+                                {
+                                    Utilities.Console.LogError("a Svelto.Tasks task threw an exception: ", ToString());
+                                    Utilities.Console.LogException(e);
+                                }
                             }
                         }
-                        catch (Exception e)
-                        {
-                            _completed = true;
-
-                            if (_onFail != null && (e is TaskYieldsIEnumerableException) == false)
-                                _onFail(new PausableTaskException(e));
-                            else
-                            {
-                                Utilities.Console.LogError("Svelto.Tasks task threw an exception: ", ToString());
-                                Utilities.Console.LogException(e);
-                            }
-#if DEBUG
-                            throw;
-#endif
-                        }
-                    }
-            }
-
-            if (_completed == true && ThreadUtility.VolatileRead(ref _syncPoint) == false)
-            {
-                if (_pool != null)
-                {
-                    DBC.Tasks.Check.Assert(_pendingRestart == false, "a pooled task cannot have a pending restart!");
-
-                    CleanUpOnRecycle();
-                    _continuationWrapper.Completed();
-                    _pool.PushTaskBack(this);
                 }
-                else
-                //TaskRoutine case only!! This is the most risky part of this code when the code enters here, another
-                //thread could be about to set a pending restart!
+
+                if (_completed == true && ThreadUtility.VolatileRead(ref _syncPoint) == false)
                 {
-                    ThreadUtility.MemoryBarrier();
-                    if (_pendingRestart == true)
+                    if (_pool != null)
                     {
-                        _pendingContinuationWrapper.Completed();
-                        
-                        //start new coroutine using this task this will put _started to true (it was already though)
-                        //it uses the current runner to start the pending task
-                        Restart(_pendingEnumerator, false);
+                        DBC.Tasks.Check.Assert(_pendingRestart == false,
+                                               "a pooled task cannot have a pending restart!");
+
+                        CleanUpOnRecycle();
+                        _continuationWrapper.Completed();
+                        _pool.PushTaskBack(this);
                     }
                     else
+                        //TaskRoutine case only!! This is the most risky part of this code when the code enters here, another
+                        //thread could be about to set a pending restart!
                     {
-                        _continuationWrapper.Completed();
+                        ThreadUtility.MemoryBarrier();
+                        if (_pendingRestart == true)
+                        {
+                            _pendingContinuationWrapper.Completed();
+
+                            //start new coroutine using this task this will put _started to true (it was already though)
+                            //it uses the current runner to start the pending task
+                            Restart(_pendingEnumerator, false);
+                        }
+                        else
+                        {
+                            _continuationWrapper.Completed();
+                        }
                     }
+
+                    ThreadUtility.MemoryBarrier();
+
+                    return false;
                 }
 
-                ThreadUtility.MemoryBarrier();
-
-                return false;
+                return true;
             }
+            catch (Exception e)
+            {
+                Utilities.Console.LogException(new PausableTaskException("Something went drastically wrong inside a PausableTask", e));
 
-            return true;
+                throw;
+            }
         }
 
         /// <summary>
@@ -461,7 +502,7 @@ namespace Svelto.Tasks.Internal
             
             if (isTaskRoutineIsAlreadyIn == false)
             {
-                _syncPoint = false;
+                _syncPoint = false; //very important this to happen now
                 ThreadUtility.MemoryBarrier();
                 _runner.StartCoroutine(this);
             }

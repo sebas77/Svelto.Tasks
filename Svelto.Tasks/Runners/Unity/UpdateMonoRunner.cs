@@ -6,7 +6,7 @@ namespace Svelto.Tasks.Unity
 {
     public class UpdateMonoRunner : MonoRunner
     {
-        public UpdateMonoRunner(string name, bool mustSurvive = false)
+        public UpdateMonoRunner(string name, bool mustSurvive = false):base(name)
         {
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 

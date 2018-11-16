@@ -1,5 +1,4 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-
 using System;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
@@ -12,11 +11,8 @@ using Svelto.Tasks.Profiler;
 namespace Svelto.Tasks.Unity
 {
     /// <summary>
-    /// while you can instantiate a MonoRunner, you should use the standard one
-    /// whenever possible. Instantiating multiple runners will defeat the
-    /// initial purpose to get away from the Unity monobehaviours
-    /// internal updates. MonoRunners are disposable though, so at
-    /// least be sure to dispose of them once done
+    /// Remember, unless you are using the StandardSchedulers, nothing hold your runners. Be careful that if you
+    /// don't hold a reference, they will be garbage collected even if tasks are still running
     /// </summary>
 
     public abstract class MonoRunner : IRunner
@@ -28,8 +24,19 @@ namespace Svelto.Tasks.Unity
         
         public GameObject _go;
 
+        private MonoRunner()
+        {}
+
+        protected MonoRunner(string name)
+        {
+            _name = name;
+        }
+
         ~MonoRunner()
         {
+            Svelto.Utilities.Console.LogWarning("MonoRunner has been garbage collected, this could have serious" +
+                                                "consequences, are you sure you want this? ".FastConcat(_name));
+            
             StopAllCoroutines();
         }
         
@@ -68,7 +75,9 @@ namespace Svelto.Tasks.Unity
         
         protected UnityCoroutineRunner.FlushingOperation _flushingOperation =
             new UnityCoroutineRunner.FlushingOperation();
-        
+
+        string _name;
+
         const int NUMBER_OF_INITIAL_COROUTINE = 3;
     }
 }

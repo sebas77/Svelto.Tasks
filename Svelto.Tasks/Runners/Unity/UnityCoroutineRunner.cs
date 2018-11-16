@@ -64,23 +64,23 @@ namespace Svelto.Tasks.Unity.Internal
 
                     if (_coroutines.Count == 0) return true;
 
-                    IPausableTask pausableTask;
                     bool result;
                     
                     while (true)
                     {
-                        pausableTask = _coroutines[index];
-
                         if (_info.CanProcessThis(ref index) == false) break;
+                        
+                        var pausableTask = _coroutines[index];
                         
 #if ENABLE_PLATFORM_PROFILER                        
                         using (_platformProfiler.Sample(_coroutines[index].ToString()))
 #endif
                         {
 #if TASKS_PROFILER_ENABLED
-                            result = Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
+                                result =
+ Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
 #else
-                            result = pausableTask.MoveNext();
+                                result = pausableTask.MoveNext();
 #endif
                         }
                         

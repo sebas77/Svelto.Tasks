@@ -5,7 +5,7 @@ namespace Svelto.Tasks.Unity
 {
     public class EndOfFrameRunner : MonoRunner
     {
-        public EndOfFrameRunner(string name, bool mustSurvive = false)
+        public EndOfFrameRunner(string name, bool mustSurvive = false):base(name)
         {
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 

@@ -232,13 +232,12 @@ namespace Svelto.Tasks
                         bool          result;
                         
                         for (var index = 0;
-                             index < _coroutines.Count && false == ThreadUtility.VolatileRead(ref _breakThread); index++)
+                             index < _coroutines.Count && false == ThreadUtility.VolatileRead(ref _breakThread); ++index)
 #if ENABLE_PLATFORM_PROFILER                            
                             using (platformProfiler.Sample(_coroutines[index].ToString()))
 #endif
                             {
                                 pausableTask = _coroutines[index];
-                                
                                 result = pausableTask.MoveNext();
 
                                 if (result == false)

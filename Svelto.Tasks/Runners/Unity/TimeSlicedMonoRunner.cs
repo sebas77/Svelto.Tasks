@@ -21,7 +21,7 @@ namespace Svelto.Tasks.Unity
             }
         }
 
-        public TimeSlicedMonoRunner(string name, float maxMilliseconds, bool mustSurvive = false)
+        public TimeSlicedMonoRunner(string name, float maxMilliseconds, bool mustSurvive = false):base(name)
         {
             _flushingOperation = new UnityCoroutineRunner.FlushingOperation();
 

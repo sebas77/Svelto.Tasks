@@ -10,7 +10,7 @@ namespace Svelto.Tasks.Unity
     /// </summary>
     public class SequentialMonoRunner : MonoRunner
     {
-        public SequentialMonoRunner(string name, bool mustSurvive = false)
+        public SequentialMonoRunner(string name, bool mustSurvive = false):base(name)
         {
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 

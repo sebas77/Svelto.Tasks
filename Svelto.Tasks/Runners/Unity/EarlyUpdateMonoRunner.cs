@@ -6,7 +6,7 @@ namespace Svelto.Tasks.Unity
 {
     public class EarlyUpdateMonoRunner : MonoRunner
     {
-        public EarlyUpdateMonoRunner(UpdateMonoRunner updateRunner, string name)
+        public EarlyUpdateMonoRunner(UpdateMonoRunner updateRunner, string name):base(name)
         {
             _go = updateRunner._go;
 
