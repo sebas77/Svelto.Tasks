@@ -191,8 +191,12 @@ namespace Svelto.Tasks.Internal
         {
             get
             {
-                if (_coroutine != null)
-                    return _coroutine.Current;
+                //this is currently the serial task
+                if (_stackingTask != null)
+                {
+                    //this is the enumerator held by the serial task
+                    return _stackingTask.Current;
+                }
 
                 return null;
             }
@@ -278,11 +282,11 @@ namespace Svelto.Tasks.Internal
 #endif
                             try
                             {
-                                _completed = !_coroutine.MoveNext();
+                                _completed = !_stackingTask.MoveNext();
                                 
                                 ThreadUtility.MemoryBarrier();
                                 
-                                var current = _coroutine.Current;
+                                var current = _stackingTask.Current;
                                 if ((current == Break.It ||
                                      current == Break.AndStop) && _onStop != null)
                                 {
@@ -520,17 +524,17 @@ namespace Svelto.Tasks.Internal
             {
                 _coroutineWrapper.FastClear();
                 _coroutineWrapper.Add(task);
-                _coroutine = _coroutineWrapper;
+                _stackingTask = _coroutineWrapper;
             }
             else
-                _coroutine = taskc;
+                _stackingTask = taskc;
 #if DEBUG && !PROFILER            
             _callStartFirstError = CALL_START_FIRST_ERROR.FastConcat(" task: ", ToString());
 #endif    
         }
 
         IRunner                       _runner;
-        IEnumerator                   _coroutine;
+        IEnumerator                   _stackingTask;
 
         internal readonly SerialTaskCollection _coroutineWrapper;
         

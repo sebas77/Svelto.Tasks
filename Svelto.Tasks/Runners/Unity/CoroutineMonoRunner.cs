@@ -20,7 +20,8 @@ namespace Svelto.Tasks.Unity
     {
         public CoroutineMonoRunner(string name, bool mustSurvive = false):base(name)
         {
-            _platformProfiler = new Svelto.Common.PlatformProfiler(name);
+            _name = name;
+           
             UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
 
             RunnerBehaviour runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
@@ -55,9 +56,12 @@ namespace Svelto.Tasks.Unity
             return Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(task, _info.runnerName);
 #else
             bool value;
-            using (_platformProfiler.Sample(_info.runnerName.FastConcat("+", task.ToString())))
+            using (var platformProfiler = new Svelto.Common.PlatformProfiler(_name))
             {
-                value = task.MoveNext();
+                using (platformProfiler.Sample(_info.runnerName.FastConcat("+", task.ToString())))
+                {
+                    value = task.MoveNext();
+                }
             }
 
             return value;
@@ -66,8 +70,6 @@ namespace Svelto.Tasks.Unity
 
         public override void Dispose()
         {
-            _platformProfiler.Dispose();
-            
             base.Dispose();
         }
 
@@ -129,7 +131,8 @@ namespace Svelto.Tasks.Unity
 
                         (pausableTask as PausableTask).onTaskHasBeenInterrupted += () =>
                                        {
-                                           _runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
+                                           if (_runnerBehaviourForUnityCoroutine != null)
+                                               _runnerBehaviourForUnityCoroutine.StopCoroutine(coroutine);
                                            
                                            handItToUnity.Done();
                                        };
@@ -149,7 +152,8 @@ namespace Svelto.Tasks.Unity
 
                 }
                 else
-                    _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
+                    if (_runnerBehaviourForUnityCoroutine != null)
+                        _runnerBehaviourForUnityCoroutine.StopAllCoroutines();
 
                 return true;
             }
@@ -167,7 +171,7 @@ namespace Svelto.Tasks.Unity
         }
 
         readonly CoroutineRunningInfo                  _info;
-        readonly Svelto.Common.PlatformProfiler        _platformProfiler;
+        readonly string                                _name;
         readonly Action<IPausableTask>                 _resumeOperation;
 
         RunnerBehaviour _runnerBehaviourForUnityCoroutine;

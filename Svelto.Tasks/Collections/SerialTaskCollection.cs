@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Runtime.ConstrainedExecution;
 
 namespace Svelto.Tasks
 {
@@ -98,14 +99,17 @@ namespace Svelto.Tasks
                 {
                     var ce = stack.Peek(); //get the current task to execute
                     _current = ce;
-
+                    
                     if (ce.MoveNext() == false) //execute step and check if continue
                     {
-                        if (ce.Current == Break.AndStop)
+                        if (ce.Current is Break)
                         {
                             _current = ce.Current;
-
-                            return false;
+                            
+                            if (ce.Current == Break.AndStop)
+                            {
+                                return false;
+                            }
                         }
 
                         if (stack.Count > 1)
@@ -120,16 +124,13 @@ namespace Svelto.Tasks
                     }
                     else //ok the iteration is not over
                     {
-                        _current = ce.Current;
-
-                        if (_current == ce)
+                        if (ce.Current == ce)
                             throw new Exception("An enumerator returning itself is not supported");
 
-                        if ((ce is TaskCollection == false) 
-                            && _current != null && _current != Break.It
-                            && _current != Break.AndStop)
+                        if (ce is TaskCollection == false 
+                            && (ce.Current is Break) == false)
                         {
-                           IEnumerator result = StandardEnumeratorCheck(_current);
+                           IEnumerator result = StandardEnumeratorCheck(ce.Current);
                            if (result != null)
                            {
                                stack.Push(result); //push the new yielded task and execute it immediately
@@ -141,12 +142,13 @@ namespace Svelto.Tasks
                         //Break.It breaks only the current task collection 
                         //enumeration but allows the parent task to continue
                         //yield break would instead stops only the single task
-                        if (_current == Break.It || _current == Break.AndStop)
-                        {
-                            _current = ce.Current;
-
-                            return false;
-                        }
+                            if (ce.Current is Break)
+                            {
+                                _current = ce.Current;
+                                
+                                if (ce.Current == Break.It || ce.Current == Break.AndStop)
+                                    return false;
+                            }
 
                         return true;
                     }

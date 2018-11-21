@@ -115,11 +115,14 @@ namespace Svelto.Tasks
 
                         if (isDone == true) 
                         {
-                            if (ce.Current == Break.AndStop)
+                            if (ce.Current is Break)
                             {
                                 _currentWrapper = ce.Current;
-
-                                return false;
+                            
+                                if (ce.Current == Break.AndStop)
+                                {
+                                    return false;
+                                }
                             }
 
                             if (stack.Count > 1)
@@ -134,16 +137,13 @@ namespace Svelto.Tasks
                         }
                         else //ok the iteration is not over
                         {
-                            _current = ce.Current;
-
-                            if (_current == ce)
+                            if (ce.Current == ce)
                                 throw new Exception("An enumerator returning itself is not supported");
 
                             if (ce is TaskCollection == false && 
-                                _current != null && _current != Break.It
-                                 && _current != Break.AndStop)
+                                (ce.Current is Break))
                             {
-                                IEnumerator result = StandardEnumeratorCheck(_current);
+                                IEnumerator result = StandardEnumeratorCheck(ce.Current);
                                 if (result != null)
                                     stack.Push(result); //push the new yielded task and execute it immediately
                             }
@@ -153,12 +153,13 @@ namespace Svelto.Tasks
                             //yield break would instead stops only the single task
                             //BreakAndStop bubble until it gets to the TaskRoutine
                             //which is stopped and triggers the OnStop callback
-                            if (_current == Break.It || _current == Break.AndStop)
-                            {
-                                _currentWrapper = ce.Current;
-
-                                return false;
-                            }
+                                if (ce.Current is Break)
+                                {
+                                    _currentWrapper = ce.Current;
+                                
+                                    if (ce.Current == Break.It || ce.Current == Break.AndStop)
+                                        return false;
+                                }
                         }
                     }
                 }
