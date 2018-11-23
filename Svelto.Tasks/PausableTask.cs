@@ -204,7 +204,7 @@ namespace Svelto.Tasks.Internal
 
         public override string ToString()
         {
-#if DEBUG && !PROFILER            
+#if (DEBUG && !PROFILER) || ENABLE_PROFILER            
             if (_name == string.Empty)
             {
                 if (_taskGenerator == null && _taskEnumerator == null)
@@ -437,10 +437,7 @@ namespace Svelto.Tasks.Internal
 
         internal PausableTask()
         {
-            TASKS_CREATED++;
-#if !DEBUG || PROFILER             
-            _name = TASKS_CREATED.ToString();
-#endif            
+            _name = string.Empty;
             _coroutineWrapper = new SerialTaskCollection(1);
             _continuationWrapper = new ContinuationWrapper();
 
@@ -566,7 +563,5 @@ namespace Svelto.Tasks.Internal
 #if DEBUG && !PROFILER        
         string                        _callStartFirstError;
 #endif
-        static int TASKS_CREATED;
-        
     }
 }
