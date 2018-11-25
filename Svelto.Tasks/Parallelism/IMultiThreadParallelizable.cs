@@ -1,4 +1,4 @@
-﻿namespace Svelto.Tasks
+﻿namespace Svelto.Tasks.Parallelism
 {
     public interface IMultiThreadParallelizable
     {

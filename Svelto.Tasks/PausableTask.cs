@@ -36,7 +36,7 @@ namespace Svelto.Tasks
         public bool MoveNext()
         {
             ThreadUtility.MemoryBarrier();
-            var result = completed == true;
+            var result = _completed;
             if (_condition != null)
                 result |= _condition();
             
@@ -167,6 +167,11 @@ namespace Svelto.Tasks.Internal
             {
                 return _started == true && _completed == false;
             }
+        }
+
+        public bool isDone
+        {
+            get { return _completed == true && _started == false; }
         }
 
         public ContinuationWrapper Start(Action<PausableTaskException> onFail = null, Action onStop = null)
@@ -408,7 +413,7 @@ namespace Svelto.Tasks.Internal
             _onStop = null;
 
             ClearInvokes();
-            _coroutineWrapper.FastClear();
+            _coroutineWrapper.Clear();
         }
 
         /// <summary>
@@ -503,7 +508,7 @@ namespace Svelto.Tasks.Internal
             
             if (isTaskRoutineIsAlreadyIn == false)
             {
-                _syncPoint = false; //very important this to happen now
+                _syncPoint = false;
                 ThreadUtility.MemoryBarrier();
                 _runner.StartCoroutine(this);
             }
@@ -515,11 +520,11 @@ namespace Svelto.Tasks.Internal
 
         void SetTask(IEnumerator task)
         {
-            var taskc = task as TaskCollection;
+            var taskc = task as TaskCollection<IEnumerator>;
 
             if (taskc == null)
             {
-                _coroutineWrapper.FastClear();
+                _coroutineWrapper.Clear();
                 _coroutineWrapper.Add(task);
                 _stackingTask = _coroutineWrapper;
             }
@@ -533,7 +538,7 @@ namespace Svelto.Tasks.Internal
         IRunner                       _runner;
         IEnumerator                   _stackingTask;
 
-        internal readonly SerialTaskCollection _coroutineWrapper;
+        internal readonly SerialTaskCollection<IEnumerator> _coroutineWrapper;
         
         ContinuationWrapper           _continuationWrapper;
         ContinuationWrapper           _pendingContinuationWrapper;
