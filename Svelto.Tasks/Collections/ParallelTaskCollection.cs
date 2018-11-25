@@ -1,217 +1,90 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Svelto.Tasks
 {
-    public class ParallelTaskCollection: TaskCollection
+    public class ParallelTaskCollection : ParallelTaskCollection<IEnumerator>
     {
-        public event Action        		    onComplete;
-        public event Func<Exception, bool>  onException;
-
         public ParallelTaskCollection()
-        {
-            _currentWrapper = new ParallelTask(this);
-            
-            _name = "ParallelTaskCollection".FastConcat(GetHashCode());
-        }
+        {}
         
-        public ParallelTaskCollection(string name)
-        {
-            _currentWrapper = new ParallelTask(this);
-            _name = name;
-        }
+        public ParallelTaskCollection(int initialSize) : base(initialSize)
+        {}
+        
+        public ParallelTaskCollection(IEnumerator[] ptasks) : base(ptasks)
+        {}
+    }
+    
+    public class ParallelTaskCollection<T>: TaskCollection<T> where T:IEnumerator
+    {
+        const int _INITIAL_STACK_COUNT = 3;
+        
+        public ParallelTaskCollection():base(_INITIAL_STACK_COUNT)
+        {}
+        
+        public ParallelTaskCollection(int initialSize) : base(initialSize)
+        {}
 
-        public ParallelTaskCollection(int initialSize, string name = null) : base(initialSize)
-        {
-            _currentWrapper = new ParallelTask(this);
-            
-            if (name == null)
-                _name = "ParallelTaskCollection".FastConcat(GetHashCode());
-            else
-                _name = name;
-        }
-
-        public ParallelTaskCollection(IEnumerator[] ptasks) : this()
+        public ParallelTaskCollection(T[] ptasks):base(_INITIAL_STACK_COUNT)
         {
             for (int i = 0; i < ptasks.Length; i++)
                 Add(ptasks[i]);
         }
 
-        public override String ToString()
+        protected override bool RunTasksAndCheckIfDone()
         {
-            return _name;
-        }
-
-        public override void Reset()
-        {
-            ResetIndices();
-            
-            for (int i = 0; i < base._listOfStacks.Count; i++)
-                _listOfStacks[i].Peek().Reset();
-        }
-
-        public new void Clear()
-        {
-            base.Clear();
-            
-            ResetIndices();
-        }
-
-        public override bool MoveNext()
-        {
-            isRunning = true;
-
-            try
+            while (taskCount - _stackOffset > 0)
             {
-                if (RunTasks()) return true;
-                
-                isRunning = false;
-                ResetIndices();
-                
-                if (onComplete != null)
-                    onComplete();
-            }
-            catch (Exception e)
-            {
-                if (onException != null)
+                var listBuffer = rawListOfStacks;
+                for (int index = 0; index < taskCount - _stackOffset; ++index)
                 {
-                    var mustComplete = onException(e);
-
-                    if (mustComplete)
+                    if (listBuffer[index].count > 0)
                     {
-                        isRunning = false;
-                    }
-                }
-                
-                throw;
-            }
-            
-            return false;
-        }
-
-        void ResetIndices()
-        {
-            _offset = 0;
-            
-            isRunning = false;
-        }
-
-        bool RunTasks()
-        {
-            var count = _listOfStacks.Count;
-            while (count - _offset > 0)
-            {
-                for (int index = 0; index < count - _offset; ++index)
-                {
-                    Stack<IEnumerator> stack = _listOfStacks[index];
-
-                    if (stack.Count > 0)
-                    {
-                        IEnumerator ce = stack.Peek();  //get the current task to execute
-                        _current = ce;
-                        
-                        bool isDone = !ce.MoveNext();
-
-                        if (isDone == true) 
-                        {
-                            if (ce.Current is Break)
+                        var processStackAndCheckIfDone = ProcessStackAndCheckIfDone();
+                        switch (processStackAndCheckIfDone)
                             {
-                                _currentWrapper = ce.Current;
-                            
-                                if (ce.Current == Break.AndStop)
-                                {
-                                    return false;
-                                }
+                                case TaskState.doneIt:
+                                    if (listBuffer[index].count > 1)
+                                        listBuffer[index].Pop(); //now it can be popped
+                                    else
+                                    {
+                                        //in order to be able to reuse the task collection, we will keep the stack 
+                                        //in its original state. The tasks will be shuffled, but due to the nature
+                                        //of the parallel execution, it doesn't matter.
+                                        index = RemoveStack(index, listBuffer, taskCount); 
+                                    }
+                                    break;
+                                case TaskState.breakIt:
+                                    return true;
+                                case TaskState.continueIt:
+                                    break;
+                                case TaskState.yieldIt:
+                                    break;
                             }
-
-                            if (stack.Count > 1)
-                                stack.Pop(); //now it can be popped
-                            else
-                            {
-                                //in order to be able to reuse the task collection, we will keep the stack 
-                                //in its original state. The tasks will be shuffled, but due to the nature
-                                //of the parallel execution, it doesn't matter.
-                                index = RemoveStack(index); 
-                            }
-                        }
-                        else //ok the iteration is not over
-                        {
-                            if (ce.Current == ce)
-                                throw new Exception("An enumerator returning itself is not supported");
-
-                            if (ce is TaskCollection == false && 
-                                (ce.Current is Break))
-                            {
-                                IEnumerator result = StandardEnumeratorCheck(ce.Current);
-                                if (result != null)
-                                    stack.Push(result); //push the new yielded task and execute it immediately
-                            }
-                            else
-                            //Break.It breaks only the current task collection 
-                            //enumeration but allows the parent task to continue
-                            //yield break would instead stops only the single task
-                            //BreakAndStop bubble until it gets to the TaskRoutine
-                            //which is stopped and triggers the OnStop callback
-                                if (ce.Current is Break)
-                                {
-                                    _currentWrapper = ce.Current;
-                                
-                                    if (ce.Current == Break.It || ce.Current == Break.AndStop)
-                                        return false;
-                                }
-                        }
                     }
                 }
 
-                return true;
+                return false;
             }
-            return false;
+            return true;
         }
 
-        int RemoveStack(int index)
-        {
-            var lastIndex = _listOfStacks.Count - _offset - 1;
+        protected override void ProcessTask(ref T Task)
+        {}
 
-            _offset++;
+        int RemoveStack(int index, StructFriendlyStack[] buffer, int count)
+        {
+            var lastIndex = count - _stackOffset - 1;
+
+            _stackOffset++;
 
             if (index == lastIndex)
                 return index;
 
-            var item = _listOfStacks[lastIndex];
-            _listOfStacks[lastIndex] = _listOfStacks[index];
-            _listOfStacks[index] = item;
+            var item = buffer[lastIndex];
+            buffer[lastIndex] = buffer[index];
+            buffer[index]     = item;
 
             return --index;
         }
-
-        public override object Current
-        {
-            get { return _currentWrapper; }
-        }
-
-        object      _current;
-        int         _offset;
-
-        object  _currentWrapper;
-        string _name;
-
-        internal class ParallelTask
-        {
-            public object current {  get {  return _parent._current; } }
-
-            public ParallelTask(ParallelTaskCollection parent)
-            {
-                _parent = parent;
-            }
-
-            public void Add(IEnumerator task)
-            {
-                _parent.Add(task);
-            }
-
-            readonly ParallelTaskCollection _parent;
-        }
     }
 }
-

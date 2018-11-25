@@ -1,7 +1,8 @@
 using System;
 using System.Collections;
+using Svelto.Tasks.Chain;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Services.Enumerators
 {
     /// <summary>
     /// Transform an ITask to IEnumerator to be usable with the TaskRunner
@@ -11,14 +12,11 @@ namespace Svelto.Tasks
     /// (some ITask some not). Otherwise it should never be used
     /// explicitly 
     /// </summary>
-    public class TaskWrapper: IEnumerator
+    public class ServiceEnumerator: IEnumerator
     {
         public object Current { get { return null; } }
 
-        public TaskWrapper(ITask task):this(task as IAbstractTask)
-        {}
-
-        protected TaskWrapper(IAbstractTask task)
+        public ServiceEnumerator(IServiceTask task)
         {
             DBC.Tasks.Check.Require((task is IEnumerable == false) && (task is IEnumerator == false), "Tasks and IEnumerators are mutually exclusive");
 
@@ -38,7 +36,7 @@ namespace Svelto.Tasks
             
             if (task.isDone == false)
             {
-                var taskException = task as ITaskExceptionHandler;
+                var taskException = task as IServiceTaskExceptionHandler;
 
                 if ((taskException != null) && (taskException.throwException != null))
                     throw taskException.throwException;
@@ -63,16 +61,24 @@ namespace Svelto.Tasks
 
         protected virtual void ExecuteTask()
         {
-            var task1 = task as ITask;
+            var task1 = task as IServiceTask;
             if (task1 != null)
                 task1.Execute();    
             else
                 throw new Exception("not supported task " + task.GetType());
         }
 
-        protected IAbstractTask task { get; private set; }
+        protected IServiceTask task { get; private set; }
 
         bool _started;
+    }
+
+    public class ServiceEnumerator<Token> : ServiceEnumerator, ITaskChain<Token>
+    {
+        public ServiceEnumerator(IServiceTask task) : base(task)
+        {}
+
+        public Token token { get; set; }
     }
 }
 

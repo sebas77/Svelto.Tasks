@@ -4,11 +4,11 @@ using UnityEngine;
 
 namespace Svelto.Tasks.Enumerators
 {
-    class UnityAsyncOperationEnumerator: IEnumerator
+    class AsyncOperationEnumerator: IEnumerator
     {
         AsyncOperation _asyncOp;
 
-        public UnityAsyncOperationEnumerator(AsyncOperation async)
+        public AsyncOperationEnumerator(AsyncOperation async)
         {
             _asyncOp = async;
         }

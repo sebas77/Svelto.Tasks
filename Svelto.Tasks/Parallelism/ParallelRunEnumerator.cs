@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace Svelto.Tasks.Internal
+namespace Svelto.Tasks.Parallelism.Internal
 {
     class ParallelRunEnumerator<T> : IEnumerator where T:struct, IMultiThreadParallelizable
     {

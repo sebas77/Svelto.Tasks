@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.DataStructures;
-using Svelto.Tasks.Unity.Internal;
 using Svelto.Utilities;
 
 #if NETFX_CORE
@@ -238,16 +237,11 @@ namespace Svelto.Tasks
 #endif
                             {
                                 pausableTask = _coroutines[index];
+                                
                                 result = pausableTask.MoveNext();
 
                                 if (result == false)
-                                {
-                                    var disposable = pausableTask as IDisposable;
-                                    if (disposable != null)
-                                        disposable.Dispose();
-
                                     _coroutines.UnorderedRemoveAt(index--);
-                                }
                             }
 
                         if (ThreadUtility.VolatileRead(ref _breakThread) == false)

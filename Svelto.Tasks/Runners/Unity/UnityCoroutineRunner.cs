@@ -85,13 +85,7 @@ namespace Svelto.Tasks.Unity.Internal
                         }
                         
                         if (result == false)
-                        {
-                            var disposable = pausableTask as IDisposable;
-                            if (disposable != null)
-                                disposable.Dispose();
-
                             _coroutines.UnorderedRemoveAt(index);
-                        }
                         else
                             index++;
 
