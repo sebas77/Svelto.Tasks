@@ -141,8 +141,6 @@ namespace Svelto.Tasks.Unity
                     }
                     
 #if DEBUG                    
-                    /*
-                     this can be reintroduced
                     var parallelTask = (current as ParallelTaskCollection.ParallelTask);
 
                     if (parallelTask != null &&
@@ -150,7 +148,6 @@ namespace Svelto.Tasks.Unity
                     {
                         throw new CoroutineMonoRunnerException("ParallelTaskCollection doesn't support Unity yield instructions");
                     }
-                    */
 #endif                    
 
                 }

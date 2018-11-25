@@ -1,6 +1,3 @@
-using System;
-using Svelto.Utilities;
-
 namespace Svelto.Tasks
 {
     
@@ -14,23 +11,9 @@ namespace Svelto.Tasks
         public bool isStopping { private set; get; }
         public bool isKilled { get { return false; } }
 
-        public SyncRunner(int timeout = 1000)
-        {
-            _timeout = timeout;
-        }
-
         public void StartCoroutine(IPausableTask task)
         {
-            var quickIterations = 0;
-            
-            DateTime then = DateTime.Now.AddMilliseconds(_timeout);
-            bool valid = true;
-            
-            while (task.MoveNext() && (valid = (DateTime.Now < then)))
-                ThreadUtility.Wait(ref quickIterations);
-            
-            if (valid == false)
-                throw new Exception("SyncRunner timed out, increase time out or check if got stuck");
+            task.Complete();
         }
 
         /// <summary>
@@ -44,7 +27,5 @@ namespace Svelto.Tasks
         {}
 
         public int numberOfRunningTasks { get { return -1; } }
-        
-        int _timeout;
     }
 }

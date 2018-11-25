@@ -1,10 +1,10 @@
 using System;
 using System.Collections;
 using System.Threading;
-using Svelto.Tasks.Parallelism.Internal;
 using Svelto.Utilities;
+using Svelto.Tasks.Internal;
 
-namespace Svelto.Tasks.Parallelism
+namespace Svelto.Tasks
 {
     /// <summary>
     /// a ParallelTaskCollection ran by MultiThreadRunner will run the tasks in a single thread
@@ -63,7 +63,7 @@ namespace Svelto.Tasks.Parallelism
             for (int i = 0; i < numberOfThreads; i++)
             {
                 var ptask = TaskRunner.Instance.AllocateNewTaskRoutine();
-                var ptc   = new ParallelTaskCollection();
+                var ptc   = new ParallelTaskCollection("ParallelTaskCollection #".FastConcat(i));
 
                 ptc.onComplete  += ptcOnOnComplete;
                 ptc.onException += ptcOnOnException;

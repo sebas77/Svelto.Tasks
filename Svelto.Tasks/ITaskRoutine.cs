@@ -35,6 +35,5 @@ namespace Svelto.Tasks
         void Stop();
         
         bool isRunning { get; }
-        bool isDone { get; }
     }
 }
