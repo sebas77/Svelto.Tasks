@@ -56,19 +56,8 @@ namespace Svelto.Tasks.Unity
                     return false;
                 }
                 
-                if (currentResult == Break.RunnerExecutionAndResumeNextIteration)
-                    mustInterruptAtTheEndOfTheIterations = true;
-                
                 if (nextIndex >= _coroutines.Count)
-                {
-                    if (mustInterruptAtTheEndOfTheIterations)
-                    {
-                        mustInterruptAtTheEndOfTheIterations = false;
-                        return false;
-                    }
-
                     nextIndex = 0; //restart iteration and continue
-                }
                 
                 return true;
             }
@@ -88,7 +77,6 @@ namespace Svelto.Tasks.Unity
 
             readonly Stopwatch _stopWatch = new Stopwatch();
             readonly FasterList<IPausableTask> _coroutines;
-            bool mustInterruptAtTheEndOfTheIterations;
         }
 
         readonly GreedyTimeBoundRunningInfo _info;

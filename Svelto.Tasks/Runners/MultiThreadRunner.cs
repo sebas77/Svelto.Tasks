@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.DataStructures;
-using Svelto.Tasks.Unity.Internal;
 using Svelto.Utilities;
 
 #if NETFX_CORE
@@ -49,6 +48,8 @@ namespace Svelto.Tasks
         public void Dispose()
         {
             Kill(null);
+            
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
