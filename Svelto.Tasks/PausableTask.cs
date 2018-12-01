@@ -226,7 +226,7 @@ namespace Svelto.Tasks.Internal
 
         public override string ToString()
         {
-#if (DEBUG && !PROFILER) || ENABLE_PROFILER            
+#if DEBUG && !PROFILER            
             if (_name == string.Empty)
             {
                 if (_taskGenerator == null && _taskEnumerator == null)
@@ -291,8 +291,7 @@ namespace Svelto.Tasks.Internal
                             }
                             catch (Exception onStopException)
                             {
-                                Utilities.Console.LogError("Svelto.Tasks task OnStop callback threw an exception ", ToString());
-                                Utilities.Console.LogException(onStopException);
+                                Utilities.Console.LogException("Svelto.Tasks task OnStop callback threw an exception ".FastConcat(ToString()), onStopException);
                             }
                         }
                     }
@@ -319,8 +318,7 @@ namespace Svelto.Tasks.Internal
                                     }
                                     catch (Exception onStopException)
                                     {
-                                        Utilities.Console.LogError("Svelto.Tasks task OnStop callback threw an exception ", ToString());
-                                        Utilities.Console.LogException(onStopException);
+                                        Utilities.Console.LogException("Svelto.Tasks task OnStop callback threw an exception ".FastConcat(ToString()), onStopException);
                                     }
                                 }
                             }
@@ -336,14 +334,17 @@ namespace Svelto.Tasks.Internal
                                     }
                                     catch (Exception onFailException)
                                     {
-                                        Utilities.Console.LogError("Svelto.Tasks task OnFail callback threw an exception ", ToString());
-                                        Utilities.Console.LogException(onFailException);
+                                        Utilities
+                                           .Console.LogException("Svelto.Tasks task OnFail callback threw an exception "
+                                                                    .FastConcat(ToString())
+                                                                     , onFailException);
                                     }
                                 }
                                 else
                                 {
-                                    Utilities.Console.LogError("a Svelto.Tasks task threw an exception: ", ToString());
-                                    Utilities.Console.LogException(e);
+                                    Utilities
+                                       .Console.LogException("a Svelto.Tasks task threw an exception:  "
+                                                                .FastConcat(ToString()), e);
                                 }
                             }
                         }
@@ -460,7 +461,10 @@ namespace Svelto.Tasks.Internal
 
         internal PausableTask()
         {
-            _name = string.Empty;
+            TASKS_CREATED++;
+#if !DEBUG || PROFILER             
+            _name = TASKS_CREATED.ToString();
+#endif            
             _coroutineWrapper = new SerialTaskCollection(1);
             _continuationWrapper = new ContinuationWrapper();
 
@@ -586,5 +590,7 @@ namespace Svelto.Tasks.Internal
 #if DEBUG && !PROFILER        
         string                        _callStartFirstError;
 #endif
+        static int TASKS_CREATED;
+        
     }
 }

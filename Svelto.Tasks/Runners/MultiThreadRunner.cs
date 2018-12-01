@@ -48,6 +48,8 @@ namespace Svelto.Tasks
         public void Dispose()
         {
             Kill(null);
+            
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
