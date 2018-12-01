@@ -86,7 +86,7 @@ namespace Svelto.Tasks.Unity
                 _resumeOperation = startCoroutine;
             }
 
-            public bool CanMoveNext(ref int nextIndex, object currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
             {
                 return true;
             }
@@ -112,14 +112,14 @@ namespace Svelto.Tasks.Unity
                 IPausableTask pausableTask = _coroutines[index];
                 var current = pausableTask.Current;
                 
-                if (current == null) return true;
+                if (current.current == null) return true;
                 
                 if (_flushingOperation.stopped == false)
                 {
-                    if (current is YieldInstruction)
+                    if (current.current is YieldInstruction)
                     {
                         var handItToUnity = new HandItToUnity
-                            (current, pausableTask, _resumeOperation, _flushingOperation);
+                            (current.current, pausableTask, _resumeOperation, _flushingOperation);
 
                         //remove the coroutine yielding the special instruction. it will be added back once Unity
                         //completes. When it's resumed use the StartCoroutine function, the first step is executed
@@ -142,7 +142,7 @@ namespace Svelto.Tasks.Unity
                     
 #if DEBUG                    
                     /*
-                     this can be reintroduced
+                     todo: this can be reintroduced
                     var parallelTask = (current as ParallelTaskCollection.ParallelTask);
 
                     if (parallelTask != null &&
@@ -181,10 +181,10 @@ namespace Svelto.Tasks.Unity
         
         class HandItToUnity
         {
-            public HandItToUnity(object                current,
-                                 IPausableTask         task,
-                                 Action<IPausableTask> resumeOperation,
-                                 UnityCoroutineRunner.FlushingOperation     flush)
+            public HandItToUnity(object                                    current,
+                                 IPausableTask                             task,
+                                 Action<IPausableTask>                     resumeOperation,
+                                 UnityCoroutineRunner.FlushingOperation    flush)
             {
                 _current           = current;
                 _task              = task;
@@ -220,9 +220,9 @@ namespace Svelto.Tasks.Unity
                 original.MoveNext();
             }
 
-            readonly object                _current;
-            readonly IPausableTask         _task;
-            readonly Action<IPausableTask> _resumeOperation;
+            readonly object                                 _current;
+            readonly IPausableTask                          _task;
+            readonly Action<IPausableTask>                  _resumeOperation;
             readonly UnityCoroutineRunner.FlushingOperation _flushingOperation;
 
             bool                       _isDone;

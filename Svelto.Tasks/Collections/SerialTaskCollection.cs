@@ -28,11 +28,11 @@ namespace Svelto.Tasks
                 var listBuffer = rawListOfStacks;
                 while (listBuffer[_stackOffset].count > 0)
                 {
-                    var processStackAndCheckIfDone = ProcessStackAndCheckIfDone();
+                    var processStackAndCheckIfDone = ProcessStackAndCheckIfDone(_stackOffset);
                     switch (processStackAndCheckIfDone)
                     {
                         case TaskState.doneIt:
-                            if (listBuffer[_stackOffset].count > 1)
+                            if (listBuffer[_stackOffset].count > 1) //there is still something to do with this task
                                 listBuffer[_stackOffset].Pop(); //now it can be popped, we continue the iteration
                             else
                             {
@@ -41,12 +41,11 @@ namespace Svelto.Tasks
                                 _stackOffset++; //we move to the next task
                                 goto breakInnerLoop;
                             }
-
                             break;
                         case TaskState.breakIt:
                             return true; //iteration done
                         case TaskState.continueIt: 
-                            break; //continue while loop
+                            break; //continue while loop //todo unit test this case
                         case TaskState.yieldIt:
                             return false; //yield
                     }
@@ -55,10 +54,14 @@ namespace Svelto.Tasks
                 breakInnerLoop: ;
             }
 
+            _stackOffset = 0;
+
             return true;
         }
 
         protected override void ProcessTask(ref T Task)
         {}
+        
+        int _stackOffset;
     }
 }

@@ -12,7 +12,7 @@ namespace Svelto.Tasks.Chain
             if (task == null)
                 throw new ArgumentNullException();
             
-            Add(task);
+            base.Add(task);
 
             return this;
         }

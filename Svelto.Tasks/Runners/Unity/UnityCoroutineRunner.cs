@@ -77,10 +77,10 @@ namespace Svelto.Tasks.Unity.Internal
 #endif
                         {
 #if TASKS_PROFILER_ENABLED
-                                result =
+                            result =
  Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
 #else
-                                result = pausableTask.MoveNext();
+                            result = pausableTask.MoveNext();
 #endif
                         }
                         
@@ -90,7 +90,8 @@ namespace Svelto.Tasks.Unity.Internal
                             index++;
 
                         if (_coroutines.Count == 0 ||
-                            _info.CanMoveNext(ref index, pausableTask.Current) == false || index >= _coroutines.Count) break;
+                            _info.CanMoveNext(ref index, pausableTask.Current) == false || index >= _coroutines.Count) 
+                            break;
                     }
                 }
 
@@ -108,9 +109,9 @@ namespace Svelto.Tasks.Unity.Internal
             public object Current { get; private set; }
         }
 
-        sealed public class RunningTasksInfo:IRunningTasksInfo
+        public class RunningTasksInfo:IRunningTasksInfo
         {
-            public bool CanMoveNext(ref int nextIndex, object currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
             {
                 return true;
             }
@@ -136,7 +137,7 @@ namespace Svelto.Tasks.Unity.Internal
 
     public interface IRunningTasksInfo
     {
-        bool CanMoveNext(ref int nextIndex, object currentResult);
+        bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult);
         bool CanProcessThis(ref int index);
         void Reset();
         string runnerName { get; }

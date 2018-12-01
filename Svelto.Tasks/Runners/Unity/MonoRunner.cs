@@ -24,9 +24,6 @@ namespace Svelto.Tasks.Unity
         
         public GameObject _go;
 
-        private MonoRunner()
-        {}
-
         protected MonoRunner(string name)
         {
             _name = name;

@@ -1,4 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using System.Diagnostics;
 using Svelto.Tasks.Unity.Internal;
 
@@ -46,7 +47,7 @@ namespace Svelto.Tasks.Unity
                 this.maxMilliseconds = (long) (maxMilliseconds * 10000);
             }
             
-            public bool CanMoveNext(ref int nextIndex, object currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
             {
                 if (_stopWatch.ElapsedTicks > maxMilliseconds)
                     return false;

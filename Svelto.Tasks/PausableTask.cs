@@ -25,8 +25,10 @@ namespace Svelto.Tasks
         { }
     }
 
-    public interface IPausableTask:IEnumerator
-    {}
+    public interface IPausableTask : IEnumerator
+    {
+        TaskCollection<IEnumerator>.CollectionTask Current { get; }
+    }
     
     //The Continuation Wrapper contains a valid
     //value until the task is not stopped.
@@ -191,8 +193,8 @@ namespace Svelto.Tasks.Internal
             
             return _continuationWrapper;
         }
-
-        public object Current
+        
+        object IEnumerator.Current
         {
             get
             {
@@ -204,6 +206,21 @@ namespace Svelto.Tasks.Internal
                 }
 
                 return null;
+            }
+        }
+
+        public TaskCollection<IEnumerator>.CollectionTask Current
+        {
+            get
+            {
+                //this is currently the serial task
+                if (_stackingTask != null)
+                {
+                    //this is the enumerator held by the serial task
+                    return _stackingTask.Current;
+                }
+
+                return new TaskCollection<IEnumerator>.CollectionTask(null);
             }
         }
 
@@ -292,11 +309,12 @@ namespace Svelto.Tasks.Internal
                                 ThreadUtility.MemoryBarrier();
                                 
                                 var current = _stackingTask.Current;
-                                if ((current == Break.It ||
-                                     current == Break.AndStop) && _onStop != null)
+                                if (current.breakIt == Break.AndStop && _onStop != null)
                                 {
                                     try
                                     {
+                                        _completed = true;
+                                        
                                         _onStop();
                                     }
                                     catch (Exception onStopException)
@@ -536,7 +554,7 @@ namespace Svelto.Tasks.Internal
         }
 
         IRunner                       _runner;
-        IEnumerator                   _stackingTask;
+        TaskCollection<IEnumerator>   _stackingTask;
 
         internal readonly SerialTaskCollection<IEnumerator> _coroutineWrapper;
         

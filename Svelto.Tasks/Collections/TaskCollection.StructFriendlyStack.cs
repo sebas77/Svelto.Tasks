@@ -24,9 +24,7 @@ namespace Svelto.Tasks
                 if (_nextFreeStackIndex == _stack.Length)
                 {
                     // Double for small stacks, and increase by 20% for larger stacks
-                    Array.Resize(ref _stack, _stack.Length < 100 
-                                                 ? 2 *_stack.Length 
-                                                 : (int) (_stack.Length * 1.2));
+                    Array.Resize(ref _stack, _stack.Length < 100 ? 2 *_stack.Length : (int) (_stack.Length * 1.2));
                 }
 
                 // Store the value, and increase reference afterwards
@@ -51,6 +49,7 @@ namespace Svelto.Tasks
             public T[] Peek(out int index)
             {
                 DBC.Tasks.Check.Require(_nextFreeStackIndex != 0);
+                
                 index = _nextFreeStackIndex - 1;
                 return _stack;
             }

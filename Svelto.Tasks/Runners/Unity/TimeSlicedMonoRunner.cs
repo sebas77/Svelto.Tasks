@@ -1,4 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using System.Diagnostics;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
@@ -35,7 +36,7 @@ namespace Svelto.Tasks.Unity
                 (_newTaskRoutines, _coroutines, _flushingOperation, _info));
         }
 
-        class GreedyTimeBoundRunningInfo : IRunningTasksInfo
+        class GreedyTimeBoundRunningInfo : IRunningTasksInfo //todo can this be a struct?
         {
             public long maxTicks;
 
@@ -45,7 +46,7 @@ namespace Svelto.Tasks.Unity
                 _coroutines = coroutines;
             }
 
-            public bool CanMoveNext(ref int nextIndex, object currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
             {
                 //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
                 if (_stopWatch.ElapsedTicks > maxTicks)
@@ -55,20 +56,9 @@ namespace Svelto.Tasks.Unity
                     
                     return false;
                 }
-                
-                if (currentResult == Break.RunnerExecutionAndResumeNextIteration)
-                    mustInterruptAtTheEndOfTheIterations = true;
-                
-                if (nextIndex >= _coroutines.Count)
-                {
-                    if (mustInterruptAtTheEndOfTheIterations)
-                    {
-                        mustInterruptAtTheEndOfTheIterations = false;
-                        return false;
-                    }
 
+                if (nextIndex >= _coroutines.Count)
                     nextIndex = 0; //restart iteration and continue
-                }
                 
                 return true;
             }
@@ -88,7 +78,6 @@ namespace Svelto.Tasks.Unity
 
             readonly Stopwatch _stopWatch = new Stopwatch();
             readonly FasterList<IPausableTask> _coroutines;
-            bool mustInterruptAtTheEndOfTheIterations;
         }
 
         readonly GreedyTimeBoundRunningInfo _info;

@@ -10,12 +10,15 @@ namespace Svelto.Tasks.Parallelism
     /// a ParallelTaskCollection ran by MultiThreadRunner will run the tasks in a single thread
     /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
     /// </summary>
-    public class  MultiThreadedParallelTaskCollection  : IEnumerator, IDisposable
+    public class MultiThreadedParallelTaskCollection  : IEnumerator, IDisposable
     {
         public event Action onComplete;
 
         public void Reset()
         {
+            DBC.Tasks.Check.Require(ThreadUtility.VolatileRead(ref _isDisposed) == false, 
+                                    "trying to reset a disposed MultiThreadedParallelTaskCollection");
+            
             for (int i = 0; i < _parallelTasks.Length; i++)
                 _parallelTasks[i].Reset();
         }
@@ -133,11 +136,11 @@ namespace Svelto.Tasks.Parallelism
 
         public bool MoveNext()
         {
-            if (_isDisposing == true) return false;
+            if (ThreadUtility.VolatileRead(ref _isDisposed)) return false;
             
             if (RunMultiThreadParallelTasks()) return true;
             
-            if (_isDisposing == false && onComplete != null)
+            if (onComplete != null)
                 onComplete();
 
             isRunning = false;
@@ -162,8 +165,9 @@ namespace Svelto.Tasks.Parallelism
         
         public void Dispose()
         {
-            _isDisposing = true;
-            ThreadUtility.MemoryBarrier();
+            if (_isDisposed == true) return;
+            
+            ThreadUtility.VolatileWrite(ref _isDisposed, true);
             _disposingThreads = _runners.Length;
 
             for (int i = 0; i < _runners.Length; i++)
@@ -205,7 +209,7 @@ namespace Svelto.Tasks.Parallelism
         int                           _counter;
         int                           _disposingThreads;
         int                           _stoppingThreads;
-        volatile bool                 _isDisposing;
+        volatile bool                 _isDisposed;
     }
 
     public class MultiThreadedParallelTaskCollectionException : Exception

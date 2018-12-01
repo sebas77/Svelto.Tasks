@@ -1,6 +1,3 @@
-using System;
-using Svelto.Utilities;
-
 namespace Svelto.Tasks
 {
     
@@ -21,16 +18,7 @@ namespace Svelto.Tasks
 
         public void StartCoroutine(IPausableTask task)
         {
-            var quickIterations = 0;
-            
-            DateTime then = DateTime.Now.AddMilliseconds(_timeout);
-            bool valid = true;
-            
-            while (task.MoveNext() && (valid = (DateTime.Now < then)))
-                ThreadUtility.Wait(ref quickIterations);
-            
-            if (valid == false)
-                throw new Exception("SyncRunner timed out, increase time out or check if got stuck");
+            task.Complete(_timeout);
         }
 
         /// <summary>
