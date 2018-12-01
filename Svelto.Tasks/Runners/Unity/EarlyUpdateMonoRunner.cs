@@ -1,6 +1,5 @@
-using Svelto.Tasks.Unity.Internal;
-
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {

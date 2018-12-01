@@ -1,5 +1,8 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using Svelto.Tasks.Unity;
+using UnityEngine;
+
 #endif
 
 namespace Svelto.Tasks
@@ -31,6 +34,11 @@ namespace Svelto.Tasks
         public static IRunner updateScheduler { get { if (_updateScheduler == null) _updateScheduler = new UpdateMonoRunner("StandardMonoRunner", true);
             return _updateScheduler;
         } }
+
+        internal static void StartYieldInstruction(this IEnumerator instruction)
+        {
+            _coroutineScheduler.StartYieldInstruction(instruction);
+        }
 #endif
 
         //physicScheduler -> updateScheduler -> coroutineScheduler -> lateScheduler
@@ -43,7 +51,7 @@ namespace Svelto.Tasks
             
 #if UNITY_5 || UNITY_5_3_OR_NEWER
             if (_coroutineScheduler != null)
-                _coroutineScheduler.Dispose();
+                 _coroutineScheduler.Dispose();
             if (_physicScheduler != null)
                 _physicScheduler.Dispose();
             if (_lateScheduler != null)

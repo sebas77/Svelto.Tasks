@@ -24,11 +24,13 @@ namespace Svelto.Tasks.Unity
                 (_newTaskRoutines, _coroutines, _flushingOperation, info));
         }
 
-        class StaggeredRunningInfo : IRunningTasksInfo
+        struct StaggeredRunningInfo : IRunningTasksInfo
         {
-            public StaggeredRunningInfo(float maxTasksPerIteration)
+            public StaggeredRunningInfo(int maxTasksPerIteration)
             {
                 _maxTasksPerIteration = maxTasksPerIteration;
+                _iterations = 0;
+                runnerName = "StaggeredRunningInfo";
             }
             
             public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
@@ -57,7 +59,7 @@ namespace Svelto.Tasks.Unity
 
             public string runnerName { get; set; }
 
-            int _iterations;
+            int            _iterations;
             readonly float _maxTasksPerIteration;
         }
     }

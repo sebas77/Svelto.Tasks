@@ -31,8 +31,9 @@ namespace Svelto.Tasks
         public void Dispose()
         {}
 
-        public int numberOfRunningTasks { get { return -1; } }
-        
+        public int numberOfRunningTasks { get { return 0; } }
+        public int numberOfQueuedTasks { get { return 0; } }
+
         int _timeout;
     }
 }

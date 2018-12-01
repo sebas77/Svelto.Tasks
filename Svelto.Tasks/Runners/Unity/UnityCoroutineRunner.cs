@@ -1,5 +1,4 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using System;
 using System.Collections;
 using Svelto.DataStructures;
 using UnityEngine;
@@ -32,11 +31,6 @@ namespace Svelto.Tasks.Unity.Internal
 
         internal class Process<RunningInfo> : IEnumerator where RunningInfo: IRunningTasksInfo
         {
-            readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
-            readonly FasterList<IPausableTask>      _coroutines;
-            readonly FlushingOperation              _flushingOperation;
-            readonly RunningInfo                    _info;
-
             public Process( ThreadSafeQueue<IPausableTask> newTaskRoutines,
                             FasterList<IPausableTask>      coroutines, 
                             FlushingOperation              flushingOperation,
@@ -58,14 +52,12 @@ namespace Svelto.Tasks.Unity.Internal
                      && false == _flushingOperation.stopped) //don't start anything while flushing
                         _newTaskRoutines.DequeueAllInto(_coroutines); 
                     
+                    if (_coroutines.Count == 0) return true;
+                    
                     _info.Reset();
                     
-                    int index = 0;
+                    int index = _flushingOperation.immediate == true ? _coroutines.Count - 1 : 0;
 
-                    if (_coroutines.Count == 0) return true;
-
-                    bool result;
-                    
                     while (true)
                     {
                         if (_info.CanProcessThis(ref index) == false) break;
@@ -75,6 +67,7 @@ namespace Svelto.Tasks.Unity.Internal
 #if ENABLE_PLATFORM_PROFILER                        
                         using (_platformProfiler.Sample(_coroutines[index].ToString()))
 #endif
+                        bool result;
                         {
 #if TASKS_PROFILER_ENABLED
                             result =
@@ -107,9 +100,15 @@ namespace Svelto.Tasks.Unity.Internal
             {}
 
             public object Current { get; private set; }
+            
+            readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
+            readonly FasterList<IPausableTask>      _coroutines;
+            readonly FlushingOperation              _flushingOperation;
+            
+            RunningInfo _info;
         }
 
-        public class RunningTasksInfo:IRunningTasksInfo
+        public struct RunningTasksInfo:IRunningTasksInfo
         {
             public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
             {
@@ -130,6 +129,7 @@ namespace Svelto.Tasks.Unity.Internal
         public class FlushingOperation
         {
             public bool stopped;
+            public bool immediate;
         }
 
         const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";

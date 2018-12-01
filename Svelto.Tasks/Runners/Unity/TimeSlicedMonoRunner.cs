@@ -30,20 +30,22 @@ namespace Svelto.Tasks.Unity
 
             var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
             
-            _info = new GreedyTimeBoundRunningInfo(maxMilliseconds, _coroutines) { runnerName = name };
+            _info = new TimeSlicedRunningInfo(maxMilliseconds, _coroutines) { runnerName = name };
             
-            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process<GreedyTimeBoundRunningInfo>
+            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process<TimeSlicedRunningInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, _info));
         }
 
-        class GreedyTimeBoundRunningInfo : IRunningTasksInfo //todo can this be a struct?
+        class TimeSlicedRunningInfo : IRunningTasksInfo
         {
             public long maxTicks;
 
-            public GreedyTimeBoundRunningInfo(float maxMilliseconds, FasterList<IPausableTask> coroutines)
+            public TimeSlicedRunningInfo(float maxMilliseconds, FasterList<IPausableTask> coroutines)
             {
                 this.maxTicks = (long) (maxMilliseconds * 10000);
                 _coroutines = coroutines;
+                _stopWatch = new Stopwatch();
+                runnerName = "GreedyTimeBoundrunningInfo";
             }
 
             public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
@@ -76,11 +78,11 @@ namespace Svelto.Tasks.Unity
 
             public string runnerName { get; set; }
 
-            readonly Stopwatch _stopWatch = new Stopwatch();
+            readonly Stopwatch _stopWatch;
             readonly FasterList<IPausableTask> _coroutines;
         }
 
-        readonly GreedyTimeBoundRunningInfo _info;
+        TimeSlicedRunningInfo _info;
     }
 }
 #endif

@@ -34,6 +34,11 @@ namespace Svelto.Tasks
         {
             get { return _runnerData.Count; }
         }
+        
+        public int numberOfQueuedTasks
+        {
+            get { return  _runnerData._newTaskRoutines.Count; }
+        }
 
         public override string ToString()
         {

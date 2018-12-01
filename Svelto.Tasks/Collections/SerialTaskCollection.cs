@@ -45,13 +45,13 @@ namespace Svelto.Tasks
                         case TaskState.breakIt:
                             return true; //iteration done
                         case TaskState.continueIt: 
-                            break; //continue while loop //todo unit test this case
+                            continue; //continue with the current task 
                         case TaskState.yieldIt:
-                            return false; //yield
+                            return false; //continue the iteration next frame
                     }
                 }
 
-                breakInnerLoop: ;
+                breakInnerLoop: ; //move to the next task
             }
 
             _stackOffset = 0;

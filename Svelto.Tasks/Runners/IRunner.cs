@@ -12,5 +12,6 @@ namespace Svelto.Tasks
         void 	StopAllCoroutines();
 
         int numberOfRunningTasks { get; }
+        int numberOfQueuedTasks { get; }
     }
 }

@@ -21,6 +21,7 @@ namespace Svelto.Tasks.Unity
         public bool isStopping { get { return _flushingOperation.stopped; } }
         public bool isKilled { get {return _go == null;} }
         public int  numberOfRunningTasks { get { return _coroutines.Count; } }
+        public int numberOfQueuedTasks { get { return _newTaskRoutines.Count; } }
         
         public GameObject _go;
 
