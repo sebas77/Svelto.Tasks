@@ -31,7 +31,10 @@ namespace Svelto.Tasks.Enumerators
         public void Reset()
         {}
 
-        T IEnumerator<T>.Current => _value;
+        T IEnumerator<T>.Current
+        {
+            get { return _value; }
+        }
 
         public object Current
         {

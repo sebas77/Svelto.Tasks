@@ -64,10 +64,11 @@ namespace Svelto.Tasks.Unity.Internal
                         
                         var pausableTask = _coroutines[index];
                         
+                        bool result;
+                        
 #if ENABLE_PLATFORM_PROFILER                        
                         using (_platformProfiler.Sample(_coroutines[index].ToString()))
 #endif
-                        bool result;
                         {
 #if TASKS_PROFILER_ENABLED
                             result =

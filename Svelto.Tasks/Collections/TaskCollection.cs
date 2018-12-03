@@ -6,7 +6,7 @@ using Svelto.DataStructures;
 
 namespace Svelto.Tasks
 {
-    public interface ITaskCollection<T> : IEnumerator<TaskCollection<T>.CollectionTask>, IEnumerator<T>
+    public interface ITaskCollection<T> : IEnumerator<TaskCollection<T>.CollectionTask>
         where T : IEnumerator
     {
         event Action                onComplete;
@@ -88,16 +88,6 @@ namespace Svelto.Tasks
             }
         }
         
-        object IEnumerator.Current
-        {
-            get { return Current.current; }
-        }
-
-        public CollectionTask Current
-        {
-            get { return _currentTask;  }
-        }
-
         /// <summary>
         /// Restore the list of stacks to their original state
         /// </summary>
@@ -106,16 +96,26 @@ namespace Svelto.Tasks
             Reset();
         }
 
-        T IEnumerator<T>.Current
+        T CurrentStack
         {
-            get 
-            { 
+            get
+            {
                 int enumeratorIndex;
                 var stacks = _listOfStacks[_currentStackIndex].Peek(out enumeratorIndex);
-                return stacks[enumeratorIndex];
+                return stacks[ enumeratorIndex];
             }
         }
-        
+
+        public CollectionTask Current
+        {
+            get { return _currentTask;  }
+        }
+
+        object IEnumerator.Current
+        {
+            get { return Current; }
+        }
+
         public void Clear()
         {
             _listOfStacks.Clear();
@@ -198,6 +198,7 @@ namespace Svelto.Tasks
         CollectionTask _currentTask;
         int _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
+        T _current;
 
         const int _INITIAL_STACK_SIZE = 1;
         
@@ -213,17 +214,22 @@ namespace Svelto.Tasks
         {
             public object current { get; internal set; }
 
-            public CollectionTask(TaskCollection<T> parent):this()
+            public CollectionTask(TaskCollection<T> collection):this()
             {
-                _parent = parent;
+                _collection = collection;
             }
 
             public void Add(T task)
             {
-                _parent.Add(task);
+                _collection.Add(task);
             }
 
-            readonly TaskCollection<T> _parent;
+            public T Current
+            {
+                get { return _collection.CurrentStack;  }
+            }
+
+            readonly TaskCollection<T> _collection;
             public Break breakIt { internal set; get; }
         }
     }

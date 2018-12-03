@@ -6,7 +6,11 @@
 /// Restart a task just restarted (pendingRestart == true)
 /// Start a taskroutine twice with different compiler generated enumerators and variants
 /// 
-/// 
+///
+///
+#if ENABLE_PLATFORM_PROFILER || TASKS_PROFILER_ENABLED || (DEBUG && !PROFILER)
+#define GENERATE_NAME
+#endif
 
 using Svelto.Utilities;
 using System;
@@ -226,7 +230,7 @@ namespace Svelto.Tasks.Internal
 
         public override string ToString()
         {
-#if DEBUG && !PROFILER            
+#if GENERATE_NAME            
             if (_name == string.Empty)
             {
                 if (_taskGenerator == null && _taskEnumerator == null)
@@ -271,8 +275,6 @@ namespace Svelto.Tasks.Internal
             /// - _pool
             /// - _pendingRestart
             /// - _started
-            ///
-            /// 
             try
             {
                 ThreadUtility.MemoryBarrier();
@@ -291,7 +293,9 @@ namespace Svelto.Tasks.Internal
                             }
                             catch (Exception onStopException)
                             {
-                                Utilities.Console.LogException("Svelto.Tasks task OnStop callback threw an exception ".FastConcat(ToString()), onStopException);
+                                Utilities.Console.LogException("Svelto.Tasks task OnStop callback threw an exception: "
+                                                                  .FastConcat(base.ToString()),
+                                                               onStopException);
                             }
                         }
                     }
@@ -318,7 +322,10 @@ namespace Svelto.Tasks.Internal
                                     }
                                     catch (Exception onStopException)
                                     {
-                                        Utilities.Console.LogException("Svelto.Tasks task OnStop callback threw an exception ".FastConcat(ToString()), onStopException);
+                                        Utilities
+                                           .Console.LogException("Svelto.Tasks task OnStop callback threw an exception: "
+                                                                    .FastConcat(base.ToString()),
+                                                                 onStopException);
                                     }
                                 }
                             }
@@ -335,8 +342,8 @@ namespace Svelto.Tasks.Internal
                                     catch (Exception onFailException)
                                     {
                                         Utilities
-                                           .Console.LogException("Svelto.Tasks task OnFail callback threw an exception "
-                                                                    .FastConcat(ToString())
+                                           .Console.LogException("Svelto.Tasks task OnFail callback threw an exception: "
+                                                                    .FastConcat(base.ToString())
                                                                      , onFailException);
                                     }
                                 }
@@ -344,7 +351,7 @@ namespace Svelto.Tasks.Internal
                                 {
                                     Utilities
                                        .Console.LogException("a Svelto.Tasks task threw an exception:  "
-                                                                .FastConcat(ToString()), e);
+                                                                .FastConcat(base.ToString()), e);
                                 }
                             }
                         }
@@ -431,8 +438,9 @@ namespace Svelto.Tasks.Internal
             _onFail = null;
             _onStop = null;
 
-            ClearInvokes();
             _coroutineWrapper.Clear();
+            
+            ClearInvokes();
         }
 
         /// <summary>
@@ -451,6 +459,7 @@ namespace Svelto.Tasks.Internal
             
             _coroutineWrapper.Clear();
             _continuationWrapper.Reset();
+            
             ClearInvokes();
         }
         
@@ -461,10 +470,6 @@ namespace Svelto.Tasks.Internal
 
         internal PausableTask()
         {
-            TASKS_CREATED++;
-#if !DEBUG || PROFILER             
-            _name = TASKS_CREATED.ToString();
-#endif            
             _coroutineWrapper = new SerialTaskCollection(1);
             _continuationWrapper = new ContinuationWrapper();
 
@@ -590,7 +595,6 @@ namespace Svelto.Tasks.Internal
 #if DEBUG && !PROFILER        
         string                        _callStartFirstError;
 #endif
-        static int TASKS_CREATED;
         
     }
 }

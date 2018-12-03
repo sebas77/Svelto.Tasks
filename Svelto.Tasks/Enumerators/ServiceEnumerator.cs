@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Svelto.Tasks.Chain;
 
-namespace Svelto.Tasks.Services.Enumerators
+namespace Svelto.Tasks.Enumerators
 {
     /// <summary>
     /// Transform an ITask to IEnumerator to be usable with the TaskRunner
