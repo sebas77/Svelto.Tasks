@@ -2,7 +2,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace Svelto.Tasks.Unity
+namespace Svelto.Tasks.Enumerators
 {
     public class YieldInstructionEnumerator : IEnumerator
     {

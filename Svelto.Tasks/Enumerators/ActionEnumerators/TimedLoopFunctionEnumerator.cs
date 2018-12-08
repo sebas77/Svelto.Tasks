@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Enumerators
 {
     /// <summary>
     /// Yield a function that takes as parameter the time passed since the last yield

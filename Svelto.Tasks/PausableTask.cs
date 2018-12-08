@@ -128,9 +128,6 @@ namespace Svelto.Tasks.Internal
             if (_taskEnumerator != taskEnumerator)
                 _threadSafeStates.taskEnumeratorJustSet = true;
             _taskEnumerator = taskEnumerator;
-#if DEBUG && !PROFILER
-            _compilerGenerated = taskEnumerator.GetType().IsCompilerGenerated();
-#endif
             return this;
         }
 
@@ -285,7 +282,7 @@ namespace Svelto.Tasks.Internal
                     else
                     {
 #if DEBUG && !PROFILER
-                        DBC.Tasks.Check.Assert(_started == true, _callStartFirstError);
+                        DBC.Tasks.Check.Assert(_threadSafeStates.started == true, _callStartFirstError);
 #endif
                         try
                         {
@@ -390,9 +387,6 @@ namespace Svelto.Tasks.Internal
             //todo: avoid to allocate here, otherwise defeats the purposes of the pooling
             _continuationWrapper = new ContinuationWrapper();
 
-#if DEBUG && !PROFILER
-            _compilerGenerated = false;
-#endif
 #if GENERATE_NAME
             _name = string.Empty;
 #endif
@@ -497,7 +491,7 @@ namespace Svelto.Tasks.Internal
             if (_taskEnumerator != null && _threadSafeStates.taskEnumeratorJustSet == false)
             {
 #if DEBUG && !PROFILER
-                DBC.Tasks.Check.Assert(_compilerGenerated == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead ".FastConcat(_name));
+                DBC.Tasks.Check.Assert(_taskEnumerator.GetType().IsCompilerGenerated() == false, "Cannot restart an IEnumerator without a valid Reset function, use SetEnumeratorProvider instead ".FastConcat(_name));
 #endif
                 task.Reset();
             }

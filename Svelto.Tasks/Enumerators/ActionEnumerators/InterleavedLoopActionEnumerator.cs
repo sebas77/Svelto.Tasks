@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Enumerators
 {
     /// <summary>
     /// yield an action every interval
