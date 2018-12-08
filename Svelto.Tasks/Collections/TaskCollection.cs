@@ -91,9 +91,18 @@ namespace Svelto.Tasks
         /// <summary>
         /// Restore the list of stacks to their original state
         /// </summary>
-        void IEnumerator.Reset()
+        public void Reset()
         {
-            Reset();
+            var count = _listOfStacks.Count;
+            for (int index = 0; index < count; ++index)
+            {
+                var stack = _listOfStacks[index];
+                while (stack.count > 1) stack.Pop();
+                int stackIndex;
+                stack.Peek(out stackIndex)[stackIndex].Reset();
+            }
+
+            _currentStackIndex = 0;
         }
 
         T CurrentStack
@@ -118,22 +127,14 @@ namespace Svelto.Tasks
 
         public void Clear()
         {
-            _listOfStacks.Clear();
-         
-            _currentStackIndex = 0;
-        }
-
-        public void Reset()
-        {
+            var buffer = _listOfStacks.ToArrayFast();
             var count = _listOfStacks.Count;
+            
             for (int index = 0; index < count; ++index)
-            {
-                var stack = _listOfStacks[index];
-                while (stack.count > 1) stack.Pop();
-                int stackIndex;
-                stack.Peek(out stackIndex)[stackIndex].Reset();
-            }
-
+                buffer[index].Clear();
+            
+            _listOfStacks.FastClear();
+         
             _currentStackIndex = 0;
         }
 

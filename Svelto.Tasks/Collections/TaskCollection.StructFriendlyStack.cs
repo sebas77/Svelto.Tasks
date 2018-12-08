@@ -56,6 +56,8 @@ namespace Svelto.Tasks
 
             public void Clear()
             {
+                Array.Clear(_stack, 0, _stack.Length);
+                
                 _nextFreeStackIndex = 0;
             }
         }

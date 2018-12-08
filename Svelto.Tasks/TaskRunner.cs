@@ -26,17 +26,17 @@ namespace Svelto.Tasks
         /// </returns>
         public ITaskRoutine AllocateNewTaskRoutine()
         {
-            return new PausableTask().SetScheduler(_runner);
+            return new TaskRoutine().SetScheduler(_runner);
         }
 
         public void PauseAllTasks()
         {
-            _runner.paused = true;
+            _runner.isPaused = true;
         }
 
         public void ResumeAllTasks()
         {
-            _runner.paused = false;
+            _runner.isPaused = false;
         }
 
         public ContinuationWrapper Run(IEnumerator task)
@@ -52,7 +52,7 @@ namespace Svelto.Tasks
         /// <returns></returns>
         public ContinuationWrapper RunOnScheduler(IRunner runner, IEnumerator task)
         {
-            return _taskPool.RetrieveTaskFromPool().SetScheduler(runner).SetEnumerator(task).Start();
+            return _taskPool.RetrieveTaskFromPool().Start(runner, task);
         }
 
         public static void StopAndCleanupAllDefaultSchedulers()

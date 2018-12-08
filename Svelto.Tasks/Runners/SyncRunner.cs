@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace Svelto.Tasks
 {
     
@@ -5,9 +7,9 @@ namespace Svelto.Tasks
     /// Be sure you know what you are doing when you are using the Sync runner, it will stall the current thread!
     /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead. 
     /// </summary>
-    public class SyncRunner : IRunner
+    public class SyncRunner : IRunner, IEnumerator
     {
-        public bool paused { set; get; }
+        public bool isPaused { get; set; }
         public bool isStopping { private set; get; }
         public bool isKilled { get { return false; } }
 
@@ -18,7 +20,8 @@ namespace Svelto.Tasks
 
         public void StartCoroutine(IPausableTask task)
         {
-            task.Complete(_timeout);
+            _syncTask = task;
+            this.Complete(_timeout);
         }
 
         /// <summary>
@@ -30,10 +33,23 @@ namespace Svelto.Tasks
 
         public void Dispose()
         {}
+        
+        public bool MoveNext()
+        {
+            return _syncTask.MoveNext();
+        }
+
+        public void Reset()
+        {
+            throw new System.NotImplementedException();
+        }
 
         public int numberOfRunningTasks { get { return 0; } }
         public int numberOfQueuedTasks { get { return 0; } }
 
         int _timeout;
+        IPausableTask _syncTask;
+
+        public object Current { get; }
     }
 }

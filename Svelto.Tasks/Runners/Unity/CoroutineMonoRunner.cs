@@ -27,26 +27,25 @@ namespace Svelto.Tasks.Unity
                 (_newTaskRoutines, _coroutines, _flushingOperation, info);
             
             _runnerBehaviour.StartCoroutine(_processEnumerator);
-
         }
         
         public override void StartCoroutine(IPausableTask task)
         {
-            paused = false;
+            isPaused = false;
 
             _newTaskRoutines.Enqueue(task);
             _flushingOperation.immediate = true;
             _processEnumerator.MoveNext();
             _flushingOperation.immediate = false;
         }
-
-        readonly UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo> _processEnumerator;
-        readonly MonoBehaviour _runnerBehaviour;
-
+        
         public void StartYieldInstruction(IEnumerator instruction)
         {
             _runnerBehaviour.StartCoroutine(instruction);
         }
+
+        readonly UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo> _processEnumerator;
+        readonly MonoBehaviour _runnerBehaviour;
     }
 }
 #endif

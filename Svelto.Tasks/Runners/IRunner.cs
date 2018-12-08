@@ -4,7 +4,7 @@ namespace Svelto.Tasks
 {
     public interface IRunner: IDisposable
     {
-        bool    paused { get; set; }
+        bool    isPaused { get; set; }
         bool    isStopping { get; }
         bool    isKilled { get; }
 

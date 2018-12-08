@@ -8,8 +8,10 @@ namespace Svelto.Tasks.Unity.Internal
     {
         public void Update()
         {
+#if DO_IT_PROPERLY_WHEN_I_MERGE_GAME_OBJECTS            
             if (_earlyMainRoutine != null)
                 _earlyMainRoutine.MoveNext();
+#endif    
             if (_mainRoutine != null)
                 _mainRoutine.MoveNext();
         }
@@ -18,13 +20,14 @@ namespace Svelto.Tasks.Unity.Internal
         {
             _mainRoutine = enumerator;
         }
-        
+#if DO_IT_PROPERLY_WHEN_I_MERGE_GAME_OBJECTS        
         public void StartEarlyUpdateCoroutine(IEnumerator enumerator)
         {
             _earlyMainRoutine = enumerator;
         }
 
         IEnumerator _earlyMainRoutine;
+#endif    
         IEnumerator _mainRoutine;
     }
 }

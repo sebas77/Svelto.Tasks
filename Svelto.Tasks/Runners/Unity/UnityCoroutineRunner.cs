@@ -48,45 +48,50 @@ namespace Svelto.Tasks.Unity.Internal
                 using (var _platformProfiler = new Svelto.Common.PlatformProfiler(_info.runnerName))
 #endif
                 {
-                    if (_newTaskRoutines.Count > 0 
-                     && false == _flushingOperation.stopped) //don't start anything while flushing
+                    //don't start anything while flushing
+                    if (_newTaskRoutines.Count > 0 && false == _flushingOperation.stopped) 
                         _newTaskRoutines.DequeueAllInto(_coroutines); 
                     
-                    if (_coroutines.Count == 0) return true;
+                    if (_coroutines.Count == 0 || _flushingOperation.paused == true) return true;
+
+                    var coroutines = _coroutines.ToArrayFast();
                     
                     _info.Reset();
                     
                     int index = _flushingOperation.immediate == true ? _coroutines.Count - 1 : 0;
 
-                    while (true)
+                    bool mustExit;
+                    do
                     {
                         if (_info.CanProcessThis(ref index) == false) break;
-                        
-                        var pausableTask = _coroutines[index];
-                        
+
                         bool result;
                         
-#if ENABLE_PLATFORM_PROFILER                        
-                        using (_platformProfiler.Sample(_coroutines[index].ToString()))
+                        if (_flushingOperation.stopped) coroutines[index].Stop();
+
+#if ENABLE_PLATFORM_PROFILER
+                        using (_platformProfiler.Sample(coroutines[index].ToString()))
 #endif
                         {
 #if TASKS_PROFILER_ENABLED
                             result =
- Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(pausableTask, _info.runnerName);
+ Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(coroutines[index], _info.runnerName);
 #else
-                            result = pausableTask.MoveNext();
+                            result = coroutines[index].MoveNext();
 #endif
                         }
                         
+                        var current = coroutines[index].Current;
+
                         if (result == false)
                             _coroutines.UnorderedRemoveAt(index);
                         else
                             index++;
-
-                        if (_coroutines.Count == 0 ||
-                            _info.CanMoveNext(ref index, pausableTask.Current) == false || index >= _coroutines.Count) 
-                            break;
-                    }
+                        
+                        mustExit = (_coroutines.Count == 0 ||
+                             _info.CanMoveNext(ref index, current) == false || index >= _coroutines.Count);
+                    } 
+                    while (!mustExit);
                 }
 
                 if (_flushingOperation.stopped == true && _coroutines.Count == 0)
@@ -129,6 +134,7 @@ namespace Svelto.Tasks.Unity.Internal
 
         public class FlushingOperation
         {
+            public bool paused;
             public bool stopped;
             public bool immediate;
         }

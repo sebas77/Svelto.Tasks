@@ -7,10 +7,10 @@ using Svelto.Tasks.Unity.Internal;
 namespace Svelto.Tasks.Unity
 {
     /// <summary>
-    //TimeSlicedMonoRunner ensures that the tasks running run up to the maxMilliseconds time.
-    //If a task takes less than it, the next one will be executed and so on until maxMilliseconds is reached.
-    //TimeSlicedMonoRunner can work with one task only too, this means that it would force the task to run up
-    //to maxMilliseconds per frame, unless this returns Break.AndResumeIteration.
+    ///TimeSlicedMonoRunner ensures that the tasks running run up to the maxMilliseconds time.
+    ///If a task takes less than it, the next one will be executed and so on until maxMilliseconds is reached.
+    ///TimeSlicedMonoRunner can work with one task only too, this means that it would force the task to run up
+    ///to maxMilliseconds per frame, unless this returns Break.AndResumeIteration.
     /// </summary>
     public class TimeSlicedMonoRunner : MonoRunner
     {
