@@ -142,8 +142,8 @@ namespace Svelto.Tasks
         {
             _currentStackIndex = currentindex;
             int enumeratorIndex;
-            var listBuffer = _listOfStacks.ToArrayFast();
-            var stack = listBuffer[_currentStackIndex].Peek(out enumeratorIndex);
+            var listOfStacks = _listOfStacks.ToArrayFast();
+            var stack = listOfStacks[_currentStackIndex].Peek(out enumeratorIndex);
 
             ProcessTask(ref stack[enumeratorIndex]);
                 
@@ -182,24 +182,24 @@ namespace Svelto.Tasks
             if (returnObject is ITaskRoutine)
                 throw new ArgumentException("Returned a TaskRoutine without calling Start first " + ToString());
 #endif            
-            //can be a compatible IEnumerator  
-            if (returnObject is T)
-                listBuffer[_currentStackIndex].Push((T)returnObject); //push the new yielded task and execute it immediately
+              
+            if (returnObject is T) //can be a compatible IEnumerator
+            //careful it must be the array and not the list as it returns a struct!!
+                listOfStacks[_currentStackIndex].Push((T)returnObject); //push the new yielded task and execute it immediately
             
             return TaskState.continueIt;
         }
         
         protected int taskCount { get { return _listOfStacks.Count(); }}
         protected StructFriendlyStack[] rawListOfStacks { get { return _listOfStacks.ToArrayFast(); } }
-        
 
         protected abstract void ProcessTask(ref T Task);
         protected abstract bool RunTasksAndCheckIfDone();
         
-        CollectionTask _currentTask;
-        int _currentStackIndex;
+        CollectionTask                           _currentTask;
+        int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
-        T _current;
+        T                                        _current;
 
         const int _INITIAL_STACK_SIZE = 1;
         

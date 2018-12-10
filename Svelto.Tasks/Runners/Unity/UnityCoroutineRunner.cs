@@ -11,9 +11,8 @@ namespace Svelto.Tasks.Unity.Internal
         public static void StopRoutines(FlushingOperation
             flushingOperation)
         {
-            //note: _coroutines will be cleaned by the single tasks stopping silently.
-            //in this way they will be put back to the pool.
-            //let's be sure that the runner had the time to stop and recycle the previous tasks
+            //note: _coroutines will be cleaned by the single tasks stopping silently. in this way they will be put
+            //back to the pool. Let's be sure that the runner had the time to stop and recycle the previous tasks
             flushingOperation.stopped = true;
         }
 
@@ -54,8 +53,6 @@ namespace Svelto.Tasks.Unity.Internal
                     
                     if (_coroutines.Count == 0 || _flushingOperation.paused == true) return true;
 
-                    var coroutines = _coroutines.ToArrayFast();
-                    
                     _info.Reset();
                     
                     int index = _flushingOperation.immediate == true ? _coroutines.Count - 1 : 0;
@@ -64,6 +61,8 @@ namespace Svelto.Tasks.Unity.Internal
                     do
                     {
                         if (_info.CanProcessThis(ref index) == false) break;
+                        
+                        var coroutines = _coroutines.ToArrayFast();
 
                         bool result;
                         

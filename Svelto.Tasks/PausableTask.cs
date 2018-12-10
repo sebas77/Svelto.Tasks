@@ -36,24 +36,14 @@ namespace Svelto.Tasks
         public bool MoveNext()
         {
             ThreadUtility.MemoryBarrier();
-            var result = _completed;
-            if (_condition != null)
-                result |= _condition();
-
-            if (result == true)
+            if (_completed == true)
             {
-                _condition = null;
                 _completed = false;
                 ThreadUtility.MemoryBarrier();
                 return false;
             }
 
             return true;
-        }
-
-        public void BreakOnCondition(Func<bool> func)
-        {
-            _condition = func;
         }
 
         internal void Completed()
@@ -79,7 +69,6 @@ namespace Svelto.Tasks
         }
 
         volatile bool _completed;
-        Func<bool>    _condition;
     }
 }
 
@@ -364,9 +353,8 @@ namespace Svelto.Tasks.Internal
         ContinuationWrapper           _previousContinuationWrapper;
         IEnumerator                   _pendingTask;
         Func<IEnumerator>             _taskGenerator;
-        
-        internal IEnumerator _taskEnumerator;
-        internal IRunner     _runner;
+        IEnumerator                   _taskEnumerator;
+        IRunner                       _runner;
     }
 
     sealed class SveltoTask 
@@ -456,11 +444,12 @@ namespace Svelto.Tasks.Internal
                     }
                     else
                     {
-#if DEBUG && !PROFILER
-                        DBC.Tasks.Check.Assert(_threadSafeStates.started == true, _callStartFirstError);
-#endif
                         try
                         {
+#if DEBUG && !PROFILER
+                            DBC.Tasks.Check.Assert(_threadSafeStates.started == true, _callStartFirstError);
+#endif
+                            
                             completed = !_stackingTask.MoveNext();
 
                             var current = _stackingTask.Current;
@@ -550,13 +539,12 @@ namespace Svelto.Tasks.Internal
         
         internal ContinuationWrapper         _continuationWrapper;
         internal State                       _threadSafeStates;
-        internal TaskCollection<IEnumerator> _stackingTask;
-
         internal readonly SerialTaskCollection<IEnumerator> _coroutineWrapper;
-
+        
+        TaskCollection<IEnumerator> _stackingTask;
 
 #if GENERATE_NAME
-        internal string                        _name = String.Empty;
+        internal string                _name = String.Empty;
 #endif
 #if DEBUG && !PROFILER
         string                        _callStartFirstError;
