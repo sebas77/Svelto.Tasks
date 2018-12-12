@@ -141,9 +141,9 @@ namespace Svelto.Tasks
                 _mevent              = new ManualResetEventEx();
                 _watch               = new Stopwatch();
                 _coroutines          = new FasterList<IPausableTask>();
-                newTaskRoutines     = new ThreadSafeQueue<IPausableTask>();
+                newTaskRoutines      = new ThreadSafeQueue<IPausableTask>();
                 _interval            = (long) (interval * 10000);
-                this.name                = name;
+                this.name            = name;
                 _isRunningTightTasks = isRunningTightTasks;
 
                 if (relaxed)
@@ -233,7 +233,7 @@ namespace Svelto.Tasks
             internal void RunCoroutineFiber()
             {
 #if ENABLE_PLATFORM_PROFILER                          
-                using (var platformProfiler = new Svelto.Common.PlatformProfilerMT(_name))
+                using (var platformProfiler = new Svelto.Common.PlatformProfilerMT(name))
 #endif    
                 {
                     while (_breakThread == false)
