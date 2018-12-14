@@ -1,8 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using Svelto.Tasks.Unity;
-using UnityEngine;
-
 #endif
 
 namespace Svelto.Tasks
@@ -15,6 +13,7 @@ namespace Svelto.Tasks
         static PhysicMonoRunner _physicScheduler;
         static LateMonoRunner _lateScheduler;
         static UpdateMonoRunner _updateScheduler;
+        static EarlyUpdateMonoRunner _earlyScheduler;
 #endif
 
         public static IRunner multiThreadScheduler { get { if (_multiThreadScheduler == null) _multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", false);
@@ -30,6 +29,9 @@ namespace Svelto.Tasks
         } }
         public static IRunner lateScheduler { get { if (_lateScheduler == null) _lateScheduler = new LateMonoRunner("StandardLateRunner", true);
             return _lateScheduler;
+        } }
+        public static IRunner earlyScheduler { get { if (_earlyScheduler == null) _earlyScheduler = new EarlyUpdateMonoRunner((UpdateMonoRunner) updateScheduler, "EarlyUpdateMonoRunner");
+            return _earlyScheduler;
         } }
         public static IRunner updateScheduler { get { if (_updateScheduler == null) _updateScheduler = new UpdateMonoRunner("StandardMonoRunner", true);
             return _updateScheduler;
@@ -63,6 +65,7 @@ namespace Svelto.Tasks
             _physicScheduler = null;
             _lateScheduler = null;
             _updateScheduler = null;
+            _earlyScheduler = null;
 #endif
         }
     }

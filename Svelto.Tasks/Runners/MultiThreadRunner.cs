@@ -141,9 +141,9 @@ namespace Svelto.Tasks
                 _mevent              = new ManualResetEventEx();
                 _watch               = new Stopwatch();
                 _coroutines          = new FasterList<IPausableTask>();
-                newTaskRoutines      = new ThreadSafeQueue<IPausableTask>();
+                newTaskRoutines     = new ThreadSafeQueue<IPausableTask>();
                 _interval            = (long) (interval * 10000);
-                this.name            = name;
+                this.name                = name;
                 _isRunningTightTasks = isRunningTightTasks;
 
                 if (relaxed)

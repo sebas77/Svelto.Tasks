@@ -1,10 +1,9 @@
-#if MUST_BE_REWRITTEN
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class EarlyUpdateMonoRunner : MonoRunner
+    class EarlyUpdateMonoRunner : MonoRunner
     {
         public EarlyUpdateMonoRunner(UpdateMonoRunner updateRunner, string name):base(name)
         {
@@ -19,5 +18,4 @@ namespace Svelto.Tasks.Unity
         }
     }
 }
-#endif
 #endif
