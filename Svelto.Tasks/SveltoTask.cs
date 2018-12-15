@@ -110,7 +110,7 @@ namespace Svelto.Tasks.Internal
         internal void CleanUpOnRecycle()
         {
 #if GENERATE_NAME
-            _pausableTask._name = string.Empty;
+            _sveltoTask._name = string.Empty;
 #endif
             _sveltoTask._threadSafeStates = new SveltoTask<IEnumerator>.State();
             _sveltoTask._coroutineWrapper.Clear();
@@ -130,7 +130,7 @@ namespace Svelto.Tasks.Internal
             DBC.Tasks.Check.Require(runner != null, "SetScheduler function has never been called");
             
 #if GENERATE_NAME
-            _pausableTask._name = task.ToString();
+            _sveltoTask._name = task.ToString();
 #endif
             _sveltoTask._threadSafeStates.paused = true;
             _sveltoTask._continuationWrapper.Reset();
@@ -148,7 +148,7 @@ namespace Svelto.Tasks.Internal
 #if !GENERATE_NAME            
              return "PooledTask";
 #else
-            return _pausableTask._name;
+            return _sveltoTask._name;
 #endif    
         }
 
@@ -267,7 +267,7 @@ namespace Svelto.Tasks.Internal
                 if (_taskGenerator == null && _sveltoTask._threadSafeStates.taskEnumeratorJustSet == false)
                 {
 #if DEBUG && !PROFILER
-                    DBC.Tasks.Check.Assert(newTask.GetType().IsCompilerGenerated() == false, "Cannot restart a compiler generated iterator block, use SetEnumeratorProvider instead ".FastConcat(_pausableTask._name));
+                    DBC.Tasks.Check.Assert(newTask.GetType().IsCompilerGenerated() == false, "Cannot restart a compiler generated iterator block, use SetEnumeratorProvider instead ".FastConcat(_sveltoTask._name));
 #endif
                     newTask.Reset();
                 }
@@ -317,22 +317,22 @@ namespace Svelto.Tasks.Internal
         public override string ToString()
         {
 #if GENERATE_NAME
-            if (_pausableTask._name == string.Empty)
+            if (_sveltoTask._name == string.Empty)
             {
                 if (_taskGenerator == null && _taskEnumerator == null)
-                    _pausableTask._name = base.ToString();
+                    _sveltoTask._name = base.ToString();
                 else
                 if (_taskEnumerator != null)
-                    _pausableTask._name = _taskEnumerator.ToString();
+                    _sveltoTask._name = _taskEnumerator.ToString();
                 else
                 {
                     var methodInfo = _taskGenerator.GetMethodInfoEx();
                     
-                    _pausableTask._name = methodInfo.GetDeclaringType().ToString().FastConcat(".", methodInfo.Name);
+                    _sveltoTask._name = methodInfo.GetDeclaringType().ToString().FastConcat(".", methodInfo.Name);
                 }
             }
     
-            return _pausableTask._name;
+            return _sveltoTask._name;
 #endif
             return "TaskRoutine";
         }
