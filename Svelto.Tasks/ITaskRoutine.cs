@@ -27,7 +27,7 @@ namespace Svelto.Tasks
         void SetEnumeratorProvider(Func<T> taskGenerator);
         void SetEnumerator(T taskGenerator);
     
-        ContinuationWrapper Start(Action<PausableTaskException> onFail = null, Action onStop = null);
+        ContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null);
      
         void Pause();
         void Resume();

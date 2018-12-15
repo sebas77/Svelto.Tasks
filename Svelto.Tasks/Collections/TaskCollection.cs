@@ -161,13 +161,7 @@ namespace Svelto.Tasks
             var returnObject = _currentTask.current = stack[enumeratorIndex].Current;
 
             if (isDone == true)
-            {
-                var disposable = stack[enumeratorIndex] as IDisposable;
-                if (disposable != null)
-                    disposable.Dispose();
-                
                 return TaskState.doneIt;
-            }
 
             //can be a Svelto.Tasks Break
             if (returnObject == Break.It || returnObject == Break.AndStop)

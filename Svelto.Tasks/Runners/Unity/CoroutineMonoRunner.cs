@@ -13,23 +13,25 @@ namespace Svelto.Tasks.Unity
     /// You should use YieldInstructions only when extremely necessary as often an Svelto.Tasks IEnumerator
     /// replacement is available.
     /// </summary>
-    public class CoroutineMonoRunner : MonoRunner
+    public class CoroutineMonoRunner : CoroutineMonoRunner<IEnumerator>
     {
-        public CoroutineMonoRunner(string name, bool mustSurvive = false):base(name)
+        public CoroutineMonoRunner(string name) : base(name)
         {
-            UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
+        }
+    }
+    public class CoroutineMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    {
+        public CoroutineMonoRunner(string name):base(name)
+        {
+            var info = new UnityCoroutineRunner<T>.RunningTasksInfo { runnerName = name };
 
-            _runnerBehaviour = _go.AddComponent<RunnerBehaviour>();
-            
-            var info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
-
-            _processEnumerator = new UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo>
+            _processEnumerator = new UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, info);
             
-            _runnerBehaviour.StartCoroutine(_processEnumerator);
+            UnityCoroutineRunner<T>.StartCoroutine(_processEnumerator);
         }
         
-        public override void StartCoroutine(IPausableTask<IEnumerator> task)
+        public override void StartCoroutine(ISveltoTask<T> task)
         {
             isPaused = false;
 
@@ -41,11 +43,10 @@ namespace Svelto.Tasks.Unity
         
         public void StartYieldInstruction(IEnumerator instruction)
         {
-            _runnerBehaviour.StartCoroutine(instruction);
+            UnityCoroutineRunner<T>.StartCoroutine(instruction);
         }
 
-        readonly UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo> _processEnumerator;
-        readonly MonoBehaviour _runnerBehaviour;
+        readonly UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo> _processEnumerator;
     }
 }
 #endif

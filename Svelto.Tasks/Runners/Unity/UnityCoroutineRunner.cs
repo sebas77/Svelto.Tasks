@@ -6,8 +6,49 @@ using Object = UnityEngine.Object;
 
 namespace Svelto.Tasks.Unity.Internal
 {
-    public static class UnityCoroutineRunner
+    static class UnityCoroutineRunner<T> where T:IEnumerator
     {
+        static RunnerBehaviourUpdate _runnerBehaviour;
+
+        static UnityCoroutineRunner()
+        {
+            GameObject go = new GameObject("Svelto.Tasks.UnityScheduler");
+            _runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
+
+            if (Application.isPlaying)
+                Object.DontDestroyOnLoad(go);
+        }
+        
+        public static void StartUpdateCoroutine(IEnumerator process)
+        {
+            _runnerBehaviour.StartUpdateCoroutine(process);
+        }
+        
+        public static void StartEarlyUpdateCoroutine(IEnumerator process)
+        {
+            _runnerBehaviour.StartEarlyUpdateCoroutine(process);
+        }
+        
+        public static void StartEndOfFrameCoroutine(IEnumerator process)
+        {
+            _runnerBehaviour.StartEndOfFrameCoroutine(process);
+        }
+        
+        public static void StartLateCoroutine(IEnumerator process)
+        {
+            _runnerBehaviour.StartLateCoroutine(process);
+        }
+
+        public static void StartCoroutine(IEnumerator process)
+        {
+            _runnerBehaviour.StartCoroutine(process);
+        }
+
+        public static void StartPhysicCoroutine(IEnumerator process)
+        {
+            _runnerBehaviour.StartPhysicCoroutine(process);
+        }
+        
         public static void StopRoutines(FlushingOperation
             flushingOperation)
         {
@@ -15,23 +56,11 @@ namespace Svelto.Tasks.Unity.Internal
             //back to the pool. Let's be sure that the runner had the time to stop and recycle the previous tasks
             flushingOperation.stopped = true;
         }
-
-        internal static void InitializeGameObject(string name, ref GameObject go, bool mustSurvive)
+        
+        internal class Process<RunningInfo> : IEnumerator where RunningInfo: IRunningTasksInfo<T>
         {
-            var taskRunnerName = "TaskRunner.".FastConcat(name);
-
-            DBC.Tasks.Check.Require(GameObject.Find(taskRunnerName) == null, GAMEOBJECT_ALREADY_EXISTING_ERROR);
-
-            go = new GameObject(taskRunnerName);
-
-            if (mustSurvive && Application.isPlaying)
-                Object.DontDestroyOnLoad(go);
-        }
-
-        internal class Process<RunningInfo> : IEnumerator where RunningInfo: IRunningTasksInfo
-        {
-            public Process( ThreadSafeQueue<IPausableTask<IEnumerator>> newTaskRoutines,
-                            FasterList<IPausableTask<IEnumerator>>      coroutines, 
+            public Process( ThreadSafeQueue<ISveltoTask<T>> newTaskRoutines,
+                            FasterList<ISveltoTask<T>>      coroutines, 
                             FlushingOperation              flushingOperation,
                             RunningInfo                    info)
             {
@@ -43,6 +72,7 @@ namespace Svelto.Tasks.Unity.Internal
 
             public bool MoveNext()
             {
+                if (_flushingOperation.kill) return false;
 #if ENABLE_PLATFORM_PROFILER                
                 using (var _platformProfiler = new Svelto.Common.PlatformProfiler(_info.runnerName))
 #endif
@@ -86,9 +116,10 @@ namespace Svelto.Tasks.Unity.Internal
                             _coroutines.UnorderedRemoveAt(index);
                         else
                             index++;
-                        
-                        mustExit = (_coroutines.Count == 0 ||
-                             _info.CanMoveNext(ref index, current) == false || index >= _coroutines.Count);
+
+                        var coroutinesCount = _coroutines.Count;
+                        mustExit = (coroutinesCount == 0 ||
+                             _info.CanMoveNext(ref index, current) == false || index >= coroutinesCount);
                     } 
                     while (!mustExit);
                 }
@@ -106,16 +137,16 @@ namespace Svelto.Tasks.Unity.Internal
 
             public object Current { get; private set; }
             
-            readonly ThreadSafeQueue<IPausableTask<IEnumerator>> _newTaskRoutines;
-            readonly FasterList<IPausableTask<IEnumerator>>      _coroutines;
+            readonly ThreadSafeQueue<ISveltoTask<T>> _newTaskRoutines;
+            readonly FasterList<ISveltoTask<T>>      _coroutines;
             readonly FlushingOperation              _flushingOperation;
             
             RunningInfo _info;
         }
 
-        public struct RunningTasksInfo:IRunningTasksInfo
+        public struct RunningTasksInfo:IRunningTasksInfo<T>
         {
-            public bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskCollection<T>.CollectionTask currentResult)
             {
                 return true;
             }
@@ -136,17 +167,10 @@ namespace Svelto.Tasks.Unity.Internal
             public bool paused;
             public bool stopped;
             public bool immediate;
+            public bool kill;
         }
 
         const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";
-    }
-
-    public interface IRunningTasksInfo
-    {
-        bool CanMoveNext(ref int nextIndex, TaskCollection<IEnumerator>.CollectionTask currentResult);
-        bool CanProcessThis(ref int index);
-        void Reset();
-        string runnerName { get; }
     }
 }
 #endif

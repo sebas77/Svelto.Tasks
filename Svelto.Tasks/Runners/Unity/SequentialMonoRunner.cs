@@ -9,23 +9,20 @@ namespace Svelto.Tasks.Unity
     //SequentialMonoRunner doesn't execute the next
     //coroutine in the queue until the previous one is completed
     /// </summary>
-    public class SequentialMonoRunner : MonoRunner
+    public class SequentialMonoRunner<T> : MonoRunner<T> where T:IEnumerator
     {
-        public SequentialMonoRunner(string name, bool mustSurvive = false):base(name)
+        public SequentialMonoRunner(string name):base(name)
         {
-            UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
+            var info = new UnityCoroutineRunner<T>.RunningTasksInfo { runnerName = name };
 
-            var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
-            var info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
-
-            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo>
+            UnityCoroutineRunner<T>.StartUpdateCoroutine(new UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo>
             (_newTaskRoutines, _coroutines, _flushingOperation, info));
         }
 
         static void SequentialTasksFlushing(
-            ThreadSafeQueue<IPausableTask<IEnumerator>> newTaskRoutines, 
-            FasterList<IPausableTask<IEnumerator>> coroutines, 
-            UnityCoroutineRunner.FlushingOperation flushingOperation)
+            ThreadSafeQueue<ISveltoTask<IEnumerator>> newTaskRoutines, 
+            FasterList<ISveltoTask<IEnumerator>> coroutines, 
+            UnityCoroutineRunner<T>.FlushingOperation flushingOperation)
         {
             if (newTaskRoutines.Count > 0 && coroutines.Count == 0)
                 newTaskRoutines.DequeueInto(coroutines, 1);

@@ -165,7 +165,7 @@ namespace Svelto.Tasks.Parallelism
         
         public void Dispose()
         {
-            if (_isDisposed == true) return;
+            if (ThreadUtility.VolatileRead(ref _isDisposed) == true) return;
             
             ThreadUtility.VolatileWrite(ref _isDisposed, true);
             _disposingThreads = _runners.Length;
@@ -200,16 +200,16 @@ namespace Svelto.Tasks.Parallelism
             Interlocked.Decrement(ref _counter);
         }
         
-        MultiThreadRunner[]      _runners;
-        ParallelTaskCollection[] _parallelTasks;
-        ITaskRoutine<IEnumerator>[]           _taskRoutines;
+        MultiThreadRunner[]         _runners;
+        ParallelTaskCollection[]    _parallelTasks;
+        ITaskRoutine<IEnumerator>[] _taskRoutines;
         
-        int                           _numberOfTasksAdded;
-        int                           _numberOfConcurrentOperationsToRun;
-        int                           _counter;
-        int                           _disposingThreads;
-        int                           _stoppingThreads;
-        volatile bool                 _isDisposed;
+        int  _numberOfTasksAdded;
+        int  _numberOfConcurrentOperationsToRun;
+        int  _counter;
+        int  _disposingThreads;
+        int  _stoppingThreads;
+        bool _isDisposed;
     }
 
     public class MultiThreadedParallelTaskCollectionException : Exception

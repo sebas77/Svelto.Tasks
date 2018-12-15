@@ -29,7 +29,12 @@ namespace Svelto.Tasks
             return new TaskRoutine<IEnumerator>(StandardSchedulers.standardScheduler);
         }
         
-        public ITaskRoutine<IEnumerator> AllocateNewTaskRoutine(IRunner runner)
+        public ITaskRoutine<T> AllocateNewTaskRoutine<T>(IRunner<T> runner) where T:IEnumerator
+        {
+            return new TaskRoutine<T>(runner);
+        }
+        
+        public ITaskRoutine<IEnumerator> AllocateNewTaskRoutine(IRunner<IEnumerator> runner)
         {
             return new TaskRoutine<IEnumerator>(runner);
         }
@@ -55,7 +60,7 @@ namespace Svelto.Tasks
         /// <param name="runner"></param>
         /// <param name="task"></param>
         /// <returns></returns>
-        public ContinuationWrapper RunOnScheduler(IRunner runner, IEnumerator task)
+        public ContinuationWrapper RunOnScheduler(IRunner<IEnumerator> runner, IEnumerator task) 
         {
             return _taskPool.RetrieveTaskFromPool().Start(runner, task);
         }
@@ -79,7 +84,7 @@ namespace Svelto.Tasks
          static void InitInstance()
          {
             _instance = new TaskRunner();
-            _instance._taskPool = new PausableTaskPool();
+            _instance._taskPool = new SveltoTasksPool();
 
 #if UNITY_EDITOR && TASKS_PROFILER_ENABLED
             var debugTasksObject = UnityEngine.GameObject.Find("Svelto.Tasks.Profiler");
@@ -92,6 +97,6 @@ namespace Svelto.Tasks
 #endif
         }
 
-        PausableTaskPool _taskPool;
+        SveltoTasksPool _taskPool;
      }
 }
