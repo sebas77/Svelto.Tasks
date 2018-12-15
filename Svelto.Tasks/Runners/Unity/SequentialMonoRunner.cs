@@ -1,4 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
 
@@ -22,8 +23,8 @@ namespace Svelto.Tasks.Unity
         }
 
         static void SequentialTasksFlushing(
-            ThreadSafeQueue<IPausableTask> newTaskRoutines, 
-            FasterList<IPausableTask> coroutines, 
+            ThreadSafeQueue<IPausableTask<IEnumerator>> newTaskRoutines, 
+            FasterList<IPausableTask<IEnumerator>> coroutines, 
             UnityCoroutineRunner.FlushingOperation flushingOperation)
         {
             if (newTaskRoutines.Count > 0 && coroutines.Count == 0)

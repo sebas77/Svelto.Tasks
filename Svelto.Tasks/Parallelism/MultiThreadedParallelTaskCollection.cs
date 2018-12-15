@@ -46,7 +46,7 @@ namespace Svelto.Tasks.Parallelism
         void InitializeThreadsAndData(uint numberOfThreads, bool tightTasks)
         {
             _runners       = new MultiThreadRunner[numberOfThreads];
-            _taskRoutines  = new ITaskRoutine[numberOfThreads];
+            _taskRoutines  = new ITaskRoutine<IEnumerator>[numberOfThreads];
             _parallelTasks = new ParallelTaskCollection[numberOfThreads];
 
             //prepare a single multithread runner for each group of fiber like task collections
@@ -65,13 +65,13 @@ namespace Svelto.Tasks.Parallelism
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)
             {
-                var ptask = TaskRunner.Instance.AllocateNewTaskRoutine();
+                var ptask = TaskRunner.Instance.AllocateNewTaskRoutine(_runners[i]);
                 var ptc   = new ParallelTaskCollection();
 
                 ptc.onComplete  += ptcOnOnComplete;
                 ptc.onException += ptcOnOnException;
 
-                ptask.SetEnumerator(ptc).SetScheduler(_runners[i]);
+                ptask.SetEnumerator(ptc);
 
                 _parallelTasks[i] = ptc;
                 _taskRoutines[i]  = ptask;
@@ -202,7 +202,7 @@ namespace Svelto.Tasks.Parallelism
         
         MultiThreadRunner[]      _runners;
         ParallelTaskCollection[] _parallelTasks;
-        ITaskRoutine[]           _taskRoutines;
+        ITaskRoutine<IEnumerator>[]           _taskRoutines;
         
         int                           _numberOfTasksAdded;
         int                           _numberOfConcurrentOperationsToRun;

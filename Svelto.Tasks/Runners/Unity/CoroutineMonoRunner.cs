@@ -29,7 +29,7 @@ namespace Svelto.Tasks.Unity
             _runnerBehaviour.StartCoroutine(_processEnumerator);
         }
         
-        public override void StartCoroutine(IPausableTask task)
+        public override void StartCoroutine(IPausableTask<IEnumerator> task)
         {
             isPaused = false;
 

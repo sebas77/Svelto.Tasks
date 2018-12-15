@@ -30,8 +30,8 @@ namespace Svelto.Tasks.Unity.Internal
 
         internal class Process<RunningInfo> : IEnumerator where RunningInfo: IRunningTasksInfo
         {
-            public Process( ThreadSafeQueue<IPausableTask> newTaskRoutines,
-                            FasterList<IPausableTask>      coroutines, 
+            public Process( ThreadSafeQueue<IPausableTask<IEnumerator>> newTaskRoutines,
+                            FasterList<IPausableTask<IEnumerator>>      coroutines, 
                             FlushingOperation              flushingOperation,
                             RunningInfo                    info)
             {
@@ -106,8 +106,8 @@ namespace Svelto.Tasks.Unity.Internal
 
             public object Current { get; private set; }
             
-            readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines;
-            readonly FasterList<IPausableTask>      _coroutines;
+            readonly ThreadSafeQueue<IPausableTask<IEnumerator>> _newTaskRoutines;
+            readonly FasterList<IPausableTask<IEnumerator>>      _coroutines;
             readonly FlushingOperation              _flushingOperation;
             
             RunningInfo _info;

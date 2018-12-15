@@ -14,7 +14,11 @@ namespace Svelto.Tasks
         static LateMonoRunner _lateScheduler;
         static UpdateMonoRunner _updateScheduler;
         static EarlyUpdateMonoRunner _earlyScheduler;
+        public static readonly IRunner standardScheduler = coroutineScheduler;
+#else   
+        public static readonly IRunner standardScheduler = multiThreadScheduler;
 #endif
+        
 
         public static IRunner multiThreadScheduler { get { if (_multiThreadScheduler == null) _multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", false);
             return _multiThreadScheduler;

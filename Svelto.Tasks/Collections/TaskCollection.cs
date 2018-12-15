@@ -12,6 +12,8 @@ namespace Svelto.Tasks
         event Action                onComplete;
         event Func<Exception, bool> onException;
         
+        T CurrentStack { get; }
+        
         void Add(T enumerator);
         void Clear();
         
@@ -70,6 +72,8 @@ namespace Svelto.Tasks
 
         public void Add(T enumerator)
         {
+            DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
+            
             var buffer = _listOfStacks.ToArrayFast();
             var count = _listOfStacks.Count;
             if (count < buffer.Length && buffer[count].isValid())
@@ -93,6 +97,8 @@ namespace Svelto.Tasks
         /// </summary>
         public void Reset()
         {
+            DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
+            
             var count = _listOfStacks.Count;
             for (int index = 0; index < count; ++index)
             {
@@ -105,7 +111,7 @@ namespace Svelto.Tasks
             _currentStackIndex = 0;
         }
 
-        T CurrentStack
+        public T CurrentStack
         {
             get
             {
@@ -122,11 +128,13 @@ namespace Svelto.Tasks
 
         object IEnumerator.Current
         {
-            get { return Current; }
+            get { return CurrentStack; }
         }
 
         public void Clear()
         {
+            DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
+            
             var buffer = _listOfStacks.ToArrayFast();
             var count = _listOfStacks.Count;
             
@@ -171,7 +179,7 @@ namespace Svelto.Tasks
             
             _currentTask.breakIt = null;
             
-            //can be a frame yield
+            //can yield for one iteration
             if (returnObject == null) 
                 return TaskState.yieldIt;
 

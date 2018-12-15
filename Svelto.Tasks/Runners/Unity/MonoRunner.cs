@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System;
+using System.Collections;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
 using UnityEngine;
@@ -56,7 +57,7 @@ namespace Svelto.Tasks.Unity
             _newTaskRoutines.Clear();
         }
 
-        public virtual void StartCoroutine(IPausableTask task)
+        public virtual void StartCoroutine(IPausableTask<IEnumerator> task)
         {
             isPaused = false;
 
@@ -72,9 +73,9 @@ namespace Svelto.Tasks.Unity
             GC.SuppressFinalize(this);
         }
         
-        protected readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
-        protected readonly FasterList<IPausableTask> _coroutines =
-            new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
+        protected readonly ThreadSafeQueue<IPausableTask<IEnumerator>> _newTaskRoutines = new ThreadSafeQueue<IPausableTask<IEnumerator>>();
+        protected readonly FasterList<IPausableTask<IEnumerator>> _coroutines =
+            new FasterList<IPausableTask<IEnumerator>>(NUMBER_OF_INITIAL_COROUTINE);
         protected UnityCoroutineRunner.FlushingOperation _flushingOperation =
             new UnityCoroutineRunner.FlushingOperation();
 

@@ -40,7 +40,7 @@ namespace Svelto.Tasks.Unity
         {
             public long maxTicks;
 
-            public TimeSlicedRunningInfo(float maxMilliseconds, FasterList<IPausableTask> coroutines)
+            public TimeSlicedRunningInfo(float maxMilliseconds, FasterList<IPausableTask<IEnumerator>> coroutines)
             {
                 this.maxTicks = (long) (maxMilliseconds * 10000);
                 _coroutines = coroutines;
@@ -79,7 +79,7 @@ namespace Svelto.Tasks.Unity
             public string runnerName { get; set; }
 
             readonly Stopwatch _stopWatch;
-            readonly FasterList<IPausableTask> _coroutines;
+            readonly FasterList<IPausableTask<IEnumerator>> _coroutines;
         }
 
         TimeSlicedRunningInfo _info;

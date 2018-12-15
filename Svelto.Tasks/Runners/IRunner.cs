@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Svelto.Tasks
 {
@@ -8,7 +9,7 @@ namespace Svelto.Tasks
         bool    isStopping { get; }
         bool    isKilled { get; }
 
-        void	StartCoroutine(IPausableTask task);
+        void	StartCoroutine(IPausableTask<IEnumerator> task);
         void 	StopAllCoroutines();
 
         int numberOfRunningTasks { get; }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.DataStructures;
@@ -103,7 +104,7 @@ namespace Svelto.Tasks
 #endif
         }
 
-        public void StartCoroutine(IPausableTask task)
+        public void StartCoroutine(IPausableTask<IEnumerator> task)
         {
             if (_runnerData == null)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
@@ -140,8 +141,8 @@ namespace Svelto.Tasks
             {
                 _mevent              = new ManualResetEventEx();
                 _watch               = new Stopwatch();
-                _coroutines          = new FasterList<IPausableTask>();
-                newTaskRoutines     = new ThreadSafeQueue<IPausableTask>();
+                _coroutines          = new FasterList<IPausableTask<IEnumerator>>();
+                newTaskRoutines     = new ThreadSafeQueue<IPausableTask<IEnumerator>>();
                 _interval            = (long) (interval * 10000);
                 this.name                = name;
                 _isRunningTightTasks = isRunningTightTasks;
@@ -293,7 +294,7 @@ namespace Svelto.Tasks
                 }
             }
 
-            internal readonly ThreadSafeQueue<IPausableTask> newTaskRoutines;
+            internal readonly ThreadSafeQueue<IPausableTask<IEnumerator>> newTaskRoutines;
             internal volatile bool                           waitForFlush;
             internal bool isPaused
             {
@@ -308,7 +309,7 @@ namespace Svelto.Tasks
 
             bool _breakThread;
 
-            readonly FasterList<IPausableTask> _coroutines;
+            readonly FasterList<IPausableTask<IEnumerator>> _coroutines;
             readonly long                      _interval;
             internal string                    name;
             readonly bool                      _isRunningTightTasks;

@@ -18,7 +18,7 @@ namespace Svelto.Tasks
             _timeout = timeout;
         }
 
-        public void StartCoroutine(IPausableTask task)
+        public void StartCoroutine(IPausableTask<IEnumerator> task)
         {
             _syncTask = task;
             this.Complete(_timeout);
@@ -48,7 +48,7 @@ namespace Svelto.Tasks
         public int numberOfQueuedTasks { get { return 0; } }
 
         int _timeout;
-        IPausableTask _syncTask;
+        IPausableTask<IEnumerator> _syncTask;
 
         public object Current { get; }
     }
