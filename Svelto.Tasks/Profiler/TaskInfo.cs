@@ -19,9 +19,9 @@ namespace Svelto.Tasks.Profiler
         public double currentUpdateDuration { get { return _updateFrameTimes.Count == 0 ? 0 : _currentUpdateDuration / _updateFrameTimes.Count; } }
         public double averageUpdateDuration { get { return _averageUpdateDuration / _totaleFrames; } }
 
-        public TaskInfo(IEnumerator task) : this()
+        public TaskInfo(string name) : this()
         {
-            _taskName = " ".FastConcat(task.ToString());
+            _taskName = " ".FastConcat(name);
 
             _updateFrameTimes = new Queue<double>();
 

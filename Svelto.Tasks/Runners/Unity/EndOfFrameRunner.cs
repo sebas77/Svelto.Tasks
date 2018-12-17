@@ -4,6 +4,12 @@ using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
+    public class EndOfFrameRunner : EndOfFrameRunner<IEnumerator>
+    {
+        public EndOfFrameRunner(string name) : base(name)
+        {
+        }
+    }
     public class EndOfFrameRunner<T> : MonoRunner<T> where T:IEnumerator
     {
         public EndOfFrameRunner(string name):base(name)

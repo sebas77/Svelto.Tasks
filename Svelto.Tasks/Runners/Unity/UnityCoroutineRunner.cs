@@ -104,7 +104,7 @@ namespace Svelto.Tasks.Unity.Internal
                         {
 #if TASKS_PROFILER_ENABLED
                             result =
- Svelto.Tasks.Profiler.TaskProfiler.MonitorUpdateDuration(coroutines[index], _info.runnerName);
+                            Profiler.TaskProfiler.MonitorUpdateDuration(coroutines[index], _info.runnerName);
 #else
                             result = coroutines[index].MoveNext();
 #endif

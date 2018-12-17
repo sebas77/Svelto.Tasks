@@ -19,14 +19,14 @@ namespace Svelto.Tasks.Profiler
         internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
             new ThreadSafeDictionary<string, TaskInfo>();
  
-        public static bool MonitorUpdateDuration(IEnumerator tickable, string runnerName)
+        public static bool MonitorUpdateDuration<T>(ISveltoTask<T> sveltoTask, string runnerName) where T : IEnumerator
         {
-            var key = tickable.ToString().FastConcat(runnerName);
+            var key = sveltoTask.ToString().FastConcat(runnerName);
 #if ENABLE_PIX_EVENTS            
             PixWrapper.PIXBeginEventEx(0x11000000, key);
 #endif    
             _stopwatch.Start();
-            var result = tickable.MoveNext();
+            var result = sveltoTask.MoveNext();
             _stopwatch.Stop();
 #if ENABLE_PIX_EVENTS            
             PixWrapper.PIXEndEventEx();
@@ -37,7 +37,7 @@ namespace Svelto.Tasks.Profiler
                 
                 if (taskInfos.TryGetValue(key, out info) == false)
                 {
-                    info = new TaskInfo(tickable);
+                    info = new TaskInfo(sveltoTask.ToString());
                     info.AddThreadInfo(runnerName.FastConcat(": "));
                     taskInfos.Add(key, ref info);
                 }

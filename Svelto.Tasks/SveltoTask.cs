@@ -222,16 +222,6 @@ namespace Svelto.Tasks.Internal
             _taskEnumerator = taskEnumerator;
         }
         
-        bool isTaskEnumeratorValid
-        {
-            get { 
-                if (IS_TASK_STRUCT == false)
-                    return _taskEnumerator != null;
-                
-                return true;
-            }
-        }
-
         public ContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null)
         {
             DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null,
