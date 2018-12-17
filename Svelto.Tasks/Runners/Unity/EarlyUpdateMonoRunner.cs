@@ -1,23 +1,24 @@
-#if MUST_BE_REWRITTEN
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class EarlyUpdateMonoRunner : MonoRunner
+    class EarlyUpdateMonoRunner : EarlyUpdateMonoRunner<IEnumerator>
     {
-        public EarlyUpdateMonoRunner(UpdateMonoRunner updateRunner, string name):base(name)
+        public EarlyUpdateMonoRunner(string name) : base(name)
         {
-            _go = updateRunner._go;
+        }
+    }
+    class EarlyUpdateMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    {
+        public EarlyUpdateMonoRunner(string name):base(name)
+        {
+            var info = new UnityCoroutineRunner<T>.RunningTasksInfo() { runnerName = name };
 
-            var runnerBehaviour = _go.GetComponent<RunnerBehaviourUpdate>();
-
-            var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
-
-            runnerBehaviour.StartEarlyUpdateCoroutine(new UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo>
+            UnityCoroutineRunner<T>.StartEarlyUpdateCoroutine(new UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, info));
         }
     }
 }
-#endif
 #endif

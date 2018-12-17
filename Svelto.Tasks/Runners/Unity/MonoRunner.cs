@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System;
+using System.Collections;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
 using UnityEngine;
@@ -15,7 +16,7 @@ namespace Svelto.Tasks.Unity
     /// don't hold a reference, they will be garbage collected even if tasks are still running
     /// </summary>
 
-    public abstract class MonoRunner : IRunner
+    public abstract class MonoRunner<T> : IRunner<T> where T:IEnumerator
     {
         public bool isPaused
         {
@@ -24,12 +25,10 @@ namespace Svelto.Tasks.Unity
         }
 
         public bool isStopping { get { return _flushingOperation.stopped; } }
-        public bool isKilled { get {return _go == null;} }
+        public bool isKilled { get {return _flushingOperation.kill;} }
         public int  numberOfRunningTasks { get { return _coroutines.Count; } }
         public int numberOfQueuedTasks { get { return _newTaskRoutines.Count; } }
         
-        public GameObject _go;
-
         protected MonoRunner(string name)
         {
             _name = name;
@@ -51,12 +50,12 @@ namespace Svelto.Tasks.Unity
         {
             isPaused = false;
 
-            UnityCoroutineRunner.StopRoutines(_flushingOperation);
+            UnityCoroutineRunner<T>.StopRoutines(_flushingOperation);
 
             _newTaskRoutines.Clear();
         }
 
-        public virtual void StartCoroutine(IPausableTask task)
+        public virtual void StartCoroutine(ISveltoTask<T> task)
         {
             isPaused = false;
 
@@ -66,17 +65,17 @@ namespace Svelto.Tasks.Unity
         public virtual void Dispose()
         {
             StopAllCoroutines();
+
+            _flushingOperation.kill = true;
             
-            GameObject.DestroyImmediate(_go);
-            _go = null;
             GC.SuppressFinalize(this);
         }
         
-        protected readonly ThreadSafeQueue<IPausableTask> _newTaskRoutines = new ThreadSafeQueue<IPausableTask>();
-        protected readonly FasterList<IPausableTask> _coroutines =
-            new FasterList<IPausableTask>(NUMBER_OF_INITIAL_COROUTINE);
-        protected UnityCoroutineRunner.FlushingOperation _flushingOperation =
-            new UnityCoroutineRunner.FlushingOperation();
+        protected readonly ThreadSafeQueue<ISveltoTask<T>> _newTaskRoutines = new ThreadSafeQueue<ISveltoTask<T>>();
+        protected readonly FasterList<ISveltoTask<T>> _coroutines =
+            new FasterList<ISveltoTask<T>>(NUMBER_OF_INITIAL_COROUTINE);
+        internal UnityCoroutineRunner<T>.FlushingOperation _flushingOperation =
+            new UnityCoroutineRunner<T>.FlushingOperation();
 
         readonly string _name;
 

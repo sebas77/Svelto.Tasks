@@ -1,18 +1,16 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class EndOfFrameRunner : MonoRunner
+    public class EndOfFrameRunner<T> : MonoRunner<T> where T:IEnumerator
     {
-        public EndOfFrameRunner(string name, bool mustSurvive = false):base(name)
+        public EndOfFrameRunner(string name):base(name)
         {
-            UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
+            var info = new UnityCoroutineRunner<T>.RunningTasksInfo() { runnerName = name };
 
-            var runnerBehaviour = _go.AddComponent<RunnerBehaviourEndOfFrame>();
-            var info = new UnityCoroutineRunner.RunningTasksInfo() { runnerName = name };
-
-            runnerBehaviour.StartEndOfFrameCoroutine(new UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo>
+            UnityCoroutineRunner<T>.StartEndOfFrameCoroutine(new UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, info));
         }
 

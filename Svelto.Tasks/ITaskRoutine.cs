@@ -22,13 +22,12 @@ using System.Collections;
 
 namespace Svelto.Tasks
 {
-    public interface ITaskRoutine
+    public interface ITaskRoutine<T> where T:IEnumerator
     {
-        ITaskRoutine SetEnumeratorProvider(Func<IEnumerator> taskGenerator);
-        ITaskRoutine SetEnumerator(IEnumerator taskGenerator);
-        ITaskRoutine SetScheduler(IRunner runner);
-
-        ContinuationWrapper Start(Action<PausableTaskException> onFail = null, Action onStop = null);
+        void SetEnumeratorProvider(Func<T> taskGenerator);
+        void SetEnumerator(T taskGenerator);
+    
+        ContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null);
      
         void Pause();
         void Resume();

@@ -7,7 +7,13 @@ namespace Svelto.Tasks
     /// Be sure you know what you are doing when you are using the Sync runner, it will stall the current thread!
     /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead. 
     /// </summary>
-    public class SyncRunner : IRunner, IEnumerator
+    public class SyncRunner : SyncRunner<IEnumerator>
+    {
+        public SyncRunner(int timeout = 1000) : base(timeout)
+        {
+        }
+    }
+    public class SyncRunner<T> : IRunner<T>, IEnumerator where T:IEnumerator
     {
         public bool isPaused { get; set; }
         public bool isStopping { private set; get; }
@@ -18,9 +24,10 @@ namespace Svelto.Tasks
             _timeout = timeout;
         }
 
-        public void StartCoroutine(IPausableTask task)
+        public void StartCoroutine(ISveltoTask<T> task)
         {
             _syncTask = task;
+            
             this.Complete(_timeout);
         }
 
@@ -48,7 +55,7 @@ namespace Svelto.Tasks
         public int numberOfQueuedTasks { get { return 0; } }
 
         int _timeout;
-        IPausableTask _syncTask;
+        ISveltoTask<T> _syncTask;
 
         public object Current { get; }
     }

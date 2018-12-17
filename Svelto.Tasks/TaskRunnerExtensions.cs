@@ -11,7 +11,7 @@ public static class TaskRunnerExtensions
     /// <param name="runner"></param>
     /// <param name="task"></param>
     /// <returns></returns>
-    public static ContinuationWrapper RunOnScheduler(this IEnumerator enumerator, IRunner runner)
+    public static ContinuationWrapper RunOnScheduler(this IEnumerator enumerator, IRunner<IEnumerator> runner)
     {
         return TaskRunner.Instance.RunOnScheduler(runner, enumerator);
     }
@@ -27,19 +27,18 @@ public static class TaskRunnerExtensions
 
         if (_timeout > 0)
         {
-            DateTime then  = DateTime.Now.AddMilliseconds(_timeout);
-            bool     valid = true;
+            var then  = DateTime.Now.AddMilliseconds(_timeout);
+            var valid = true;
 
-            while (enumerator.MoveNext() && (valid = (DateTime.Now < then)))
-                ThreadUtility.Wait(ref quickIterations);
+            while (enumerator.MoveNext() && 
+                   (valid = DateTime.Now < then)) ThreadUtility.Wait(ref quickIterations);
 
             if (valid == false)
                 throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
         }
         else
         {
-            while (enumerator.MoveNext())
-                ThreadUtility.Wait(ref quickIterations);
+            while (enumerator.MoveNext()) ThreadUtility.Wait(ref quickIterations);
         }
     }
     

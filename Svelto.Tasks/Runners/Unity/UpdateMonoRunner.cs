@@ -1,20 +1,31 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class UpdateMonoRunner : MonoRunner
+    public class UpdateMonoRunner : UpdateMonoRunner<IEnumerator>
     {
-        public UpdateMonoRunner(string name, bool mustSurvive = false):base(name)
+        public UpdateMonoRunner(string name) : base(name)
         {
-            UnityCoroutineRunner.InitializeGameObject(name, ref _go, mustSurvive);
+        }
+    }
+    public class UpdateMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    {
+        UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo> enumerator;
 
-            var runnerBehaviour = _go.AddComponent<RunnerBehaviourUpdate>();
-            
-            var info = new UnityCoroutineRunner.RunningTasksInfo { runnerName = name };
+        public UpdateMonoRunner(string name):base(name)
+        {
+            var info = new UnityCoroutineRunner<T>.RunningTasksInfo { runnerName = name };
 
-            runnerBehaviour.StartUpdateCoroutine(new UnityCoroutineRunner.Process<UnityCoroutineRunner.RunningTasksInfo>
-                (_newTaskRoutines, _coroutines, _flushingOperation, info));
+            enumerator = new UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo>
+                (_newTaskRoutines, _coroutines, _flushingOperation, info);
+            UnityCoroutineRunner<T>.StartUpdateCoroutine(enumerator);
+        }
+
+        public void Step()
+        {
+            enumerator.MoveNext();
         }
     }
 }

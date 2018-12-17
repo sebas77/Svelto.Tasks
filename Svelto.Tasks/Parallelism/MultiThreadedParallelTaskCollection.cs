@@ -46,7 +46,7 @@ namespace Svelto.Tasks.Parallelism
         void InitializeThreadsAndData(uint numberOfThreads, bool tightTasks)
         {
             _runners       = new MultiThreadRunner[numberOfThreads];
-            _taskRoutines  = new ITaskRoutine[numberOfThreads];
+            _taskRoutines  = new ITaskRoutine<IEnumerator>[numberOfThreads];
             _parallelTasks = new ParallelTaskCollection[numberOfThreads];
 
             //prepare a single multithread runner for each group of fiber like task collections
@@ -65,13 +65,13 @@ namespace Svelto.Tasks.Parallelism
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)
             {
-                var ptask = TaskRunner.Instance.AllocateNewTaskRoutine();
+                var ptask = TaskRunner.Instance.AllocateNewTaskRoutine(_runners[i]);
                 var ptc   = new ParallelTaskCollection();
 
                 ptc.onComplete  += ptcOnOnComplete;
                 ptc.onException += ptcOnOnException;
 
-                ptask.SetEnumerator(ptc).SetScheduler(_runners[i]);
+                ptask.SetEnumerator(ptc);
 
                 _parallelTasks[i] = ptc;
                 _taskRoutines[i]  = ptask;
@@ -165,7 +165,7 @@ namespace Svelto.Tasks.Parallelism
         
         public void Dispose()
         {
-            if (_isDisposed == true) return;
+            if (ThreadUtility.VolatileRead(ref _isDisposed) == true) return;
             
             ThreadUtility.VolatileWrite(ref _isDisposed, true);
             _disposingThreads = _runners.Length;
@@ -200,16 +200,16 @@ namespace Svelto.Tasks.Parallelism
             Interlocked.Decrement(ref _counter);
         }
         
-        MultiThreadRunner[]      _runners;
-        ParallelTaskCollection[] _parallelTasks;
-        ITaskRoutine[]           _taskRoutines;
+        MultiThreadRunner[]         _runners;
+        ParallelTaskCollection[]    _parallelTasks;
+        ITaskRoutine<IEnumerator>[] _taskRoutines;
         
-        int                           _numberOfTasksAdded;
-        int                           _numberOfConcurrentOperationsToRun;
-        int                           _counter;
-        int                           _disposingThreads;
-        int                           _stoppingThreads;
-        volatile bool                 _isDisposed;
+        int  _numberOfTasksAdded;
+        int  _numberOfConcurrentOperationsToRun;
+        int  _counter;
+        int  _disposingThreads;
+        int  _stoppingThreads;
+        bool _isDisposed;
     }
 
     public class MultiThreadedParallelTaskCollectionException : Exception

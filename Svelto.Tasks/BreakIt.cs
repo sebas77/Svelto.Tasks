@@ -5,9 +5,4 @@ namespace Svelto.Tasks
         public static Break It = new Break();
         public static Break AndStop = new Break();
     }
-
-    public class BBreak : Break
-    {
-        
-    }
 }
