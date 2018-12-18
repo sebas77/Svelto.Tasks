@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Svelto.DataStructures;
 
 namespace Svelto.Tasks
@@ -192,7 +191,7 @@ namespace Svelto.Tasks
             return TaskState.continueIt;
         }
         
-        protected int taskCount { get { return _listOfStacks.Count(); }}
+        protected int taskCount { get { return _listOfStacks.Count; }}
         protected StructFriendlyStack[] rawListOfStacks { get { return _listOfStacks.ToArrayFast(); } }
 
         protected abstract void ProcessTask(ref T Task);
