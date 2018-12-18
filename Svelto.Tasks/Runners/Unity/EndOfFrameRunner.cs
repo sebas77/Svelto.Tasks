@@ -1,16 +1,16 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class EndOfFrameRunner : EndOfFrameRunner<IEnumerator>
+    public class EndOfFrameRunner : EndOfFrameRunner<IEnumerator<TaskContract?>>
     {
         public EndOfFrameRunner(string name) : base(name)
         {
         }
     }
-    public class EndOfFrameRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class EndOfFrameRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
     {
         public EndOfFrameRunner(string name):base(name)
         {
@@ -24,3 +24,4 @@ namespace Svelto.Tasks.Unity
     }
 }
 #endif
+

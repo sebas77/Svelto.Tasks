@@ -5,6 +5,8 @@
 using Svelto.Utilities;
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks
 {
@@ -21,9 +23,9 @@ namespace Svelto.Tasks
         }
     }
 
-    public interface ISveltoTask<T> where T:IEnumerator
+    public interface ISveltoTask
     {
-        TaskCollection<T>.CollectionTask Current { get; }
+        TaskContract? Current { get; }
         
         bool MoveNext();
 
@@ -74,12 +76,12 @@ namespace Svelto.Tasks
 
 namespace Svelto.Tasks.Internal
 {
-    sealed class PooledSveltoTask: ISveltoTask<IEnumerator>
+    sealed class PooledSveltoTask: ISveltoTask
     {
         public PooledSveltoTask(SveltoTasksPool pool)
         {
             _pool         = pool;
-            _sveltoTask = new SveltoTask<IEnumerator>();
+            _sveltoTask = new SveltoTask<IEnumerator<TaskContract?>>();
         }
 
         public bool MoveNext()
@@ -112,19 +114,19 @@ namespace Svelto.Tasks.Internal
 #if GENERATE_NAME
             _sveltoTask._name = string.Empty;
 #endif
-            _sveltoTask._threadSafeStates = new SveltoTask<IEnumerator>.State();
+            _sveltoTask._threadSafeStates = new SveltoTask<IEnumerator<TaskContract?>>.State();
             _sveltoTask._coroutineWrapper.Clear();
             _sveltoTask.ClearInvokes();
         }
 
-        public TaskCollection<IEnumerator>.CollectionTask Current
+        public TaskContract? Current
         {
             get { return _sveltoTask.Current; }
         }
 
-        public ContinuationWrapper Start(IRunner<IEnumerator> runner, IEnumerator task)
+        public ContinuationWrapper Start(IRunner<IEnumerator<TaskContract?>> runner, IEnumerator<TaskContract?> task)
         {
-            DBC.Tasks.Check.Require(task != null,
+            DBC.Tasks.Check.Require(task != null, 
                                     "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
 
             DBC.Tasks.Check.Require(runner != null, "SetScheduler function has never been called");
@@ -152,12 +154,75 @@ namespace Svelto.Tasks.Internal
 #endif    
         }
 
-        readonly SveltoTask<IEnumerator> _sveltoTask;
+        readonly SveltoTask<IEnumerator<TaskContract?>> _sveltoTask;
         readonly SveltoTasksPool        _pool;
     }
 
-    sealed class TaskRoutine<T>: ISveltoTask<T>, ITaskRoutine<T> where T:IEnumerator
+    sealed class TaskRoutine : ISveltoTask, ITaskRoutine
     {
+        readonly TaskRoutine<IEnumerator<TaskContract?>> _taskRoutineImplementation;
+
+        public TaskRoutine(IRunner<IEnumerator<TaskContract?>> scheduler)
+        {
+            _taskRoutineImplementation = new TaskRoutine<IEnumerator<TaskContract?>>(scheduler);
+        }
+
+        public void SetEnumeratorProvider(Func<IEnumerator<TaskContract?>> taskGenerator)
+        {
+            _taskRoutineImplementation.SetEnumeratorProvider(taskGenerator);
+        }
+
+        public void SetEnumerator(IEnumerator<TaskContract?> taskGenerator)
+        {
+            _taskRoutineImplementation.SetEnumerator(taskGenerator);
+        }
+
+        public ContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null)
+        {
+            return _taskRoutineImplementation.Start(onFail, onStop);
+        }
+
+        public void Pause()
+        {
+            _taskRoutineImplementation.Pause();
+        }
+
+        public void Resume()
+        {
+            _taskRoutineImplementation.Resume();
+        }
+
+        public TaskContract? Current
+        {
+            get { return _taskRoutineImplementation.Current; }
+        }
+
+        public bool MoveNext()
+        {
+            return _taskRoutineImplementation.MoveNext();
+        }
+
+        public void Stop()
+        {
+            _taskRoutineImplementation.Stop();
+        }
+
+        public bool isRunning
+        {
+            get { return _taskRoutineImplementation.isRunning; }
+        }
+
+        public bool isDone
+        {
+            get { return _taskRoutineImplementation.isDone; }
+        }
+    }
+
+    sealed class TaskRoutine<T>: ISveltoTask, ITaskRoutine<T> where T: IEnumerator<TaskContract?>
+    {
+        private TaskRoutine()
+        {}
+        
         public TaskRoutine(IRunner<T> runner)
         {
             _sveltoTask = new SveltoTask<T>();
@@ -195,7 +260,7 @@ namespace Svelto.Tasks.Internal
             return true;
         }
 
-        public TaskCollection<T>.CollectionTask Current
+        public TaskContract? Current
         {
             get { return _sveltoTask.Current; }
         }
@@ -329,7 +394,7 @@ namespace Svelto.Tasks.Internal
 
 
         readonly SveltoTask<T> _sveltoTask;
-        readonly IRunner<T>    _runner;
+        readonly IRunner<T> _runner;
         
         Action<SveltoTaskException> _onFail;
         Action                      _onStop;
@@ -341,7 +406,7 @@ namespace Svelto.Tasks.Internal
         static readonly bool IS_TASK_STRUCT = typeof(T).IsClass == false && typeof(T).IsInterface == false;
     }
 
-    sealed class SveltoTask<T> where T:IEnumerator
+    sealed class SveltoTask<T> where T: IEnumerator<TaskContract?>
     {
         const string CALL_START_FIRST_ERROR = "Enumerating PausableTask without starting it, please call Start() first";
 
@@ -377,18 +442,11 @@ namespace Svelto.Tasks.Internal
             }
         }
 
-        internal TaskCollection<T>.CollectionTask Current
+        internal TaskContract? Current
         {
             get
             {
-                //this is currently the serial task
-                if (_stackingTask != null)
-                {
-                    //this is the enumerator held by the serial task
-                    return _stackingTask.Current;
-                }
-
-                return new TaskCollection<T>.CollectionTask(null);
+                return _stackingTask.Current;
             }
         }
 
@@ -436,8 +494,7 @@ namespace Svelto.Tasks.Internal
                             
                             completed = !_stackingTask.MoveNext();
 
-                            var current = _stackingTask.Current;
-                            if (current.breakIt == Break.AndStop && onStop != null)
+                            if ((Break)_stackingTask.Current == Break.AndStop && onStop != null)
                             {
                                 try
                                 {

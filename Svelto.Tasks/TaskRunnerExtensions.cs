@@ -1,6 +1,8 @@
 using System;
 using Svelto.Tasks;
 using System.Collections;
+using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 using Svelto.Utilities;
 
 public static class TaskRunnerExtensions
@@ -11,14 +13,20 @@ public static class TaskRunnerExtensions
     /// <param name="runner"></param>
     /// <param name="task"></param>
     /// <returns></returns>
-    public static ContinuationWrapper RunOnScheduler(this IEnumerator enumerator, IRunner<IEnumerator> runner)
+    /// 
+    public static ContinuationWrapper RunOnScheduler(this IEnumerator<TaskContract?> enumerator, IRunner<IEnumerator<TaskContract?>> runner)
     {
         return TaskRunner.Instance.RunOnScheduler(runner, enumerator);
     }
 
-    public static ContinuationWrapper Run(this IEnumerator enumerator)
+    public static ContinuationWrapper Run(this IEnumerator<TaskContract?> enumerator)
     {
         return TaskRunner.Instance.Run(enumerator);
+    }
+      
+    public static TaskContract Continue(this IEnumerator<TaskContract?> enumerator)
+    {
+        return new TaskContract(enumerator);
     }
     
     public static void Complete(this IEnumerator enumerator, int _timeout = -1)
@@ -42,7 +50,7 @@ public static class TaskRunnerExtensions
         }
     }
     
-    public static ParallelTaskCollection Combine(this IEnumerator enumerator, IEnumerator enumerator2)
+    public static ParallelTaskCollection Combine(this IEnumerator<TaskContract?> enumerator, IEnumerator<TaskContract?> enumerator2)
     {
         var parallel = enumerator as ParallelTaskCollection;
 

@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Chain;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks.Enumerators
 {
@@ -12,9 +14,9 @@ namespace Svelto.Tasks.Enumerators
     /// (some ITask some not). Otherwise it should never be used
     /// explicitly 
     /// </summary>
-    public class ServiceEnumerator: IEnumerator
+    public class ServiceEnumerator: IEnumerator<TaskContract?>
     {
-        public object Current { get { return null; } }
+        object IEnumerator.Current { get { return null; } }
 
         public ServiceEnumerator(IServiceTask task)
         {
@@ -54,10 +56,15 @@ namespace Svelto.Tasks.Enumerators
             throw new NotImplementedException("Async Tasks cannot be reset");
         }
 
+        public TaskContract? Current { get; }
+
         public override string ToString()
         {
             return task.ToString();
         }
+
+        public void Dispose()
+        {}
 
         protected virtual void ExecuteTask()
         {

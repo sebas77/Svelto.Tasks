@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public struct ReusableWaitForSecondsEnumerator:IEnumerator
+    public struct ReusableWaitForSecondsEnumerator:IEnumerator<TaskContract?>
     {
         public ReusableWaitForSecondsEnumerator(float seconds):this()
         {
@@ -33,6 +35,8 @@ namespace Svelto.Tasks.Enumerators
             _init = false;
         }
 
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
+
         public void Reset(float seconds)
         {
             _seconds = seconds;
@@ -40,6 +44,9 @@ namespace Svelto.Tasks.Enumerators
         }
 
         public object Current { get { return null; } }
+        
+        public void Dispose()
+        {}
 
         DateTime _future;
         float    _seconds;

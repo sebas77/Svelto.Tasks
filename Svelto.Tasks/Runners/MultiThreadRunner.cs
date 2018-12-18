@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.DataStructures;
+using Svelto.Tasks.Unity;
 using Svelto.Utilities;
 
 #if NETFX_CORE
@@ -11,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Svelto.Tasks
 {
-    public sealed class MultiThreadRunner:MultiThreadRunner<IEnumerator>
+    public sealed class MultiThreadRunner:MultiThreadRunner<IEnumerator<TaskContract?>>
     {
         public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
         {
@@ -23,7 +25,7 @@ namespace Svelto.Tasks
     }
     //The multithread runner always uses just one thread to run all the couroutines
     //If you want to use a separate thread, you will need to create another MultiThreadRunner
-    public class MultiThreadRunner<T> : IRunner<T> where T:IEnumerator
+    public class MultiThreadRunner<T> : IRunner<T> where T: IEnumerator<TaskContract?>
     {
         public bool isPaused
         {
@@ -114,7 +116,7 @@ namespace Svelto.Tasks
 #endif
         }
 
-        public void StartCoroutine(ISveltoTask<T> task)
+        public void StartCoroutine(ISveltoTask task)
         {
             if (_runnerData == null)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
@@ -151,8 +153,8 @@ namespace Svelto.Tasks
             {
                 _mevent              = new ManualResetEventEx();
                 _watch               = new Stopwatch();
-                _coroutines          = new FasterList<ISveltoTask<T>>();
-                newTaskRoutines     = new ThreadSafeQueue<ISveltoTask<T>>();
+                _coroutines          = new FasterList<ISveltoTask>();
+                newTaskRoutines     = new ThreadSafeQueue<ISveltoTask>();
                 _interval            = (long) (interval * 10000);
                 this.name                = name;
                 _isRunningTightTasks = isRunningTightTasks;
@@ -304,7 +306,7 @@ namespace Svelto.Tasks
                 }
             }
 
-            internal readonly ThreadSafeQueue<ISveltoTask<T>> newTaskRoutines;
+            internal readonly ThreadSafeQueue<ISveltoTask> newTaskRoutines;
             internal volatile bool                           waitForFlush;
             internal bool isPaused
             {
@@ -319,7 +321,7 @@ namespace Svelto.Tasks
 
             bool _breakThread;
 
-            readonly FasterList<ISveltoTask<T>> _coroutines;
+            readonly FasterList<ISveltoTask> _coroutines;
             readonly long                      _interval;
             internal string                    name;
             readonly bool                      _isRunningTightTasks;

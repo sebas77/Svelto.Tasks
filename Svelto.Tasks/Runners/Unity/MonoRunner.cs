@@ -1,6 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
 using UnityEngine;
@@ -16,7 +17,7 @@ namespace Svelto.Tasks.Unity
     /// don't hold a reference, they will be garbage collected even if tasks are still running
     /// </summary>
 
-    public abstract class MonoRunner<T> : IRunner<T> where T:IEnumerator
+    public abstract class MonoRunner<T> : IRunner<T> where T: IEnumerator<TaskContract?>
     {
         public bool isPaused
         {
@@ -55,7 +56,7 @@ namespace Svelto.Tasks.Unity
             _newTaskRoutines.Clear();
         }
 
-        public virtual void StartCoroutine(ISveltoTask<T> task)
+        public virtual void StartCoroutine(ISveltoTask task)
         {
             isPaused = false;
 
@@ -71,9 +72,9 @@ namespace Svelto.Tasks.Unity
             GC.SuppressFinalize(this);
         }
         
-        protected readonly ThreadSafeQueue<ISveltoTask<T>> _newTaskRoutines = new ThreadSafeQueue<ISveltoTask<T>>();
-        protected readonly FasterList<ISveltoTask<T>> _coroutines =
-            new FasterList<ISveltoTask<T>>(NUMBER_OF_INITIAL_COROUTINE);
+        protected readonly ThreadSafeQueue<ISveltoTask> _newTaskRoutines = new ThreadSafeQueue<ISveltoTask>();
+        protected readonly FasterList<ISveltoTask> _coroutines =
+            new FasterList<ISveltoTask>(NUMBER_OF_INITIAL_COROUTINE);
         internal UnityCoroutineRunner<T>.FlushingOperation _flushingOperation =
             new UnityCoroutineRunner<T>.FlushingOperation();
 

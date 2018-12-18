@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Svelto.Tasks.Unity.Internal;
 
@@ -10,13 +11,13 @@ namespace Svelto.Tasks.Unity
     //Several tasks must run on this runner to make sense. TaskCollections are considered
     //single tasks, so they don't count (may change in future)
     /// </summary>
-    public class TimeBoundMonoRunner : TimeBoundMonoRunner<IEnumerator>
+    public class TimeBoundMonoRunner : TimeBoundMonoRunner<IEnumerator<TaskContract?>>
     {
         public TimeBoundMonoRunner(string name, float maxMilliseconds) : base(name, maxMilliseconds)
         {
         }
     }
-    public class TimeBoundMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class TimeBoundMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
     {
         public float maxMilliseconds
         {
@@ -55,7 +56,7 @@ namespace Svelto.Tasks.Unity
                 this.maxMilliseconds = (long) (maxMilliseconds * 10000);
             }
             
-            public bool CanMoveNext(ref int nextIndex, TaskCollection<T>.CollectionTask currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskContract? currentResult)
             {
                 if (_stopWatch.ElapsedTicks > maxMilliseconds)
                     return false;

@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
@@ -9,13 +10,13 @@ namespace Svelto.Tasks.Unity
     /// runners will defeat the initial purpose to get away from the Unity monobehaviours internal updates.
     /// MonoRunners are disposable though, so at least be sure to dispose of them once done
     /// </summary>
-    public class PhysicMonoRunner : PhysicMonoRunner<IEnumerator> 
+    public class PhysicMonoRunner : PhysicMonoRunner<IEnumerator<TaskContract?>> 
     {
         public PhysicMonoRunner(string name) : base(name)
         {
         }
     }
-    public class PhysicMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class PhysicMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
     {
         public PhysicMonoRunner(string name):base(name)
         {

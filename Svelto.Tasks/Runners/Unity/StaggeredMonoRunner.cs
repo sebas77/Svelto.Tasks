@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
@@ -9,13 +10,13 @@ namespace Svelto.Tasks.Unity
     /// Several tasks must run on this runner to make sense. TaskCollections are considered
     /// single tasks, so they don't count (may change in future)
     /// </summary>
-    public class StaggeredMonoRunner : StaggeredMonoRunner<IEnumerator>
+    public class StaggeredMonoRunner : StaggeredMonoRunner<IEnumerator<TaskContract?>>
     {
         public StaggeredMonoRunner(string name, int maxTasksPerIteration) : base(name, maxTasksPerIteration)
         {
         }
     }
-    public class StaggeredMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class StaggeredMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
     {
         UnityCoroutineRunner<T>.Process<StaggeredMonoRunner<T>.StaggeredRunningInfo> enumerator;
 
@@ -44,7 +45,7 @@ namespace Svelto.Tasks.Unity
                 runnerName = "StaggeredRunningInfo";
             }
             
-            public bool CanMoveNext(ref int nextIndex, TaskCollection<T>.CollectionTask currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskContract? currentResult)
             {
                 if (_iterations >= _maxTasksPerIteration - 1)
                 {

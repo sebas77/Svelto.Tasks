@@ -19,7 +19,7 @@ namespace Svelto.Tasks.Profiler
         internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
             new ThreadSafeDictionary<string, TaskInfo>();
  
-        public static bool MonitorUpdateDuration<T>(ISveltoTask<T> sveltoTask, string runnerName) where T : IEnumerator
+        public static bool MonitorUpdateDuration<T>(ISveltoTask sveltoTask, string runnerName) where T : IEnumerator
         {
             var key = sveltoTask.ToString().FastConcat(runnerName);
 #if ENABLE_PIX_EVENTS            

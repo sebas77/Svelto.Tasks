@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class ExceptionHandlingEnumerator : IEnumerator
+    public class ExceptionHandlingEnumerator : IEnumerator<TaskContract?>
     {
         public bool succeeded { get; private set; }
         public Exception error { get; private set; }
@@ -37,6 +39,11 @@ namespace Svelto.Tasks.Enumerators
             _enumerator.Reset();
         }
 
-        IEnumerator _enumerator;
+        TaskContract? IEnumerator<TaskContract?>.Current => null;
+        public void Dispose()
+        {
+        }
+
+        readonly IEnumerator _enumerator;
     }
 }

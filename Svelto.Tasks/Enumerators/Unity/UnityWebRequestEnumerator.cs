@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 using UnityEngine.Networking;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class UnityWebRequestEnumerator : IEnumerator<UnityWebRequest>
+    public class UnityWebRequestEnumerator : IEnumerator<TaskContract?>
     {
         public UnityWebRequestEnumerator(UnityWebRequest www, int timeOut = -1)
         {
@@ -29,6 +30,8 @@ namespace Svelto.Tasks.Enumerators
         {
             get { return _www; }
         }
+
+        TaskContract? IEnumerator<TaskContract?>.Current { get; }
 
         public UnityWebRequest Current
         {

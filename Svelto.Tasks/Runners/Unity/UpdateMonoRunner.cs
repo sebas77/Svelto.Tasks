@@ -1,18 +1,18 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class UpdateMonoRunner : UpdateMonoRunner<IEnumerator>
+    public class UpdateMonoRunner : UpdateMonoRunner<IEnumerator<TaskContract?>>
     {
         public UpdateMonoRunner(string name) : base(name)
         {
         }
     }
-    public class UpdateMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class UpdateMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
     {
-        UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo> enumerator;
+        readonly UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo> enumerator;
 
         public UpdateMonoRunner(string name):base(name)
         {

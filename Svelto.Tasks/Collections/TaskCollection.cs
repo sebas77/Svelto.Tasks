@@ -2,10 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Svelto.DataStructures;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks
 {
-    public interface ITaskCollection<T> : IEnumerator<TaskCollection<T>.CollectionTask>
+    public interface ITaskCollection<T> : IEnumerator<TaskContract?>
         where T : IEnumerator
     {
         event Action                onComplete;
@@ -19,7 +20,8 @@ namespace Svelto.Tasks
         bool isRunning { get; }
     }
 
-    public abstract partial class TaskCollection<T>:ITaskCollection<T> where T:IEnumerator
+    public abstract partial class TaskCollection<T>:ITaskCollection<T>
+       where T:IEnumerator<TaskContract?> //eventually this could go back to IEnumerator if makes sense
     {
         public event Action                onComplete;
         public event Func<Exception, bool> onException;
@@ -28,8 +30,6 @@ namespace Svelto.Tasks
 
         protected TaskCollection(int initialSize)
         {
-            _currentTask = new CollectionTask(this);
-            
             _listOfStacks = new FasterList<StructFriendlyStack>(initialSize);
             var buffer = _listOfStacks.ToArrayFast();
             for (int i = 0; i < initialSize; i++)
@@ -104,7 +104,7 @@ namespace Svelto.Tasks
                 var stack = _listOfStacks[index];
                 while (stack.count > 1) stack.Pop();
                 int stackIndex;
-                stack.Peek(out stackIndex)[stackIndex].Reset();
+                stack.Peek(out stackIndex)[stackIndex].Reset(); 
             }
 
             _currentStackIndex = 0;
@@ -114,15 +114,21 @@ namespace Svelto.Tasks
         {
             get
             {
-                int enumeratorIndex;
-                var stacks = _listOfStacks[_currentStackIndex].Peek(out enumeratorIndex);
-                return stacks[ enumeratorIndex];
+                    int enumeratorIndex;
+                    var stacks = _listOfStacks[_currentStackIndex].Peek(out enumeratorIndex);
+                    return stacks[enumeratorIndex];
             }
         }
 
-        public CollectionTask Current
+        public TaskContract? Current
         {
-            get { return _currentTask;  }
+            get
+            {
+                if (_listOfStacks.Count > 0)
+                    return CurrentStack.Current;
+                else
+                    return new TaskContract?();
+            }
         }
 
         object IEnumerator.Current
@@ -140,7 +146,7 @@ namespace Svelto.Tasks
             for (int index = 0; index < count; ++index)
                 buffer[index].Clear();
             
-            _listOfStacks.FastClear();
+            _listOfStacks.FastClear(); 
          
             _currentStackIndex = 0;
         }
@@ -157,36 +163,22 @@ namespace Svelto.Tasks
             bool isDone  = !stack[enumeratorIndex].MoveNext();
             
             //Svelto.Tasks Tasks IEnumerator are always IEnumerator returning an object so Current is always an object
-            var returnObject = _currentTask.current = stack[enumeratorIndex].Current;
+            var returnObject = stack[enumeratorIndex].Current;
 
             if (isDone == true)
                 return TaskState.doneIt;
-
-            //can be a Svelto.Tasks Break
-            if (returnObject == Break.It || returnObject == Break.AndStop)
-            {
-                _currentTask.breakIt = returnObject as Break;
-
-                return TaskState.breakIt;
-            }
-            
-            _currentTask.breakIt = null;
             
             //can yield for one iteration
-            if (returnObject == null) 
+            if (returnObject.HasValue == false) 
                 return TaskState.yieldIt;
 
-#if DEBUG && !PROFILER                
-            if (returnObject is IServiceTask)
-                throw new ArgumentException("Svelto.Task 2.0 is not supporting IAsyncTask implicitly anymore, use ServiceEnumerator instead " + ToString()); 
+            //can be a Svelto.Tasks Break
+            if ((Break)returnObject == Break.It || (Break)returnObject == Break.AndStop)
+                return TaskState.breakIt;
 
-            if (returnObject is ITaskRoutine<IEnumerator>)
-                throw new ArgumentException("Returned a TaskRoutine without calling Start first " + ToString());
-#endif            
-              
-            if (returnObject is T) //can be a compatible IEnumerator
+            if (returnObject.Value.enumerator is T) //can be a compatible IEnumerator
             //careful it must be the array and not the list as it returns a struct!!
-                listOfStacks[_currentStackIndex].Push((T)returnObject); //push the new yielded task and execute it immediately
+                listOfStacks[_currentStackIndex].Push((T)returnObject.Value.enumerator); //push the new yielded task and execute it immediately
             
             return TaskState.continueIt;
         }
@@ -197,7 +189,7 @@ namespace Svelto.Tasks
         protected abstract void ProcessTask(ref T Task);
         protected abstract bool RunTasksAndCheckIfDone();
         
-        CollectionTask                           _currentTask;
+        //TaskContract                             _currentTask; reinsert if we want to use IEnumerator for taskcollection
         int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
         T                                        _current;
@@ -210,29 +202,6 @@ namespace Svelto.Tasks
             breakIt,
             continueIt,
             yieldIt
-        }
-
-        public struct CollectionTask
-        {
-            public object current { get; internal set; }
-
-            public CollectionTask(TaskCollection<T> collection):this()
-            {
-                _collection = collection;
-            }
-
-            public void Add(T task)
-            {
-                _collection.Add(task);
-            }
-
-            public T Current
-            {
-                get { return _collection.CurrentStack;  }
-            }
-
-            readonly TaskCollection<T> _collection;
-            public Break breakIt { internal set; get; }
         }
     }
 }

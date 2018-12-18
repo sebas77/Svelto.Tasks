@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks
 {
@@ -7,13 +9,13 @@ namespace Svelto.Tasks
     /// Be sure you know what you are doing when you are using the Sync runner, it will stall the current thread!
     /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead. 
     /// </summary>
-    public class SyncRunner : SyncRunner<IEnumerator>
+    public class SyncRunner : SyncRunner<IEnumerator<TaskContract?>>
     {
         public SyncRunner(int timeout = 1000) : base(timeout)
         {
         }
     }
-    public class SyncRunner<T> : IRunner<T>, IEnumerator where T:IEnumerator
+    public class SyncRunner<T> : IRunner<T>, IEnumerator where T: IEnumerator<TaskContract?>
     {
         public bool isPaused { get; set; }
         public bool isStopping { private set; get; }
@@ -24,7 +26,7 @@ namespace Svelto.Tasks
             _timeout = timeout;
         }
 
-        public void StartCoroutine(ISveltoTask<T> task)
+        public void StartCoroutine(ISveltoTask task)
         {
             _syncTask = task;
             
@@ -55,7 +57,7 @@ namespace Svelto.Tasks
         public int numberOfQueuedTasks { get { return 0; } }
 
         int _timeout;
-        ISveltoTask<T> _syncTask;
+        ISveltoTask _syncTask;
 
         public object Current { get; }
     }

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 using Svelto.Utilities;
 
 namespace Svelto.Tasks.Enumerators
@@ -7,20 +8,15 @@ namespace Svelto.Tasks.Enumerators
     /// <summary>
     /// /// Yield a function that control the flow execution through the return value.
     /// </summary>
-    /// <typeparam name="T">
+    /// <typeparam name="TVal">
     /// facilitate the use of counters that can be passed by reference to the callback function
     /// </typeparam>
-    public class SmartFunctionEnumerator<T>:IEnumerator, IEnumerator<T>
+    public class SmartFunctionEnumerator<TVal>: IEnumerator<TaskContract?>
     {
-        public SmartFunctionEnumerator(FuncRef<T, bool> func)
+        public SmartFunctionEnumerator(FuncRef<TVal, bool> func)
         {
             _func  = func;
-            _value = default(T);
-        }
-
-        public T field
-        {
-            get { return _value; }
+            _value = default(TVal);
         }
 
         public bool MoveNext()
@@ -31,12 +27,17 @@ namespace Svelto.Tasks.Enumerators
         public void Reset()
         {}
 
-        T IEnumerator<T>.Current
+        TaskContract? IEnumerator<TaskContract?>.Current
+        {
+            get { return null; }
+        }
+
+        public TVal Current
         {
             get { return _value; }
         }
 
-        public object Current
+        object IEnumerator.Current
         {
             get { return null; }
         }
@@ -56,10 +57,8 @@ namespace Svelto.Tasks.Enumerators
         public void Dispose()
         {}
 
-        FuncRef<T, bool> _func;
-        T                _value;
-
-        string _name;
-        T _current;
+        readonly FuncRef<TVal, bool> _func;
+        TVal                         _value;
+        string                       _name;
     }
 }

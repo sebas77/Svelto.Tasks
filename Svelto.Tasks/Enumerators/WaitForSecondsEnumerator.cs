@@ -1,8 +1,10 @@
 using System.Collections;
+using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class WaitForSecondsEnumerator:IEnumerator
+    public class WaitForSecondsEnumerator:IEnumerator<TaskContract?>
     {
         public WaitForSecondsEnumerator(float seconds)
         {
@@ -19,14 +21,22 @@ namespace Svelto.Tasks.Enumerators
             _wait.Reset();
         }
 
+        public TaskContract? Current
+        {
+            get { return null; }
+        }
+
         public void Reset(float seconds)
         {
             _wait.Reset(seconds);
         }
 
-        public object Current { get { return null; } }
+        object IEnumerator.Current { get { return null; } }
 
         ReusableWaitForSecondsEnumerator _wait;
+
+        public void Dispose()
+        {}
     }
 }
 

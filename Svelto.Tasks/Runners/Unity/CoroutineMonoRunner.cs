@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
@@ -12,13 +13,13 @@ namespace Svelto.Tasks.Unity
     /// You should use YieldInstructions only when extremely necessary as often an Svelto.Tasks IEnumerator
     /// replacement is available.
     /// </summary>
-    public class CoroutineMonoRunner : CoroutineMonoRunner<IEnumerator>
+    public class CoroutineMonoRunner : CoroutineMonoRunner<IEnumerator<TaskContract?>>
     {
         public CoroutineMonoRunner(string name) : base(name)
         {
         }
     }
-    public class CoroutineMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class CoroutineMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
     {
         public CoroutineMonoRunner(string name):base(name)
         {
@@ -30,7 +31,7 @@ namespace Svelto.Tasks.Unity
             UnityCoroutineRunner<T>.StartCoroutine(_processEnumerator);
         }
         
-        public override void StartCoroutine(ISveltoTask<T> task)
+        public override void StartCoroutine(ISveltoTask task)
         {
             isPaused = false;
 

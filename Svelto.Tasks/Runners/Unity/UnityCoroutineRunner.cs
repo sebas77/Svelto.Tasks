@@ -1,13 +1,13 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.DataStructures;
-using UnityEditor.Build;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace Svelto.Tasks.Unity.Internal
 {
-    static class UnityCoroutineRunner<T> where T:IEnumerator
+    static class UnityCoroutineRunner<T> where T : IEnumerator
     {
         static readonly RunnerBehaviourUpdate _runnerBehaviour;
 
@@ -65,8 +65,8 @@ namespace Svelto.Tasks.Unity.Internal
         
         internal class Process<RunningInfo> : IProcessSveltoTasks where RunningInfo: IRunningTasksInfo<T>
         {
-            public Process( ThreadSafeQueue<ISveltoTask<T>> newTaskRoutines,
-                            FasterList<ISveltoTask<T>>      coroutines, 
+            public Process( ThreadSafeQueue<ISveltoTask> newTaskRoutines,
+                            FasterList<ISveltoTask>      coroutines, 
                             FlushingOperation              flushingOperation,
                             RunningInfo                    info)
             {
@@ -143,16 +143,16 @@ namespace Svelto.Tasks.Unity.Internal
 
             public object Current { get; private set; }
             
-            readonly ThreadSafeQueue<ISveltoTask<T>> _newTaskRoutines;
-            readonly FasterList<ISveltoTask<T>>      _coroutines;
-            readonly FlushingOperation              _flushingOperation;
+            readonly ThreadSafeQueue<ISveltoTask> _newTaskRoutines;
+            readonly FasterList<ISveltoTask>      _coroutines;
+            readonly FlushingOperation            _flushingOperation;
             
             RunningInfo _info;
         }
 
         public struct RunningTasksInfo:IRunningTasksInfo<T>
         {
-            public bool CanMoveNext(ref int nextIndex, TaskCollection<T>.CollectionTask currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskContract? currentResult)
             {
                 return true;
             }

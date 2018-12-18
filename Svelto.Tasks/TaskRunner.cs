@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using Svelto.Tasks.Internal;
+using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks
 {
@@ -24,19 +26,19 @@ namespace Svelto.Tasks
         /// <returns>
         /// New reusable TaskRoutine
         /// </returns>
-        public ITaskRoutine<IEnumerator> AllocateNewTaskRoutine()
+        public ITaskRoutine AllocateNewTaskRoutine()
         {
-            return new TaskRoutine<IEnumerator>(StandardSchedulers.standardScheduler);
+            return new TaskRoutine(StandardSchedulers.standardScheduler);
         }
         
-        public ITaskRoutine<T> AllocateNewTaskRoutine<T>(IRunner<T> runner) where T:IEnumerator
+        public ITaskRoutine<T> AllocateNewTaskRoutine<T>(IRunner<T> runner) where T: IEnumerator<TaskContract?>
         {
             return new TaskRoutine<T>(runner);
         }
         
-        public ITaskRoutine<IEnumerator> AllocateNewTaskRoutine(IRunner<IEnumerator> runner)
+        public ITaskRoutine AllocateNewTaskRoutine(IRunner<IEnumerator<TaskContract?>> runner)
         {
-            return new TaskRoutine<IEnumerator>(runner);
+            return new TaskRoutine(runner);
         }
 
         public void PauseAllTasks()
@@ -49,7 +51,7 @@ namespace Svelto.Tasks
             StandardSchedulers.standardScheduler.isPaused = false;
         }
 
-        public ContinuationWrapper Run(IEnumerator task)
+        public ContinuationWrapper Run(IEnumerator<TaskContract?> task)
         {
             return RunOnScheduler(StandardSchedulers.standardScheduler, task);
         }
@@ -60,7 +62,7 @@ namespace Svelto.Tasks
         /// <param name="runner"></param>
         /// <param name="task"></param>
         /// <returns></returns>
-        public ContinuationWrapper RunOnScheduler(IRunner<IEnumerator> runner, IEnumerator task) 
+        public ContinuationWrapper RunOnScheduler(IRunner<IEnumerator<TaskContract?>> runner, IEnumerator<TaskContract?> task) 
         {
             return _taskPool.RetrieveTaskFromPool().Start(runner, task);
         }

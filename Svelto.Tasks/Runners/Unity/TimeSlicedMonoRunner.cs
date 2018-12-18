@@ -1,5 +1,5 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
@@ -12,13 +12,13 @@ namespace Svelto.Tasks.Unity
     ///TimeSlicedMonoRunner can work with one task only too, this means that it would force the task to run up
     ///to maxMilliseconds per frame, unless this returns Break.AndResumeIteration.
     /// </summary>
-    public class TimeSlicedMonoRunner : TimeSlicedMonoRunner<IEnumerator>
+    public class TimeSlicedMonoRunner : TimeSlicedMonoRunner<IEnumerator<TaskContract?>>
     {
         public TimeSlicedMonoRunner(string name, float maxMilliseconds) : base(name, maxMilliseconds)
         {
         }
     }
-    public class TimeSlicedMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class TimeSlicedMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
     {
         public float maxMilliseconds
         {
@@ -48,7 +48,7 @@ namespace Svelto.Tasks.Unity
         {
             public long maxTicks;
 
-            public TimeSlicedRunningInfo(float maxMilliseconds, FasterList<ISveltoTask<T>> coroutines)
+            public TimeSlicedRunningInfo(float maxMilliseconds, FasterList<ISveltoTask> coroutines)
             {
                 this.maxTicks = (long) (maxMilliseconds * 10000);
                 _coroutines = coroutines;
@@ -56,7 +56,7 @@ namespace Svelto.Tasks.Unity
                 runnerName = "GreedyTimeBoundrunningInfo";
             }
 
-            public bool CanMoveNext(ref int nextIndex, TaskCollection<T>.CollectionTask currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskContract? currentResult)
             {
                 //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
                 if (_stopWatch.ElapsedTicks > maxTicks)
@@ -73,6 +73,7 @@ namespace Svelto.Tasks.Unity
                 return true;
             }
 
+
             public bool CanProcessThis(ref int index)
             {
                 return true;
@@ -87,7 +88,7 @@ namespace Svelto.Tasks.Unity
             public string runnerName { get; set; }
 
             readonly Stopwatch _stopWatch;
-            readonly FasterList<ISveltoTask<T>> _coroutines;
+            readonly FasterList<ISveltoTask> _coroutines;
         }
 
         TimeSlicedRunningInfo _info;

@@ -1,10 +1,12 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
+using System.Collections.Generic;
+using Svelto.Tasks.Unity;
 using UnityEngine;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class YieldInstructionEnumerator : IEnumerator
+    public class YieldInstructionEnumerator : IEnumerator<TaskContract?>
     {
         public YieldInstructionEnumerator(YieldInstruction instruction)
         {
@@ -30,6 +32,11 @@ namespace Svelto.Tasks.Enumerators
             _isDone = false;
         }
 
+        TaskContract? IEnumerator<TaskContract?>.Current
+        {
+            get { return null; }
+        }
+
         bool             _isDone;
         readonly YieldInstruction _instruction;
 
@@ -37,6 +44,9 @@ namespace Svelto.Tasks.Enumerators
         {
             get { return null; }
         }
+
+        public void Dispose()
+        {}
     }
 }
 #endif
