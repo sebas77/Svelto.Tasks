@@ -1,7 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using Svelto.Tasks.Unity.Internal;
-using UnityEngine;
 
 namespace Svelto.Tasks.Unity
 {
@@ -43,7 +42,7 @@ namespace Svelto.Tasks.Unity
         
         public void StartYieldInstruction(IEnumerator instruction)
         {
-            UnityCoroutineRunner<T>.StartCoroutine(instruction);
+            UnityCoroutineRunner<T>.StartYieldCoroutine(instruction);
         }
 
         readonly UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo> _processEnumerator;

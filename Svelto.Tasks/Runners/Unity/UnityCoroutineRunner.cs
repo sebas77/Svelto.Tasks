@@ -1,6 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using Svelto.DataStructures;
+using UnityEditor.Build;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -8,7 +9,7 @@ namespace Svelto.Tasks.Unity.Internal
 {
     static class UnityCoroutineRunner<T> where T:IEnumerator
     {
-        static RunnerBehaviourUpdate _runnerBehaviour;
+        static readonly RunnerBehaviourUpdate _runnerBehaviour;
 
         static UnityCoroutineRunner()
         {
@@ -19,32 +20,37 @@ namespace Svelto.Tasks.Unity.Internal
                 Object.DontDestroyOnLoad(go);
         }
         
-        public static void StartUpdateCoroutine(IEnumerator process)
+        public static void StartUpdateCoroutine(IProcessSveltoTasks process)
         {
             _runnerBehaviour.StartUpdateCoroutine(process);
         }
         
-        public static void StartEarlyUpdateCoroutine(IEnumerator process)
+        public static void StartEarlyUpdateCoroutine(IProcessSveltoTasks process)
         {
             _runnerBehaviour.StartEarlyUpdateCoroutine(process);
         }
         
-        public static void StartEndOfFrameCoroutine(IEnumerator process)
+        public static void StartEndOfFrameCoroutine(IProcessSveltoTasks process)
         {
             _runnerBehaviour.StartEndOfFrameCoroutine(process);
         }
         
-        public static void StartLateCoroutine(IEnumerator process)
+        public static void StartLateCoroutine(IProcessSveltoTasks process)
         {
             _runnerBehaviour.StartLateCoroutine(process);
         }
 
-        public static void StartCoroutine(IEnumerator process)
+        public static void StartCoroutine(IProcessSveltoTasks process)
         {
             _runnerBehaviour.StartCoroutine(process);
         }
+        
+        public static void StartYieldCoroutine(IEnumerator yieldInstructionWrapper)
+        {
+            _runnerBehaviour.StartCoroutine(yieldInstructionWrapper);
+        }
 
-        public static void StartPhysicCoroutine(IEnumerator process)
+        public static void StartPhysicCoroutine(IProcessSveltoTasks process)
         {
             _runnerBehaviour.StartPhysicCoroutine(process);
         }
@@ -57,7 +63,7 @@ namespace Svelto.Tasks.Unity.Internal
             flushingOperation.stopped = true;
         }
         
-        internal class Process<RunningInfo> : IEnumerator where RunningInfo: IRunningTasksInfo<T>
+        internal class Process<RunningInfo> : IProcessSveltoTasks where RunningInfo: IRunningTasksInfo<T>
         {
             public Process( ThreadSafeQueue<ISveltoTask<T>> newTaskRoutines,
                             FasterList<ISveltoTask<T>>      coroutines, 
@@ -171,6 +177,10 @@ namespace Svelto.Tasks.Unity.Internal
         }
 
         const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";
+    }
+
+    interface IProcessSveltoTasks:IEnumerator
+    {
     }
 }
 #endif
