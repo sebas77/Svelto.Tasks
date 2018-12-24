@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Svelto.Tasks.Chain;
-using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks.Enumerators
 {
@@ -14,7 +13,7 @@ namespace Svelto.Tasks.Enumerators
     /// (some ITask some not). Otherwise it should never be used
     /// explicitly 
     /// </summary>
-    public class ServiceEnumerator: IEnumerator<TaskContract?>
+    public class ServiceEnumerator: IEnumerator<TaskContract>
     {
         object IEnumerator.Current { get { return null; } }
 
@@ -56,7 +55,7 @@ namespace Svelto.Tasks.Enumerators
             throw new NotImplementedException("Async Tasks cannot be reset");
         }
 
-        public TaskContract? Current { get; }
+        public TaskContract Current { get; }
 
         public override string ToString()
         {

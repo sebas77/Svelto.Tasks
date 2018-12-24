@@ -1,7 +1,9 @@
+#if later
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections.Generic;
 using System.Diagnostics;
 using Svelto.DataStructures;
+using Svelto.Tasks.Internal;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
@@ -12,13 +14,13 @@ namespace Svelto.Tasks.Unity
     ///TimeSlicedMonoRunner can work with one task only too, this means that it would force the task to run up
     ///to maxMilliseconds per frame, unless this returns Break.AndResumeIteration.
     /// </summary>
-    public class TimeSlicedMonoRunner : TimeSlicedMonoRunner<IEnumerator<TaskContract?>>
+    public class TimeSlicedMonoRunner : TimeSlicedMonoRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
     {
         public TimeSlicedMonoRunner(string name, float maxMilliseconds) : base(name, maxMilliseconds)
         {
         }
     }
-    public class TimeSlicedMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
+    public class TimeSlicedMonoRunner<T> : BaseRunner<T> where T: ISveltoTask
     {
         public float maxMilliseconds
         {
@@ -34,21 +36,14 @@ namespace Svelto.Tasks.Unity
 
             _info = new TimeSlicedRunningInfo(maxMilliseconds, _coroutines) { runnerName = name };
 
-            enumerator = new UnityCoroutineRunner<T>.Process<TimeSlicedRunningInfo>
-                (_newTaskRoutines, _coroutines, _flushingOperation, _info);
-            UnityCoroutineRunner<T>.StartUpdateCoroutine(enumerator);
+            StartProcess(new UnityCoroutineRunner<T>.Process<TimeSlicedRunningInfo>(_newTaskRoutines, _coroutines, _flushingOperation, _info));
         }
         
-        public void Step()
-        {
-            enumerator.MoveNext();
-        }
-
-        class TimeSlicedRunningInfo : IRunningTasksInfo<T>
+        struct TimeSlicedRunningInfo : IRunningTasksInfo
         {
             public long maxTicks;
 
-            public TimeSlicedRunningInfo(float maxMilliseconds, FasterList<ISveltoTask> coroutines)
+            public TimeSlicedRunningInfo(float maxMilliseconds, FasterList<T> coroutines)
             {
                 this.maxTicks = (long) (maxMilliseconds * 10000);
                 _coroutines = coroutines;
@@ -56,7 +51,7 @@ namespace Svelto.Tasks.Unity
                 runnerName = "GreedyTimeBoundrunningInfo";
             }
 
-            public bool CanMoveNext(ref int nextIndex, TaskContract? currentResult)
+            public bool CanMoveNext(ref int nextIndex, TaskContract currentResult)
             {
                 //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
                 if (_stopWatch.ElapsedTicks > maxTicks)
@@ -88,11 +83,11 @@ namespace Svelto.Tasks.Unity
             public string runnerName { get; set; }
 
             readonly Stopwatch _stopWatch;
-            readonly FasterList<ISveltoTask> _coroutines;
+            readonly FasterList<T> _coroutines;
         }
 
         TimeSlicedRunningInfo _info;
-        UnityCoroutineRunner<T>.Process<TimeSlicedMonoRunner<T>.TimeSlicedRunningInfo> enumerator;
     }
 }
+#endif
 #endif

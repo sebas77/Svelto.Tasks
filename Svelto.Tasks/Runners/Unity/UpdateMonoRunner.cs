@@ -1,31 +1,36 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System.Collections;
 using System.Collections.Generic;
+using Svelto.Tasks.Internal;
 using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class UpdateMonoRunner : UpdateMonoRunner<IEnumerator<TaskContract?>>
+    public class ExtraLeanUpdateMonoRunner<T> : UpdateMonoRunner<ExtraLeanSveltoTask<T>> where 
+        T:IEnumerator
     {
-        public UpdateMonoRunner(string name) : base(name)
+        public ExtraLeanUpdateMonoRunner(string name) : base(name)
         {
         }
     }
-    public class UpdateMonoRunner<T> : MonoRunner<T> where T: IEnumerator<TaskContract?>
+    
+    public class LeanUpdateMonoRunner<T> : UpdateMonoRunner<LeanSveltoTask<T>> where T:IEnumerator<TaskContract>
     {
-        readonly UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo> enumerator;
-
+        public LeanUpdateMonoRunner(string name) : base(name)
+        {
+        }
+    }
+    
+    public class UpdateMonoRunner<T> : BaseRunner<T> where T: ISveltoTask
+    {
         public UpdateMonoRunner(string name):base(name)
         {
-            var info = new UnityCoroutineRunner<T>.RunningTasksInfo { runnerName = name };
+            var info = new CoroutineRunner<T>.StandardRunningTasksInfo { runnerName = name };
 
-            enumerator = new UnityCoroutineRunner<T>.Process<UnityCoroutineRunner<T>.RunningTasksInfo>
+            _processEnumerator = new CoroutineRunner<T>.Process<CoroutineRunner<T>.StandardRunningTasksInfo>
                 (_newTaskRoutines, _coroutines, _flushingOperation, info);
-            UnityCoroutineRunner<T>.StartUpdateCoroutine(enumerator);
-        }
-
-        public void Step()
-        {
-            enumerator.MoveNext();
+            
+            UnityCoroutineRunner.StartUpdateCoroutine(_processEnumerator);
         }
     }
 }

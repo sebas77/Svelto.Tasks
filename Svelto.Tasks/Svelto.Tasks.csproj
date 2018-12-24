@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Svelto.Tasks</AssemblyName>
+      <TargetFramework>netcoreapp2.1</TargetFramework>
+      <PlatformTarget>AnyCPU</PlatformTarget>
+      <DebugType>pdbonly</DebugType>
+      <DebugSymbols>true</DebugSymbols>
+      <LangVersion>7.2</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Svelto.Common\Svelto.Common.csproj" />
+  </ItemGroup>
+</Project>

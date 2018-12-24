@@ -1,20 +1,25 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks
 {
-    public interface IRunner<T>: IDisposable where T:IEnumerator<TaskContract?>
+    public interface IRunner: IDisposable
     {
-        bool    isPaused { get; set; }
-        bool    isStopping { get; }
-        bool    isKilled { get; }
+        bool isPaused   { get; set; }
+        bool isStopping { get; }
+        bool isKilled   { get; }
 
-        void	StartCoroutine(ISveltoTask task);
-        void 	StopAllCoroutines();
+        void StopAllCoroutines();
 
         int numberOfRunningTasks { get; }
-        int numberOfQueuedTasks { get; }
+        int numberOfQueuedTasks  { get; }
+        int numberOfProcessingTasks { get; }
+    }
+}
+
+namespace Svelto.Tasks.Internal
+{
+    public interface IInternalRunner<T> where T:ISveltoTask
+    {
+        void StartCoroutine(ref T task, bool immediate);
     }
 }

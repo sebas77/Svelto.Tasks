@@ -1,14 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.Unity;
 using Svelto.Utilities;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class WaitForSignalEnumerator:IEnumerator<TaskContract?>
+    public class WaitForSignalEnumerator:IEnumerator<TaskContract>
     {
-        public object Current
+        object IEnumerator.Current
         {
             get
             {
@@ -67,7 +66,10 @@ namespace Svelto.Tasks.Enumerators
             ThreadUtility.MemoryBarrier();
         }
 
-        TaskContract? IEnumerator<TaskContract?>.Current => null;
+        public TaskContract Current
+        {
+            get { return Yield.It; }
+        }
 
         public void Signal()
         {

@@ -53,9 +53,6 @@ namespace Svelto.Tasks
 
         internal struct DisposableStruct : IDisposable
         {
-            public DisposableStruct()
-            {}
-
             public void Dispose()
             {}
         }

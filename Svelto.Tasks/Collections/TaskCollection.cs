@@ -2,11 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Svelto.DataStructures;
-using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks
 {
-    public interface ITaskCollection<T> : IEnumerator<TaskContract?>
+    public interface ITaskCollection<T> : IEnumerator<TaskContract>
         where T : IEnumerator
     {
         event Action                onComplete;
@@ -14,14 +13,14 @@ namespace Svelto.Tasks
         
         T CurrentStack { get; }
         
-        void Add(T enumerator);
+        void Add(ref T enumerator);
         void Clear();
         
         bool isRunning { get; }
     }
 
     public abstract partial class TaskCollection<T>:ITaskCollection<T>
-       where T:IEnumerator<TaskContract?> //eventually this could go back to IEnumerator if makes sense
+       where T:IEnumerator<TaskContract> //eventually this could go back to IEnumerator if makes sense
     {
         public event Action                onComplete;
         public event Func<Exception, bool> onException;
@@ -69,7 +68,7 @@ namespace Svelto.Tasks
             return false;
         }
 
-        public void Add(T enumerator)
+        public void Add(ref T enumerator)
         {
             DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
             
@@ -78,7 +77,7 @@ namespace Svelto.Tasks
             if (count < buffer.Length && buffer[count].isValid())
             {
                 buffer[count].Clear();
-                buffer[count].Push(enumerator);
+                buffer[count].Push(ref enumerator);
                 
                 _listOfStacks.ReuseOneSlot();
             }
@@ -87,7 +86,7 @@ namespace Svelto.Tasks
                 var stack = new StructFriendlyStack(_INITIAL_STACK_SIZE);
                 _listOfStacks.AddRef(ref stack);
                 buffer = _listOfStacks.ToArrayFast();
-                buffer[_listOfStacks.Count - 1].Push(enumerator);
+                buffer[_listOfStacks.Count - 1].Push(ref enumerator);
             }
         }
         
@@ -120,14 +119,14 @@ namespace Svelto.Tasks
             }
         }
 
-        public TaskContract? Current
+        public TaskContract Current
         {
             get
             {
                 if (_listOfStacks.Count > 0)
                     return CurrentStack.Current;
                 else
-                    return new TaskContract?();
+                    return new TaskContract();
             }
         }
 
@@ -140,13 +139,13 @@ namespace Svelto.Tasks
         {
             DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
             
-            var buffer = _listOfStacks.ToArrayFast();
+            var stacks = _listOfStacks.ToArrayFast();
             var count = _listOfStacks.Count;
             
             for (int index = 0; index < count; ++index)
-                buffer[index].Clear();
+                stacks[index].Clear();
             
-            _listOfStacks.FastClear(); 
+            _listOfStacks.FastClear();
          
             _currentStackIndex = 0;
         }
@@ -176,10 +175,13 @@ namespace Svelto.Tasks
             if ((Break)returnObject == Break.It || (Break)returnObject == Break.AndStop)
                 return TaskState.breakIt;
 
-            if (returnObject.Value.enumerator is T) //can be a compatible IEnumerator
+            if (returnObject.enumerator is T) //can be a compatible IEnumerator
             //careful it must be the array and not the list as it returns a struct!!
-                listOfStacks[_currentStackIndex].Push((T)returnObject.Value.enumerator); //push the new yielded task and execute it immediately
-            
+            {
+                var valueEnumerator = (T)returnObject.enumerator;
+                listOfStacks[_currentStackIndex].Push(ref valueEnumerator); //push the new yielded task and execute it immediately
+            }
+
             return TaskState.continueIt;
         }
         
@@ -192,7 +194,6 @@ namespace Svelto.Tasks
         //TaskContract                             _currentTask; reinsert if we want to use IEnumerator for taskcollection
         int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
-        T                                        _current;
 
         const int _INITIAL_STACK_SIZE = 1;
         

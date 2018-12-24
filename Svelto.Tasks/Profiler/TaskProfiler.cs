@@ -26,6 +26,7 @@ namespace Svelto.Tasks.Profiler
             PixWrapper.PIXBeginEventEx(0x11000000, key);
 #endif    
             _stopwatch.Start();
+    mettere platform profiler qui 
             var result = sveltoTask.MoveNext();
             _stopwatch.Stop();
 #if ENABLE_PIX_EVENTS            

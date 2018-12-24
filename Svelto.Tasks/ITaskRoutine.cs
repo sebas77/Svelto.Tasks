@@ -1,7 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using Svelto.Tasks.Unity;
 
 //ITaskRoutine allocated explicitly have several features not 
 //available on task started implicitly with the extension
@@ -37,10 +35,6 @@ namespace Svelto.Tasks
         
         bool isRunning { get; }
         bool isDone { get; }
-    }
-
-    public interface ITaskRoutine:ITaskRoutine<IEnumerator<TaskContract?>>
-    {
-        
+        ContinuationWrapper StartImmediate();
     }
 }

@@ -1,12 +1,30 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using Svelto.DataStructures;
+using Svelto.Tasks.Internal;
 using UnityEngine;
 
 namespace Svelto.Tasks.Unity.Internal
 {
     class RunnerBehaviourUpdate : MonoBehaviour
     {
+        void Awake()
+        {
+            StartCoroutine(CoroutineProcess());
+        }
+
+        IEnumerator CoroutineProcess()
+        {
+            while (true)
+            {
+                ExecuteRoutines(_coroutineProcesses);
+                
+                yield return _waitForEndOfFrame;
+                
+                ExecuteRoutines(_endOfFrameRoutines);
+            }
+        }
+        
         public void Update()
         {
             ExecuteRoutines(_earlyProcesses);
@@ -29,6 +47,11 @@ namespace Svelto.Tasks.Unity.Internal
                 }
             }
         }
+        
+        public void StartSveltoCoroutine(IProcessSveltoTasks process)
+        {
+            _coroutineProcesses.Add(process);
+        }
 
         public void StartUpdateCoroutine(IProcessSveltoTasks enumerator)
         {
@@ -40,26 +63,11 @@ namespace Svelto.Tasks.Unity.Internal
             _earlyProcesses.Add(enumerator);
         }
         
-        void Awake()
-        {
-            StartCoroutine(ExecuteEndOfFrameProcesses());
-        }
-        
         public void StartEndOfFrameCoroutine(IProcessSveltoTasks enumerator)
         {
             _endOfFrameRoutines.Add(enumerator);
         }
 
-        IEnumerator ExecuteEndOfFrameProcesses()
-        {
-            while (true)
-            {
-                yield return _waitForEndOfFrame;
-
-                ExecuteRoutines(_earlyProcesses);
-            }
-        }
-        
         void LateUpdate()
         {
             ExecuteRoutines(_lateRoutines);
@@ -87,6 +95,7 @@ namespace Svelto.Tasks.Unity.Internal
         readonly FasterList<IProcessSveltoTasks> _updateProcesses    = new FasterList<IProcessSveltoTasks>();
         readonly FasterList<IProcessSveltoTasks> _lateRoutines       = new FasterList<IProcessSveltoTasks>();
         readonly FasterList<IProcessSveltoTasks> _physicRoutines     = new FasterList<IProcessSveltoTasks>();
+        readonly FasterList<IProcessSveltoTasks> _coroutineProcesses = new FasterList<IProcessSveltoTasks>();
     }
 }
 #endif

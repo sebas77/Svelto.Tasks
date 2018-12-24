@@ -15,9 +15,9 @@ namespace Svelto.Tasks.Internal
         static void Update(PlayModeStateChange state)
         {
             if (state == PlayModeStateChange.ExitingPlayMode
-             && StandardSchedulers.multiThreadScheduler != null
-             && StandardSchedulers.multiThreadScheduler.isKilled == false)
-                StandardSchedulers.multiThreadScheduler.Dispose();
+             && StandardExtraLeanSchedulers.multiThreadScheduler != null
+             && StandardExtraLeanSchedulers.multiThreadScheduler.isKilled == false)
+                StandardExtraLeanSchedulers.multiThreadScheduler.Dispose();
         }
     }
 #else

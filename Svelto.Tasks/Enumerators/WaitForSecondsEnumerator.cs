@@ -1,10 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class WaitForSecondsEnumerator:IEnumerator<TaskContract?>
+    public class WaitForSecondsEnumerator:IEnumerator<TaskContract>
     {
         public WaitForSecondsEnumerator(float seconds)
         {
@@ -21,9 +20,9 @@ namespace Svelto.Tasks.Enumerators
             _wait.Reset();
         }
 
-        public TaskContract? Current
+        public TaskContract Current
         {
-            get { return null; }
+            get { return Yield.It; }
         }
 
         public void Reset(float seconds)

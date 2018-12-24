@@ -1,10 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks
 {
-    public class ParallelTaskCollection : ParallelTaskCollection<IEnumerator<TaskContract?>>
+    public class ParallelTaskCollection : ParallelTaskCollection<IEnumerator<TaskContract>>
     {
         public ParallelTaskCollection()
         {}
@@ -12,11 +10,11 @@ namespace Svelto.Tasks
         public ParallelTaskCollection(int initialSize) : base(initialSize)
         {}
         
-        public ParallelTaskCollection(IEnumerator<TaskContract?>[] ptasks) : base(ptasks)
+        public ParallelTaskCollection(IEnumerator<TaskContract>[] ptasks) : base(ptasks)
         {}
     }
     
-    public class ParallelTaskCollection<T>: TaskCollection<T> where T: IEnumerator<TaskContract?>
+    public class ParallelTaskCollection<T>: TaskCollection<T> where T: IEnumerator<TaskContract>
     {
         const int _INITIAL_STACK_COUNT = 3;
         
@@ -29,7 +27,7 @@ namespace Svelto.Tasks
         public ParallelTaskCollection(T[] ptasks):base(_INITIAL_STACK_COUNT)
         {
             for (int i = 0; i < ptasks.Length; i++)
-                Add(ptasks[i]);
+                Add(ref ptasks[i]);
         }
 
         /// <summary>

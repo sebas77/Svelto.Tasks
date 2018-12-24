@@ -1,11 +1,11 @@
+#if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.Unity;
 using UnityEngine.Networking;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class UnityWebRequestEnumerator : IEnumerator<TaskContract?>
+    public class UnityWebRequestEnumerator : IEnumerator<TaskContract>
     {
         public UnityWebRequestEnumerator(UnityWebRequest www, int timeOut = -1)
         {
@@ -31,7 +31,7 @@ namespace Svelto.Tasks.Enumerators
             get { return _www; }
         }
 
-        TaskContract? IEnumerator<TaskContract?>.Current { get; }
+        TaskContract IEnumerator<TaskContract>.Current { get; }
 
         public UnityWebRequest Current
         {
@@ -48,3 +48,4 @@ namespace Svelto.Tasks.Enumerators
         readonly UnityWebRequest _www;
     }
 }
+#endif

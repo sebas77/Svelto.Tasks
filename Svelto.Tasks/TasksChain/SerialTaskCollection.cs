@@ -7,12 +7,12 @@ namespace Svelto.Tasks.Chain
         public SerialTaskCollection(Token token) { this.token = token; }
         public SerialTaskCollection() {}
         
-        public new SerialTaskCollection<Token> Add(ITaskChain<Token> task)
+        public SerialTaskCollection<Token> Add(ITaskChain<Token> task)
         {
             if (task == null)
                 throw new ArgumentNullException();
             
-            base.Add(task);
+            base.Add(ref task);
 
             return this;
         }

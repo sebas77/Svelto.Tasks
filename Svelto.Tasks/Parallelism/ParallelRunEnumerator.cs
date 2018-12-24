@@ -1,10 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.Unity;
 
 namespace Svelto.Tasks.Parallelism.Internal
 {
-    class ParallelRunEnumerator<T> : IEnumerator<TaskContract?> where T:struct, IMultiThreadParallelizable
+    public class ParallelRunEnumerator<T> : IEnumerator<TaskContract> where T:struct, IMultiThreadParallelizable
     {
         public ParallelRunEnumerator(ref T job, int startIndex, int numberOfIterations)
         {
@@ -31,12 +30,12 @@ namespace Svelto.Tasks.Parallelism.Internal
         public void Reset()
         {}
 
-        TaskContract? IEnumerator<TaskContract?>.Current
+        public TaskContract Current
         {
-            get { return null; }
+            get { return Yield.It; }
         }
 
-        public object Current
+        object IEnumerator.Current
         {
             get { return null; }
         }

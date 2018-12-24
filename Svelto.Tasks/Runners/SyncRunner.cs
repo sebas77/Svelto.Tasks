@@ -1,21 +1,19 @@
-using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.Unity;
+using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
-    
     /// <summary>
     /// Be sure you know what you are doing when you are using the Sync runner, it will stall the current thread!
     /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead. 
     /// </summary>
-    public class SyncRunner : SyncRunner<IEnumerator<TaskContract?>>
+    public class SyncRunner : SyncRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
     {
         public SyncRunner(int timeout = 1000) : base(timeout)
         {
         }
     }
-    public class SyncRunner<T> : IRunner<T>, IEnumerator where T: IEnumerator<TaskContract?>
+    public class SyncRunner<T> : IRunner, IInternalRunner<T> where T: ISveltoTask
     {
         public bool isPaused { get; set; }
         public bool isStopping { private set; get; }
@@ -26,11 +24,9 @@ namespace Svelto.Tasks
             _timeout = timeout;
         }
 
-        public void StartCoroutine(ISveltoTask task)
+        public void StartCoroutine(ref T task, bool immediate)
         {
-            _syncTask = task;
-            
-            this.Complete(_timeout);
+            TaskRunnerExtensions.CompleteTask(ref task, _timeout);
         }
 
         /// <summary>
@@ -40,25 +36,11 @@ namespace Svelto.Tasks
         public void StopAllCoroutines()
         {}
 
-        public void Dispose()
-        {}
-        
-        public bool MoveNext()
-        {
-            return _syncTask.MoveNext();
-        }
-
-        public void Reset()
-        {
-            throw new System.NotImplementedException();
-        }
-
         public int numberOfRunningTasks { get { return 0; } }
         public int numberOfQueuedTasks { get { return 0; } }
+        public int numberOfProcessingTasks { get { return 0; } }
+        public void Dispose() {}
 
-        int _timeout;
-        ISveltoTask _syncTask;
-
-        public object Current { get; }
+        readonly int _timeout;
     }
 }
