@@ -1,6 +1,5 @@
 #if TASKS_PROFILER_ENABLED
 using System;
-using System.Collections;
 using System.Collections.Generic;
 
 //This profiler is based on the Entitas Visual Debugging tool 
@@ -10,7 +9,7 @@ namespace Svelto.Tasks.Profiler
 {
     public struct TaskInfo
     {
-        const int NUM_FRAMES_TO_AVERAGE = 10;
+        const int NUM_FRAMES_TO_AVERAGE = 100;
 
         public string taskName { get { return _threadInfo.FastConcat(_taskName); } }
         public double lastUpdateDuration { get { return _lastUpdateDuration; } }

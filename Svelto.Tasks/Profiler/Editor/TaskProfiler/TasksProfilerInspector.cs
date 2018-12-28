@@ -214,7 +214,7 @@ namespace Svelto.Tasks.Profiler
                     break;
                 case SORTING_OPTIONS.AVERAGE:
                     Array.Sort(tasks,
-                               (task1, task2) => task2.currentUpdateDuration.CompareTo(task1.averageUpdateDuration));
+                        (task1, task2) => task2.averageUpdateDuration.CompareTo(task1.averageUpdateDuration));
                     break;
                 case SORTING_OPTIONS.MIN:
                     Array.Sort(tasks,

@@ -256,18 +256,27 @@ namespace Svelto.Tasks
                         var coroutines = _coroutines.ToArrayFast();
 
                         for (var index = 0;
-                             index < _coroutines.Count && false == ThreadUtility.VolatileRead(ref _breakThread); ++index)
-#if ENABLE_PLATFORM_PROFILER                            
+                             index < _coroutines.Count && false == ThreadUtility.VolatileRead(ref _breakThread);
+                             ++index)
+                        {
+                            bool result;
+#if ENABLE_PLATFORM_PROFILER
                             using (platformProfiler.Sample(coroutines[index].ToString()))
 #endif
                             {
                                 if (waitForFlush) coroutines[index].Stop();
-                                
-                                var result = coroutines[index].MoveNext();
+
+#if TASKS_PROFILER_ENABLED
+                                result =
+                                    Profiler.TaskProfiler.MonitorUpdateDuration(coroutines[index], name);
+#else
+                                result = coroutines[index].MoveNext();
+#endif
 
                                 if (result == false)
                                     _coroutines.UnorderedRemoveAt(index--);
                             }
+                        }
 
                         if (ThreadUtility.VolatileRead(ref _breakThread) == false)
                         {
