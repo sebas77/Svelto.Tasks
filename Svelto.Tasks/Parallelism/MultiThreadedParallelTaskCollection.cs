@@ -124,14 +124,14 @@ namespace Svelto.Tasks.Parallelism
                 throw new MultiThreadedParallelTaskCollectionException("can't add tasks on a started MultiThreadedParallelTaskCollection");
 
             var runnersLength = _runners.Length;
-            int particlesPerThread = (int) Math.Floor((double)iterations / runnersLength);
+            int itemsPerThread = (int) Math.Floor((double)iterations / runnersLength);
             int reminder = iterations % runnersLength;
 
             for (int i = 0; i < runnersLength; i++)
-                Add(new ParallelRunEnumerator<T>(ref job, particlesPerThread * i, particlesPerThread));
+                Add(new ParallelRunEnumerator<T>(ref job, itemsPerThread * i, itemsPerThread));
             
             if (reminder > 0)
-                Add(new ParallelRunEnumerator<T>(ref job, particlesPerThread * runnersLength, reminder));
+                Add(new ParallelRunEnumerator<T>(ref job, itemsPerThread * runnersLength, reminder));
         }
 
         public bool MoveNext()

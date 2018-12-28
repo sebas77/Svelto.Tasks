@@ -4,29 +4,35 @@ using Svelto.Utilities;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class WaitForSignalEnumerator:IEnumerator
+    /// <summary>
+    /// Enumerator useful to synchronize Svelto.Tasks running on different threads. It's abstract and with weird
+    /// generic parameter, because I want to force the user to use specialized classes with meaningful names
+    /// as way to improve the readability of the code and make its debugging simpler.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public abstract class WaitForSignalEnumerator<T>:IEnumerator where T:WaitForSignalEnumerator<T>
     {
-        public object Current
-        {
-            get
-            {
-                return _return;
-            }
-        }
-
+        /// <summary>
+        /// the signal times out automatically, so specify the time out time according your needs. Autoreset
+        /// means that the enumerator is reusable right after it has been completed without calling Reset()
+        /// explicitly
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="timeout"></param>
+        /// <param name="autoreset"></param>
         public WaitForSignalEnumerator(string name, float timeout = 1000, bool autoreset = true)
         {
+            _waitBack = new WaitBackC(timeout);
             _initialTimeOut = timeout;
             _autoreset = autoreset;
             _name = name;
-            
-            ThreadUtility.MemoryBarrier();
-        }        
+        }
+
         public WaitForSignalEnumerator(string name, Func<bool> extraDoneCondition, float timeout = 1000, bool autoreset = true):this(name, timeout, autoreset)
         {
             _extraDoneCondition = extraDoneCondition;
         }
-
+        
         public bool MoveNext()
         {
             if (_started == false)
@@ -34,14 +40,13 @@ namespace Svelto.Tasks.Enumerators
                 _started = true;
                 _then = DateTime.Now.AddMilliseconds(_initialTimeOut);
             }
-            ThreadUtility.MemoryBarrier();
 
             var timedOut = DateTime.Now > _then;
-            var isDone = _signal || timedOut;
+            _isDone = ThreadUtility.VolatileRead(ref _signal) || timedOut;
             
-            if (_extraDoneCondition != null) isDone |= _extraDoneCondition();
+            if (_extraDoneCondition != null) _isDone |= _extraDoneCondition();
             
-            if (isDone == true)
+            if (_isDone == true)
             {
                 if (_autoreset == true)
                     Reset();
@@ -52,50 +57,81 @@ namespace Svelto.Tasks.Enumerators
                 return false;
             }
             
-            ThreadUtility.Yield();
-
-            return !isDone;
+            return !_isDone;
         }
 
         public void Reset()
         {
             _signal = false;
-            _then = DateTime.Now.AddMilliseconds(_initialTimeOut);
+            _started = false;
             
             ThreadUtility.MemoryBarrier();
         }
 
         public void Signal()
         {
-            _signal = true;
-            
-            ThreadUtility.MemoryBarrier();
+            ThreadUtility.VolatileWrite(ref _signal, true);
         }
 
         public void Signal(object obj)
         {
-            _signal = true;
             _return = obj;
-            
-            ThreadUtility.MemoryBarrier();
+            ThreadUtility.VolatileWrite(ref _signal, true);
         }
 
         public bool isDone()
         {
             DBC.Tasks.Check.Require(_autoreset == false, "Can't check if done if the signal auto resets, change behaviour through the constructor parameter");
             
-            return _signal;
+            return _isDone;
         }
         
-        volatile bool   _signal;
-        volatile object _return;
+        public IEnumerator WaitBack()
+        {
+            return _waitBack;
+        }
+
+        public void SignalBack()
+        {
+            _waitBack.Signal();
+        }
         
+        protected internal WaitForSignalEnumerator(float timeout = 1000)
+        {
+            _initialTimeOut = timeout;
+            _autoreset      = true;
+            _name           = "waitBack";
+            _signal         = true;
+        }
+
+        class WaitBackC : WaitForSignalEnumerator<WaitBackC>
+        {
+            internal WaitBackC(float timeOut) : base(timeOut)
+            {
+                
+            }
+        }
+        
+        public object Current
+        {
+            get
+            {
+                return _return;
+            }
+        }
+        
+        
+        volatile object _return;
+
         readonly bool       _autoreset;
         readonly Func<bool> _extraDoneCondition;
-        
         readonly float      _initialTimeOut;
-        DateTime            _then;
-        string              _name;
-        bool                _started;
+        readonly WaitBackC  _waitBack;
+        readonly string     _name;
+        
+        bool     _signal;
+        bool     _started;
+        DateTime _then;
+        bool     _isDone;
     }
 }

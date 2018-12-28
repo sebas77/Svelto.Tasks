@@ -60,6 +60,8 @@ namespace Svelto.Tasks
                     if (mustComplete)
                         isRunning = false;
                 }
+                else
+                    isRunning = false;
 
                 throw;
             }

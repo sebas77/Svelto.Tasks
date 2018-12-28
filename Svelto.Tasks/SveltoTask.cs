@@ -323,8 +323,9 @@ namespace Svelto.Tasks.Internal
             }
     
             return _sveltoTask._name;
-#endif
+#else
             return "TaskRoutine";
+#endif    
         }
 
 
