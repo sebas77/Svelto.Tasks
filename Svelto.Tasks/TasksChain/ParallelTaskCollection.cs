@@ -4,9 +4,11 @@ namespace Svelto.Tasks.Chain
 {
     public class ParallelTaskCollection<Token> : Svelto.Tasks.ParallelTaskCollection<ITaskChain<Token>>, ITaskChain<Token>
     {
-        public ParallelTaskCollection(Token token) { this.token = token; }
-        public ParallelTaskCollection() { this.token = token; }
-        
+        public ParallelTaskCollection(Token token):base()
+        {
+            this.token = token;
+        }
+
         public new ParallelTaskCollection<Token> Add(ITaskChain<Token> task)
         {
             if (task == null)

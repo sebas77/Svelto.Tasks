@@ -4,13 +4,16 @@ namespace Svelto.Tasks
 {
     public class ParallelTaskCollection : ParallelTaskCollection<IEnumerator>
     {
-        public ParallelTaskCollection()
+        public ParallelTaskCollection() : base()
+        
+        {}
+        public ParallelTaskCollection(string name, int initialSize) : base(name, initialSize)
         {}
         
-        public ParallelTaskCollection(int initialSize) : base(initialSize)
+        public ParallelTaskCollection(string name, IEnumerator[] ptasks) : base(name, ptasks)
         {}
-        
-        public ParallelTaskCollection(IEnumerator[] ptasks) : base(ptasks)
+
+        public ParallelTaskCollection(string name) : base(name)
         {}
     }
     
@@ -18,13 +21,16 @@ namespace Svelto.Tasks
     {
         const int _INITIAL_STACK_COUNT = 3;
         
-        public ParallelTaskCollection():base(_INITIAL_STACK_COUNT)
+        public  ParallelTaskCollection() : base(_INITIAL_STACK_COUNT)
         {}
         
-        public ParallelTaskCollection(int initialSize) : base(initialSize)
+        public ParallelTaskCollection(string name):base(name, _INITIAL_STACK_COUNT)
+        {}
+        
+        public ParallelTaskCollection(string name, int initialSize) : base(name, initialSize)
         {}
 
-        public ParallelTaskCollection(T[] ptasks):base(_INITIAL_STACK_COUNT)
+        public ParallelTaskCollection(string name, T[] ptasks):base(name, ptasks.Length)
         {
             for (int i = 0; i < ptasks.Length; i++)
                 Add(ptasks[i]);
@@ -53,7 +59,7 @@ namespace Svelto.Tasks
                             if (stacks[index].count > 1)
                             {
                                 stacks[index].Pop(); //now it can be popped
-                                index--; //continue the current task
+                                index--;             //continue the current task
                             }
                             else
                             {
@@ -66,7 +72,7 @@ namespace Svelto.Tasks
                             }
                             break;
                         case TaskState.breakIt:
-                            return true; //end the iteration
+                            return true;           //end the iteration
                         case TaskState.continueIt: //continue the current task
                             index--;
                             continue;
@@ -89,16 +95,16 @@ namespace Svelto.Tasks
 
         int SwapStack(int index, StructFriendlyStack[] buffer, int count)
         {
-                var lastIndex = count - _stackOffset - 1;
+            var lastIndex = count - _stackOffset - 1;
 
-                if (index == lastIndex) //is this the last index available, then don't swap 
-                    return index;
+            if (index == lastIndex) //is this the last index available, then don't swap 
+                return index;
 
-                var item = buffer[lastIndex];
-                buffer[lastIndex] = buffer[index];
-                buffer[index]     = item;
+            var item = buffer[lastIndex];
+            buffer[lastIndex] = buffer[index];
+            buffer[index]     = item;
                 
-                return --index;
+            return --index;
         }
 
         int _stackOffset;

@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using Svelto.DataStructures;
 using Svelto.Tasks.Unity.Internal;
-using UnityEngine;
 
 #if TASKS_PROFILER_ENABLED
 using Svelto.Tasks.Profiler;
@@ -36,7 +35,7 @@ namespace Svelto.Tasks.Unity
 
         ~MonoRunner()
         {
-            Svelto.Utilities.Console.LogWarning("MonoRunner has been garbage collected, this could have serious" +
+            Utilities.Console.LogWarning("MonoRunner has been garbage collected, this could have serious" +
                                                 "consequences, are you sure you want this? ".FastConcat(_name));
             
             StopAllCoroutines();

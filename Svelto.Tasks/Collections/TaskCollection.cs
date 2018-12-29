@@ -25,9 +25,15 @@ namespace Svelto.Tasks
         public event Func<Exception, bool> onException;
         
         public bool  isRunning { private set; get; }
-
-        protected TaskCollection(int initialSize)
+        
+        protected TaskCollection(int initialStackCount): this(String.Empty, initialStackCount)
         {
+            _name = base.ToString();
+        }
+
+        protected TaskCollection(string name, int initialSize)
+        {
+            _name = name;
             _currentTask = new CollectionTask(this);
             
             _listOfStacks = new FasterList<StructFriendlyStack>(initialSize);
@@ -192,6 +198,14 @@ namespace Svelto.Tasks
             
             return TaskState.continueIt;
         }
+
+        public override string ToString()
+        {
+            if (_name == null)
+                _name = base.ToString(); 
+
+            return _name;
+        }
         
         protected int taskCount { get { return _listOfStacks.Count; }}
         protected StructFriendlyStack[] rawListOfStacks { get { return _listOfStacks.ToArrayFast(); } }
@@ -203,6 +217,7 @@ namespace Svelto.Tasks
         int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
         T                                        _current;
+        string                                   _name;
 
         const int _INITIAL_STACK_SIZE = 1;
         

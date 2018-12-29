@@ -20,15 +20,16 @@ namespace Svelto.Tasks.Enumerators
         /// <param name="name"></param>
         /// <param name="timeout"></param>
         /// <param name="autoreset"></param>
-        public WaitForSignalEnumerator(string name, float timeout = 1000, bool autoreset = true)
+        public WaitForSignalEnumerator(string name, float timeout = 1000, bool autoreset = true, bool startUnlocked = false)
         {
-            _waitBack = new WaitBackC(timeout);
+            _waitBack = new WaitBackC(timeout, !startUnlocked);
             _initialTimeOut = timeout;
             _autoreset = autoreset;
             _name = name;
+            _signal = startUnlocked;
         }
 
-        public WaitForSignalEnumerator(string name, Func<bool> extraDoneCondition, float timeout = 1000, bool autoreset = true):this(name, timeout, autoreset)
+        public WaitForSignalEnumerator(string name, Func<bool> extraDoneCondition, float timeout = 1000, bool autoreset = true, bool startUnlocked = false):this(name, timeout, autoreset, startUnlocked)
         {
             _extraDoneCondition = extraDoneCondition;
         }
@@ -52,7 +53,7 @@ namespace Svelto.Tasks.Enumerators
                     Reset();
                 
                 if (timedOut)
-                    Svelto.Utilities.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
+                    Utilities.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
                 
                 return false;
             }
@@ -95,21 +96,19 @@ namespace Svelto.Tasks.Enumerators
         {
             _waitBack.Signal();
         }
-        
-        protected internal WaitForSignalEnumerator(float timeout = 1000)
+
+        WaitForSignalEnumerator(float timeout , bool startUnlocked)
         {
             _initialTimeOut = timeout;
             _autoreset      = true;
             _name           = "waitBack";
-            _signal         = true;
+            _signal         = startUnlocked;
         }
 
         class WaitBackC : WaitForSignalEnumerator<WaitBackC>
         {
-            internal WaitBackC(float timeOut) : base(timeOut)
-            {
-                
-            }
+            internal WaitBackC(float timeOut, bool startUnlocked) : base(timeOut, startUnlocked)
+            {}
         }
         
         public object Current
@@ -119,7 +118,6 @@ namespace Svelto.Tasks.Enumerators
                 return _return;
             }
         }
-        
         
         volatile object _return;
 

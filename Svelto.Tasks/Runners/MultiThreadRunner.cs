@@ -152,9 +152,9 @@ namespace Svelto.Tasks
                 _mevent              = new ManualResetEventEx();
                 _watch               = new Stopwatch();
                 _coroutines          = new FasterList<ISveltoTask<T>>();
-                newTaskRoutines     = new ThreadSafeQueue<ISveltoTask<T>>();
-                _interval            = (long) (interval * 10000);
-                this.name                = name;
+                newTaskRoutines      = new ThreadSafeQueue<ISveltoTask<T>>();
+                _intervalInTicks     = (long) (interval * Stopwatch.Frequency / 1000);
+                this.name            = name;
                 _isRunningTightTasks = isRunningTightTasks;
 
                 if (relaxed)
@@ -204,9 +204,9 @@ namespace Svelto.Tasks
                 var quickIterations = 0;
                 _watch.Start();
 
-                while (_watch.ElapsedTicks < _interval)
+                while (_watch.ElapsedTicks < _intervalInTicks)
                 {
-                    ThreadUtility.Wait(ref quickIterations);
+                    ThreadUtility.Wait(ref quickIterations, 1024);
 
                     if (ThreadUtility.VolatileRead(ref _breakThread) == true) return;
                 }
@@ -216,6 +216,9 @@ namespace Svelto.Tasks
 
             internal void UnlockThread()
             {
+                if (_mevent == null)
+                    return;
+                
                 _interlock = 1;
 
                 _mevent.Set();
@@ -244,7 +247,7 @@ namespace Svelto.Tasks
             internal void RunCoroutineFiber()
             {
 #if ENABLE_PLATFORM_PROFILER                          
-                using (var platformProfiler = new Svelto.Common.PlatformProfilerMT(name))
+                using (var platformProfiler = new Common.PlatformProfilerMT(name))
 #endif    
                 {
                     while (_breakThread == false)
@@ -252,7 +255,7 @@ namespace Svelto.Tasks
                         ThreadUtility.MemoryBarrier();
                         if (newTaskRoutines.Count > 0 && false == waitForFlush) //don't start anything while flushing
                             newTaskRoutines.DequeueAllInto(_coroutines);
-                        
+
                         var coroutines = _coroutines.ToArrayFast();
 
                         for (var index = 0;
@@ -280,7 +283,7 @@ namespace Svelto.Tasks
 
                         if (ThreadUtility.VolatileRead(ref _breakThread) == false)
                         {
-                            if (_interval > 0 && waitForFlush == false)
+                            if (_intervalInTicks > 0 && waitForFlush == false)
                                 WaitForInterval();
 
                             if (_coroutines.Count == 0)
@@ -314,7 +317,7 @@ namespace Svelto.Tasks
             }
 
             internal readonly ThreadSafeQueue<ISveltoTask<T>> newTaskRoutines;
-            internal volatile bool                           waitForFlush;
+            internal volatile bool                            waitForFlush;
             internal bool isPaused
             {
                 get { return _isPaused; }
@@ -326,20 +329,20 @@ namespace Svelto.Tasks
                 } 
             }
 
-            bool _breakThread;
-
             readonly FasterList<ISveltoTask<T>> _coroutines;
-            readonly long                      _interval;
-            internal string                    name;
-            readonly bool                      _isRunningTightTasks;
-            readonly System.Action             _lockingMechanism;
+            readonly long                       _intervalInTicks;
+            readonly bool                       _isRunningTightTasks;
+            readonly Action                     _lockingMechanism;
+            
+            internal string name;
 
-            ManualResetEventEx     _mevent;
-            Action                 _onThreadKilled;
-            Stopwatch              _watch;
-            int                    _interlock;
-            int                    _yieldingCount;
-            bool                   _isPaused;
+            ManualResetEventEx _mevent;
+            Action             _onThreadKilled;
+            Stopwatch          _watch;
+            int                _interlock;
+            int                _yieldingCount;
+            bool               _isPaused;
+            bool               _breakThread;
         }
 
         RunnerData _runnerData;

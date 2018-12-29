@@ -41,20 +41,5 @@ public static class TaskRunnerExtensions
             while (enumerator.MoveNext()) ThreadUtility.Wait(ref quickIterations);
         }
     }
-    
-    public static ParallelTaskCollection Combine(this IEnumerator enumerator, IEnumerator enumerator2)
-    {
-        var parallel = enumerator as ParallelTaskCollection;
-
-        if (parallel == null)
-        {
-            parallel = new ParallelTaskCollection();
-            parallel.Add(enumerator);
-        }
-        
-        parallel.Add(enumerator2);
-
-        return parallel;
-    }
 }
 
