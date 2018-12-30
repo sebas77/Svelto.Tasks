@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using Svelto.Tasks.ExtraLean;
 using UnityEditor;
 
 namespace Svelto.Tasks.Internal
@@ -15,9 +16,9 @@ namespace Svelto.Tasks.Internal
         static void Update(PlayModeStateChange state)
         {
             if (state == PlayModeStateChange.ExitingPlayMode
-             && StandardExtraLeanSchedulers.multiThreadScheduler != null
-             && StandardExtraLeanSchedulers.multiThreadScheduler.isKilled == false)
-                StandardExtraLeanSchedulers.multiThreadScheduler.Dispose();
+             && StandardSchedulers.multiThreadScheduler != null
+             && StandardSchedulers.multiThreadScheduler.isKilled == false)
+                StandardSchedulers.multiThreadScheduler.Dispose();
         }
     }
 #else

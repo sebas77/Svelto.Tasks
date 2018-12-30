@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Svelto.Tasks.Parallelism.Internal
 {
-    public class ParallelRunEnumerator<T> : IEnumerator<TaskContract> where T:struct, IMultiThreadParallelizable
+    public class ParallelRunEnumerator<T> : IEnumerator<TaskContract> where T:struct, ISveltoJob
     {
         public ParallelRunEnumerator(ref T job, int startIndex, int numberOfIterations)
         {

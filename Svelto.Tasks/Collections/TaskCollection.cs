@@ -26,9 +26,15 @@ namespace Svelto.Tasks
         public event Func<Exception, bool> onException;
         
         public bool  isRunning { private set; get; }
-
-        protected TaskCollection(int initialSize)
+        
+        protected TaskCollection(int initialStackCount): this(String.Empty, initialStackCount)
         {
+            _name = base.ToString();
+        }
+
+        protected TaskCollection(string name, int initialSize)
+        {
+            _name = name;
             _listOfStacks = new FasterList<StructFriendlyStack>(initialSize);
             var buffer = _listOfStacks.ToArrayFast();
             for (int i = 0; i < initialSize; i++)
@@ -59,6 +65,8 @@ namespace Svelto.Tasks
                     if (mustComplete)
                         isRunning = false;
                 }
+                else
+                    isRunning = false;
 
                 throw;
             }
@@ -184,6 +192,14 @@ namespace Svelto.Tasks
 
             return TaskState.continueIt;
         }
+
+        public override string ToString()
+        {
+            if (_name == null)
+                _name = base.ToString(); 
+
+            return _name;
+        }
         
         protected int taskCount { get { return _listOfStacks.Count; }}
         protected StructFriendlyStack[] rawListOfStacks { get { return _listOfStacks.ToArrayFast(); } }
@@ -194,6 +210,7 @@ namespace Svelto.Tasks
         //TaskContract                             _currentTask; reinsert if we want to use IEnumerator for taskcollection
         int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
+        string                                   _name;
 
         const int _INITIAL_STACK_SIZE = 1;
         

@@ -4,10 +4,16 @@ namespace Svelto.Tasks
 {
     public class SerialTaskCollection : SerialTaskCollection<IEnumerator<TaskContract>>
     {
-        public SerialTaskCollection()
+        public SerialTaskCollection() : base()
+        {}
+        
+        public SerialTaskCollection(int initialSize) : base(initialSize)
+        {}
+        
+        public SerialTaskCollection(string name): base(name)
         {}
 
-        public SerialTaskCollection(int initialSize) : base(initialSize)
+        public SerialTaskCollection(string name, int initialSize) : base(name, initialSize)
         {}
     }
 
@@ -17,8 +23,14 @@ namespace Svelto.Tasks
 
         public SerialTaskCollection() : base(_INITIAL_STACK_COUNT)
         {}
-
+        
         public SerialTaskCollection(int initialSize) : base(initialSize)
+        {}
+
+        public SerialTaskCollection(string name) : base(name, _INITIAL_STACK_COUNT)
+        {}
+
+        public SerialTaskCollection(string name, int initialSize) : base(name, initialSize)
         {}
 
         protected override bool RunTasksAndCheckIfDone()
