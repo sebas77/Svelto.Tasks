@@ -31,10 +31,10 @@ namespace Svelto.Tasks.Unity.Internal
             ExecuteRoutines(_updateProcesses);
         }
 
-        static void ExecuteRoutines(FasterList<IProcessSveltoTasks> list)
+        static void ExecuteRoutines(FasterListThreadSafe<IProcessSveltoTasks> list)
         {
-            var count    = list.Count;
-            var routines = list.ToArrayFast();
+            int count;
+            var routines = list.ToArrayFast(out count);
 
             for (int i = 0; i < count; i++)
             {
@@ -90,12 +90,12 @@ namespace Svelto.Tasks.Unity.Internal
 
         readonly WaitForEndOfFrame _waitForEndOfFrame = new WaitForEndOfFrame();
 
-        readonly FasterList<IProcessSveltoTasks> _earlyProcesses     = new FasterList<IProcessSveltoTasks>();
-        readonly FasterList<IProcessSveltoTasks> _endOfFrameRoutines = new FasterList<IProcessSveltoTasks>();
-        readonly FasterList<IProcessSveltoTasks> _updateProcesses    = new FasterList<IProcessSveltoTasks>();
-        readonly FasterList<IProcessSveltoTasks> _lateRoutines       = new FasterList<IProcessSveltoTasks>();
-        readonly FasterList<IProcessSveltoTasks> _physicRoutines     = new FasterList<IProcessSveltoTasks>();
-        readonly FasterList<IProcessSveltoTasks> _coroutineProcesses = new FasterList<IProcessSveltoTasks>();
+        readonly FasterListThreadSafe<IProcessSveltoTasks> _earlyProcesses     = new FasterListThreadSafe<IProcessSveltoTasks>();
+        readonly FasterListThreadSafe<IProcessSveltoTasks> _endOfFrameRoutines = new FasterListThreadSafe<IProcessSveltoTasks>();
+        readonly FasterListThreadSafe<IProcessSveltoTasks> _updateProcesses    = new FasterListThreadSafe<IProcessSveltoTasks>();
+        readonly FasterListThreadSafe<IProcessSveltoTasks> _lateRoutines       = new FasterListThreadSafe<IProcessSveltoTasks>();
+        readonly FasterListThreadSafe<IProcessSveltoTasks> _physicRoutines     = new FasterListThreadSafe<IProcessSveltoTasks>();
+        readonly FasterListThreadSafe<IProcessSveltoTasks> _coroutineProcesses = new FasterListThreadSafe<IProcessSveltoTasks>();
     }
 }
 #endif

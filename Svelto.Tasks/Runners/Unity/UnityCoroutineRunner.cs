@@ -12,54 +12,63 @@ namespace Svelto.Tasks.Unity.Internal
 
         static UnityCoroutineRunner()
         {
-            if (Application.isPlaying)
+            try
             {
-                GameObject go = new GameObject("Svelto.Tasks.UnityScheduler");
-                _runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
+                if (Application.isPlaying)
+                {
+                    GameObject go = new GameObject("Svelto.Tasks.UnityScheduler");
+                    _runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
 
-                Object.DontDestroyOnLoad(go);
+                    Object.DontDestroyOnLoad(go);
+                }
+            }
+            catch
+            {
+                Svelto.Utilities.Console.LogError
+                    ("While Unity runners can be referenced from inside other threads, " +
+                     "their very first use must happen inside the Unity main thread");
             }
         }
         
         public static void StartUpdateCoroutine(IProcessSveltoTasks process)
         {
-            if (Application.isPlaying)
+            if (_runnerBehaviour != null)
                 _runnerBehaviour.StartUpdateCoroutine(process);
         }
         
         public static void StartEarlyUpdateCoroutine(IProcessSveltoTasks process)
         {
-            if (Application.isPlaying)
+            if (_runnerBehaviour != null)
                 _runnerBehaviour.StartEarlyUpdateCoroutine(process);
         }
         
         public static void StartEndOfFrameCoroutine(IProcessSveltoTasks process)
         {
-            if (Application.isPlaying)
+            if (_runnerBehaviour != null)
                 _runnerBehaviour.StartEndOfFrameCoroutine(process);
         }
         
         public static void StartLateCoroutine(IProcessSveltoTasks process)
         {
-            if (Application.isPlaying)
+            if (_runnerBehaviour != null)
                 _runnerBehaviour.StartLateCoroutine(process);
         }
 
         public static void StartCoroutine(IProcessSveltoTasks process)
         {
-            if (Application.isPlaying)
+            if (_runnerBehaviour != null)
                 _runnerBehaviour.StartSveltoCoroutine(process);
         }
         
         public static void StartYieldCoroutine(IEnumerator yieldInstructionWrapper)
         {
-            if (Application.isPlaying)
+            if (_runnerBehaviour != null)
                 _runnerBehaviour.StartCoroutine(yieldInstructionWrapper);
         }
 
         public static void StartPhysicCoroutine(IProcessSveltoTasks process)
         {
-            if (Application.isPlaying)
+            if (_runnerBehaviour != null)
                 _runnerBehaviour.StartPhysicCoroutine(process);
         }
     }

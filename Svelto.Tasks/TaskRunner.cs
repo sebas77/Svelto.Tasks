@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Svelto.Tasks.Internal;
+using Svelto.Tasks.Lean;
+using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks
 {
@@ -26,7 +28,7 @@ namespace Svelto.Tasks
         /// </returns>
         public ITaskRoutine<IEnumerator<TaskContract>> AllocateNewTaskRoutine()
         {
-            return new TaskRoutine<IEnumerator<TaskContract>>((IInternalRunner<TaskRoutine<IEnumerator<TaskContract>>>) StandardTaskRoutineSchedulers.standardScheduler);
+            return new TaskRoutine<IEnumerator<TaskContract>>((IInternalRunner<TaskRoutine<IEnumerator<TaskContract>>>) StandardSchedulers.standardScheduler);
         }
         
         public TaskRoutine<T> AllocateNewTaskRoutine<T, W>(W runner) where T: IEnumerator<TaskContract> where W:IInternalRunner<TaskRoutine<T>>
@@ -41,7 +43,8 @@ namespace Svelto.Tasks
 
         public static void StopAndCleanupAllDefaultSchedulers()
         {
-            StandardExtraLeanSchedulers.KillSchedulers();
+            StandardSchedulers.KillSchedulers();
+            ExtraLean.StandardSchedulers.KillSchedulers();
 
             _instance = null;
         }

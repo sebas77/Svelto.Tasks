@@ -3,9 +3,9 @@ using System.Collections;
 using Svelto.Tasks.Unity;
 #endif
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.ExtraLean
 {
-    public static class StandardExtraLeanSchedulers
+    public static class StandardSchedulers
     {
         static MultiThreadRunner _multiThreadScheduler;
 

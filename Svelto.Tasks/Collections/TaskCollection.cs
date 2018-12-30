@@ -168,11 +168,11 @@ namespace Svelto.Tasks
                 return TaskState.doneIt;
             
             //can yield for one iteration
-            if (returnObject.HasValue == false) 
+            if (returnObject.yieldIt) 
                 return TaskState.yieldIt;
 
             //can be a Svelto.Tasks Break
-            if ((Break)returnObject == Break.It || (Break)returnObject == Break.AndStop)
+            if (returnObject.breakit == Break.It || returnObject.breakit == Break.AndStop)
                 return TaskState.breakIt;
 
             if (returnObject.enumerator is T) //can be a compatible IEnumerator

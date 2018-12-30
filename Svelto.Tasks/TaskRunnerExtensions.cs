@@ -5,6 +5,25 @@ using System.Collections.Generic;
 using Svelto.Tasks.Internal;
 using Svelto.Utilities;
 
+namespace Svelto.Tasks.ExtraLean
+{
+    public static class TaskRunnerExtensions
+    {
+        public static void Run<TTask, TRunner>(this TTask enumerator, TRunner runner)
+            where TTask : IEnumerator where TRunner : class, IInternalRunner<ExtraLeanSveltoTask<TTask>>
+        {
+            new ExtraLeanSveltoTask<TTask>().Start(runner, ref enumerator, false);
+        }
+
+        public static void Run(this IEnumerator enumerator)
+        {
+            new ExtraLeanSveltoTask<IEnumerator>()
+               .Start((IInternalRunner<ExtraLeanSveltoTask<IEnumerator>>) StandardSchedulers.standardScheduler,
+                      ref enumerator, true);
+        }
+    }
+}
+
 public static class TaskRunnerExtensions
 {
     public static ContinuationWrapper Run<TTask, TRunner>(this TTask enumerator, TRunner runner) 
@@ -12,24 +31,13 @@ public static class TaskRunnerExtensions
     {
         return new LeanSveltoTask<TTask>().Start(runner, ref enumerator, false);
     }
-    
-    public static void Start<TTask, TRunner>(this TTask enumerator, TRunner runner) 
-        where TTask:IEnumerator where TRunner:class, IInternalRunner<ExtraLeanSveltoTask<TTask>>
-    {
-        new ExtraLeanSveltoTask<TTask>().Start(runner, ref enumerator, false);
-    }
 
-    internal static ContinuationWrapper RunImmediate<TTask,  TRunner>(this TTask enumerator, TRunner runner) 
+    public static ContinuationWrapper RunImmediate<TTask,  TRunner>(this TTask enumerator, TRunner runner) 
         where TTask: IEnumerator<TaskContract> where TRunner:class, IInternalRunner<LeanSveltoTask<TTask>>
     {
         return new LeanSveltoTask<TTask>().Start(runner, ref enumerator, true);
     }
 
-    public static void Start(this IEnumerator enumerator)
-    {
-        new ExtraLeanSveltoTask<IEnumerator>().Start((IInternalRunner<ExtraLeanSveltoTask<IEnumerator>>) StandardExtraLeanSchedulers.standardScheduler, ref enumerator, true);
-    }
-    
     public static TaskContract Continue(this IEnumerator<TaskContract> enumerator)
     {
         return new TaskContract(enumerator);

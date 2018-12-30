@@ -9,49 +9,42 @@ namespace Svelto.Tasks
         {
             _currentState      = states.value;
             _returnValue.int32 = number;
-            HasValue           = true;
         }
 
         TaskContract(ContinuationWrapper continuation) : this()
         {
             _currentState               = states.continuation;
             _returnObjects.continuation = continuation;
-            HasValue                    = true;
         }
 
         public TaskContract(IEnumerator enumerator) : this()
         {
             _currentState            = states.enumerator;
             _returnObjects.reference = enumerator;
-            HasValue                 = true;
         }
 
         public TaskContract(Break breakit) : this()
         {
             _currentState          = states.breakit;
             _returnObjects.breakIt = breakit;
-            HasValue               = true;
         }
 
         public TaskContract(float val) : this()
         {
             _currentState       = states.value;
             _returnValue.single = val;
-            HasValue            = true;
         }
 
         public TaskContract(object val) : this()
         {
             _currentState            = states.value;
             _returnObjects.reference = val;
-            HasValue                 = true;
         }
 
         public TaskContract(string val) : this()
         {
             _currentState            = states.value;
             _returnObjects.reference = val;
-            HasValue                 = true;
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -99,19 +92,11 @@ namespace Svelto.Tasks
             return new TaskContract();
         }
 
-/*        public static explicit operator int(TaskContract contract)
+        public int ToInt()
         {
-            DBC.Tasks.Check.Require(contract.HasValue, "invalid state");
-            DBC.Tasks.Check.Require(contract._currentState == states.value, "invalid state");
-
-            return contract._returnValue.int32;
-        }*/
-
-        public static explicit operator Break(TaskContract contract)
-        {
-            return contract._currentState == states.breakit
-                       ? contract._returnObjects.breakIt
-                       : null;
+            DBC.Tasks.Check.Require(_currentState == states.value, "invalid state");
+            
+            return _returnValue.int32;
         }
         
         public Break breakit
@@ -135,14 +120,19 @@ namespace Svelto.Tasks
             get { return _currentState == states.value ? _returnObjects.reference : null; }
         }
 
-        public bool HasValue { get; private set; }
+        public bool yieldIt
+        {
+            get { return _currentState == states.yieldit; }
+        }
 
         readonly fieldValues  _returnValue;
         readonly fieldObjects _returnObjects;
         readonly states       _currentState;
         
+
         enum states
         {
+            yieldit = 0,
             value,
             continuation,
             breakit,

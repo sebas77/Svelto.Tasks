@@ -26,7 +26,7 @@ namespace Svelto.Tasks.Internal
     
             Current = _task.Current;
                  
-            if (Current.HasValue == false) 
+            if (Current.yieldIt == true) 
                return true;
     
             if (Current.breakit == Break.It || Current.breakit == Break.AndStop)

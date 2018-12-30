@@ -83,10 +83,9 @@ namespace Svelto.Tasks
             return true;
         }
 
-
         SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>> _sveltoTask;
-        SveltoTaskState                   _threadSafeSveltoTaskStates;
-        ContinuationWrapper               _continuationWrapper;
+        SveltoTaskState                                                  _threadSafeSveltoTaskStates;
+        ContinuationWrapper                                              _continuationWrapper;
 #if DEBUG && !PROFILER
         static readonly bool IS_TASK_STRUCT = typeof(TTask).IsValueType;
 #endif

@@ -195,10 +195,10 @@ namespace Svelto.Tasks.Internal
         Action<SveltoTaskException> _onFail;
         Action                      _onStop;
         ContinuationWrapper         _previousContinuationWrapper;
-        ContinuationWrapper _continuationWrapper;
-        TTask                           _pendingTask;
-        Func<TTask>                     _taskGenerator;
-        TTask                           _taskEnumerator;
+        ContinuationWrapper         _continuationWrapper;
+        TTask                       _pendingTask;
+        Func<TTask>                 _taskGenerator;
+        TTask                       _taskEnumerator;
         
         static readonly bool IS_TASK_STRUCT = typeof(TTask).IsClass == false && typeof(TTask).IsInterface == false;
 
@@ -260,7 +260,7 @@ namespace Svelto.Tasks.Internal
                                 completed = true;
                                         completed = !_stackingTask.MoveNext();
 
-                                       if ((Break)_stackingTask.Current == Break.AndStop && onStop != null)
+                                       if (_stackingTask.Current.breakit == Break.AndStop && onStop != null)
                                 {
                                     try
                                     {
