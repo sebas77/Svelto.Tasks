@@ -1,3 +1,4 @@
+using Svelto.Common;
 using Svelto.DataStructures;
 
 namespace Svelto.Tasks.Internal
@@ -16,7 +17,9 @@ namespace Svelto.Tasks.Internal
             flushingOperation.kill = true;
         }
 
-        public class Process<TRunningInfo> : IProcessSveltoTasks where TRunningInfo: IRunningTasksInfo
+        public class Process<TRunningInfo, PlatformProfiler> : IProcessSveltoTasks 
+                                                                 where TRunningInfo: IRunningTasksInfo
+                                                                 where PlatformProfiler:IPlatformProfiler, new()
         {
             public Process( ThreadSafeQueue<T> newTaskRoutines, FasterList<T> coroutines,
                             FlushingOperation flushingOperation, TRunningInfo info)
@@ -25,13 +28,14 @@ namespace Svelto.Tasks.Internal
                 _coroutines        = coroutines;
                 _flushingOperation = flushingOperation;
                 _info              = info;
+                _profiler          = new PlatformProfiler();
             }    
 
-            public bool MoveNext(bool immediate = false)
+            public bool MoveNext(bool immediate)
             {
                 if (_flushingOperation.kill) return false;
-#if ENABLE_PLATFORM_PROFILER                
-                using (var _platformProfiler = new Svelto.Common.PlatformProfiler(_info.runnerName))
+#if ENABLE_PLATFORM_PROFILER
+                using (_profiler.StartNewSession(_info.runnerName))
 #endif
                 {
                     //don't start anything while flushing
@@ -66,14 +70,13 @@ namespace Svelto.Tasks.Internal
                         if (_flushingOperation.stopping) coroutines[index].Stop();
 
 #if ENABLE_PLATFORM_PROFILER
-                        using (_platformProfiler.Sample(coroutines[index].ToString()))
-#else
+                        using (_profiler.BeginSample(coroutines[index].ToString()))
+#endif
 #if TASKS_PROFILER_ENABLED
                             result =
                             Profiler.TaskProfiler.MonitorUpdateDuration(coroutines[index], _info.runnerName);
 #else
                             result = coroutines[index].MoveNext();
-#endif
 #endif
                         int previousIndex = index;
                         
@@ -86,7 +89,7 @@ namespace Svelto.Tasks.Internal
                             index++;
 
                         mustExit = (coroutinesCount == 0 ||
-                                    _info.CanMoveNext(ref index, coroutines[previousIndex].Current) == false || index >= coroutinesCount);
+                                    _info.CanMoveNext(ref index, coroutines[previousIndex].Current, coroutinesCount) == false || index >= coroutinesCount);
                     } 
                     while (!mustExit);
                 }
@@ -104,31 +107,32 @@ namespace Svelto.Tasks.Internal
             readonly FlushingOperation  _flushingOperation;
             
             TRunningInfo _info;
+            PlatformProfiler _profiler;
         }
         
-        public struct StandardRunningTasksInfo:IRunningTasksInfo
-        {
-            public bool CanMoveNext(ref int nextIndex, TaskContract currentResult)
-            {
-                return true;
-            }
-
-            public bool CanProcessThis(ref int index)
-            {
-                return true;
-            }
-
-            public void Reset()
-            {}
-
-            public string runnerName { get; set; }
-        }
-    
         public class FlushingOperation
         {
             public bool paused;
             public bool stopping;
             public bool kill;
         }
+    }
+    
+    public struct StandardRunningTasksInfo:IRunningTasksInfo
+    {
+        public bool CanMoveNext(ref int nextIndex, TaskContract currentResult, int coroutinesCount)
+        {
+            return true;
+        }
+
+        public bool CanProcessThis(ref int index)
+        {
+            return true;
+        }
+
+        public void Reset()
+        {}
+
+        public string runnerName { get; set; }
     }
 }

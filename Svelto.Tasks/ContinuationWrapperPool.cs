@@ -6,12 +6,12 @@ namespace Svelto.Tasks.Internal
     {
         static ContinuationWrapperPool()
         {
-            for (int i = 0; i < 100000; i++) _pool.Enqueue(new ContinuationWrapper());
+            for (int i = 0; i < 100000; i++) _pool.Enqueue(new ContinuationEnumerator());
         }
         
-        public static ContinuationWrapper RetrieveFromPool()
+        public static ContinuationEnumerator RetrieveFromPool()
         {
-            ContinuationWrapper task;
+            ContinuationEnumerator task;
 
             if (_pool.Dequeue(out task))
                 return task;
@@ -19,16 +19,16 @@ namespace Svelto.Tasks.Internal
             return CreateEmpty();
         }
 
-        public static void PushBack(ContinuationWrapper task)
+        public static void PushBack(ContinuationEnumerator task)
         {
             _pool.Enqueue(task);
         }
 
-        static ContinuationWrapper CreateEmpty()
+        static ContinuationEnumerator CreateEmpty()
         {
-            return new ContinuationWrapper();
+            return new ContinuationEnumerator();
         }
 
-        static readonly LockFreeQueue<ContinuationWrapper> _pool = new LockFreeQueue<ContinuationWrapper>();
+        static readonly LockFreeQueue<ContinuationEnumerator> _pool = new LockFreeQueue<ContinuationEnumerator>();
     }
 }

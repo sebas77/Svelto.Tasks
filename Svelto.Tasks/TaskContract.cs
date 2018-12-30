@@ -11,7 +11,7 @@ namespace Svelto.Tasks
             _returnValue.int32 = number;
         }
 
-        TaskContract(ContinuationWrapper continuation) : this()
+        TaskContract(ContinuationEnumerator continuation) : this()
         {
             _currentState               = states.continuation;
             _returnObjects.continuation = continuation;
@@ -59,7 +59,7 @@ namespace Svelto.Tasks
         {
             [FieldOffset(0)] internal object              reference;
             [FieldOffset(0)] internal Break               breakIt;
-            [FieldOffset(0)] internal ContinuationWrapper continuation;
+            [FieldOffset(0)] internal ContinuationEnumerator continuation;
         }
 
         public static implicit operator TaskContract(int number)
@@ -77,7 +77,7 @@ namespace Svelto.Tasks
             return new TaskContract(number);
         }
 
-        public static implicit operator TaskContract(ContinuationWrapper continuation)
+        public static implicit operator TaskContract(ContinuationEnumerator continuation)
         {
             return new TaskContract(continuation);
         }
@@ -110,7 +110,7 @@ namespace Svelto.Tasks
             get { return _currentState == states.enumerator ? (IEnumerator) _returnObjects.reference : null; }
         }
 
-        public ContinuationWrapper continuationWrapper
+        public ContinuationEnumerator ContinuationEnumerator
         {
             get { return _currentState == states.continuation ? _returnObjects.continuation : null; }
         }

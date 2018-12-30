@@ -38,7 +38,7 @@ namespace Svelto.Tasks.Unity.Internal
 
             for (int i = 0; i < count; i++)
             {
-                var ret = routines[i].MoveNext();
+                var ret = routines[i].MoveNext(false);
                 if (ret == false)
                 {
                     list.UnorderedRemoveAt(i);

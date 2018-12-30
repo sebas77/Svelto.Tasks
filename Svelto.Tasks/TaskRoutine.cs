@@ -19,7 +19,7 @@ namespace Svelto.Tasks.Internal
         {
             _sveltoTask = new SveltoTask();
             _runner     = runner;
-            _continuationWrapper = ContinuationWrapperPool.RetrieveFromPool();
+            _continuationEnumerator = ContinuationWrapperPool.RetrieveFromPool();
         }
 
         public bool MoveNext()
@@ -28,7 +28,7 @@ namespace Svelto.Tasks.Internal
             {
                 if (_sveltoTask._threadSafeSveltoTaskStates.pendingTask == true)
                 {
-                    _previousContinuationWrapper.Completed();
+                    _previousContinuationEnumerator.Completed();
 
                     //start new coroutine using this task this will put _started to true (it was already though)
                     //it uses the current runner to start the pending task
@@ -36,13 +36,13 @@ namespace Svelto.Tasks.Internal
 
                     _sveltoTask._stackingTask = new SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>>(ref _pendingTask);
                     _sveltoTask._threadSafeSveltoTaskStates = new SveltoTaskState();
-                    _continuationWrapper.Reset();
+                    _continuationEnumerator.Reset();
                 }
                 else
-                    _continuationWrapper.Completed();
+                    _continuationEnumerator.Completed();
                 
                 _pendingTask                 = default(TTask);
-                _previousContinuationWrapper = null;
+                _previousContinuationEnumerator = null;
 
                 return false;
             }
@@ -77,7 +77,7 @@ namespace Svelto.Tasks.Internal
             _taskEnumerator = taskEnumerator;
         }
         
-        public ContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null)
+        public ContinuationEnumerator Start(Action<SveltoTaskException> onFail = null, Action onStop = null)
         {
             DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null,
                                     "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
@@ -88,16 +88,16 @@ namespace Svelto.Tasks.Internal
             return Start(false);
         }
         
-        public ContinuationWrapper StartImmediate()
+        public ContinuationEnumerator StartImmediate()
         {
             return Start(true);
         }
 
-        ContinuationWrapper Start(bool immediate)
+        ContinuationEnumerator Start(bool immediate)
         {
             Pause();
 
-            var continuationWrapper = _continuationWrapper; 
+            var continuationWrapper = _continuationEnumerator; 
 
             var newTask = _taskGenerator != null ? _taskGenerator() : _taskEnumerator;
 
@@ -108,9 +108,9 @@ namespace Svelto.Tasks.Internal
                 //Start() Start() is perceived as a continuation of the previous task therefore it won't
                 //cause the continuation wrapper to stop
                 _pendingTask                 = newTask;
-                _previousContinuationWrapper = continuationWrapper;
+                _previousContinuationEnumerator = continuationWrapper;
 
-                continuationWrapper = _continuationWrapper = new ContinuationWrapper();
+                continuationWrapper = _continuationEnumerator = new ContinuationEnumerator();
             }
             else
             {
@@ -184,8 +184,9 @@ namespace Svelto.Tasks.Internal
             }
     
             return _sveltoTask._name;
-#endif
+#else
             return "TaskRoutine";
+#endif            
         }
 
 
@@ -194,8 +195,8 @@ namespace Svelto.Tasks.Internal
         
         Action<SveltoTaskException> _onFail;
         Action                      _onStop;
-        ContinuationWrapper         _previousContinuationWrapper;
-        ContinuationWrapper         _continuationWrapper;
+        ContinuationEnumerator         _previousContinuationEnumerator;
+        ContinuationEnumerator         _continuationEnumerator;
         TTask                       _pendingTask;
         Func<TTask>                 _taskGenerator;
         TTask                       _taskEnumerator;

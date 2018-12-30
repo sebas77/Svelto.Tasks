@@ -17,7 +17,7 @@ namespace Svelto.Tasks.Internal
 
         public bool MoveNext()
         {
-            var continuationWrapper = Current.continuationWrapper;
+            var continuationWrapper = Current.ContinuationEnumerator;
             if (continuationWrapper != null && continuationWrapper.MoveNext() == true)
                     return true;
        

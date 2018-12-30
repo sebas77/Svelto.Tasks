@@ -4,10 +4,11 @@ namespace Svelto.Tasks
 {
     public interface IRunner: IDisposable
     {
-        bool isPaused   { get; set; }
         bool isStopping { get; }
         bool isKilled   { get; }
 
+        void Pause();
+        void Resume();
         void StopAllCoroutines();
 
         int numberOfRunningTasks { get; }

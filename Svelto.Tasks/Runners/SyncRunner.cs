@@ -15,9 +15,18 @@ namespace Svelto.Tasks
     }
     public class SyncRunner<T> : IRunner, IInternalRunner<T> where T: ISveltoTask
     {
-        public bool isPaused { get; set; }
         public bool isStopping { private set; get; }
         public bool isKilled { get { return false; } }
+        
+        public void Pause()
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public void Resume()
+        {
+            throw new System.NotImplementedException();
+        }
 
         public SyncRunner(int timeout = 1000)
         {

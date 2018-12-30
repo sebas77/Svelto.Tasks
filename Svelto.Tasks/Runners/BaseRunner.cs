@@ -14,19 +14,13 @@ namespace Svelto.Tasks
     /// </summary>
     public abstract class BaseRunner<T> : IRunner, IInternalRunner<T> where T: ISveltoTask
     {
-        public bool isPaused
-        {
-            get { return _flushingOperation.paused; }
-            set { _flushingOperation.paused = value; }
-        }
-
         public bool isStopping           { get { return _flushingOperation.stopping; } }
         public bool isKilled             { get {return _flushingOperation.kill;} }
         
         public int numberOfRunningTasks    { get { return _coroutines.Count; } }
         public int numberOfQueuedTasks     { get { return _newTaskRoutines.Count; } }
         public int numberOfProcessingTasks { get { return _newTaskRoutines.Count + _coroutines.Count; }}
-
+        
         protected BaseRunner(string name, int size)
         {
             _name = name;
@@ -43,10 +37,20 @@ namespace Svelto.Tasks
 
         ~BaseRunner()
         {
-            Utilities.Console.LogWarning("BaseRunner has been garbage collected, this could have serious" +
-                                         "consequences, are you sure you want this? ".FastConcat(_name));
+            Utilities.Console.LogWarning(this._name.FastConcat(" has been garbage collected, this could have serious" +
+                                         "consequences, are you sure you want this? "));
             
             StopAllCoroutines();
+        }
+
+        public void Pause()
+        {
+            _flushingOperation.paused = true;
+        }
+
+        public void Resume()
+        {
+            _flushingOperation.paused = false;
         }
 
         /// <summary>
@@ -55,8 +59,6 @@ namespace Svelto.Tasks
         /// </summary>
         public virtual void StopAllCoroutines()
         {
-            isPaused = false;
-
             CoroutineRunner<T>.StopRoutines(_flushingOperation);
 
             _newTaskRoutines.Clear();
@@ -64,8 +66,6 @@ namespace Svelto.Tasks
 
         public void StartCoroutine(ref T task, bool immediate)
         {
-            isPaused = false;
-
             _newTaskRoutines.Enqueue(task);
             
             if (immediate)
@@ -74,7 +74,7 @@ namespace Svelto.Tasks
         
         public void Step()
         {
-            _processEnumerator.MoveNext();
+            _processEnumerator.MoveNext(true);
         }
 
         public virtual void Dispose()
@@ -91,8 +91,7 @@ namespace Svelto.Tasks
         protected readonly ThreadSafeQueue<T> _newTaskRoutines;
         protected readonly FasterList<T>      _coroutines;
 
-        protected CoroutineRunner<T>.FlushingOperation  
-            _flushingOperation = new CoroutineRunner<T>.FlushingOperation();
+        protected CoroutineRunner<T>.FlushingOperation _flushingOperation = new CoroutineRunner<T>.FlushingOperation();
 
         readonly string _name;
 

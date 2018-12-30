@@ -87,13 +87,34 @@ namespace Svelto.Tasks.ExtraLean
             if (_lateScheduler != null)
                 _lateScheduler.Dispose();
             
-            
-            
             _physicScheduler = null;
             _lateScheduler = null;
-            
             _earlyScheduler = null;
 #endif
+        }
+
+        public static void Pause()
+        {
+            if (_multiThreadScheduler != null && multiThreadScheduler.isKilled == false)
+                _multiThreadScheduler.Pause();
+#if UNITY_5 || UNITY_5_3_OR_NEWER
+            if (_coroutineScheduler != null)
+                _coroutineScheduler.Pause();
+            if (_updateScheduler != null)
+                _updateScheduler.Pause();
+#endif            
+        }
+
+        public static void Resume()
+        {
+            if (_multiThreadScheduler != null && multiThreadScheduler.isKilled == false)
+                _multiThreadScheduler.Resume();
+#if UNITY_5 || UNITY_5_3_OR_NEWER
+            if (_coroutineScheduler != null)
+                _coroutineScheduler.Resume();
+            if (_updateScheduler != null)
+                _updateScheduler.Resume();
+#endif      
         }
     }
 }

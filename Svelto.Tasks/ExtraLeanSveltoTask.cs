@@ -10,7 +10,7 @@ namespace Svelto.Tasks
 {
     public struct ExtraLeanSveltoTask<TTask> : ISveltoTask where TTask : IEnumerator
     {
-        internal ContinuationWrapper Start<TRunner>(TRunner runner, ref TTask task, bool immediate)
+        internal ContinuationEnumerator Run<TRunner>(TRunner runner, ref TTask task, bool immediate)
             where TRunner : class, IInternalRunner<ExtraLeanSveltoTask<TTask>>
         {
 #if DEBUG && !PROFILER            
@@ -38,8 +38,9 @@ namespace Svelto.Tasks
                 _name = base.ToString();
     
             return _name;
-#endif
+#else
             return "ExtraLeanSveltoTask";
+#endif            
         }
 
         public void Stop()

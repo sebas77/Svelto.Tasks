@@ -1,3 +1,7 @@
+#if ENABLE_PLATFORM_PROFILER || TASKS_PROFILER_ENABLED || (DEBUG && !PROFILER)
+#define GENERATE_NAME
+#endif
+
 using System;
 using System.Collections.Generic;
 using Svelto.Tasks.Internal;
@@ -6,7 +10,7 @@ namespace Svelto.Tasks
 {
     public struct LeanSveltoTask<TTask>: ISveltoTask where TTask : IEnumerator<TaskContract>
     {
-        internal ContinuationWrapper Start<TRunner>(TRunner runner, ref TTask task, bool immediate) where TRunner: class, IInternalRunner<LeanSveltoTask<TTask>>
+        internal ContinuationEnumerator Start<TRunner>(TRunner runner, ref TTask task, bool immediate) where TRunner: class, IInternalRunner<LeanSveltoTask<TTask>>
         {
 #if DEBUG && !PROFILER                        
             DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
@@ -18,13 +22,13 @@ namespace Svelto.Tasks
 #if GENERATE_NAME
             _name = task.ToString();
 #endif
-            _continuationWrapper               = ContinuationWrapperPool.RetrieveFromPool();
+            _continuationEnumerator               = ContinuationWrapperPool.RetrieveFromPool();
             _sveltoTask                          = new SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>>(ref task, runner);
             _threadSafeSveltoTaskStates.started = true;
             
             runner.StartCoroutine(ref this, immediate);
 
-            return _continuationWrapper;
+            return _continuationEnumerator;
         }
         
         public override string ToString()
@@ -34,8 +38,9 @@ namespace Svelto.Tasks
                 _name = base.ToString();
     
             return _name;
-#endif
+#else
             return "LeanSveltoTask";
+#endif            
         }
 
         public void Stop()
@@ -72,9 +77,9 @@ namespace Svelto.Tasks
 
             if (completed == true)
             {
-                _continuationWrapper.Completed();
-                ContinuationWrapperPool.PushBack(_continuationWrapper);
-                _continuationWrapper                  = null;
+                _continuationEnumerator.Completed();
+                ContinuationWrapperPool.PushBack(_continuationEnumerator);
+                _continuationEnumerator                  = null;
                 _threadSafeSveltoTaskStates.completed = true;
                         
                 return false;
@@ -85,7 +90,10 @@ namespace Svelto.Tasks
 
         SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>> _sveltoTask;
         SveltoTaskState                                                  _threadSafeSveltoTaskStates;
-        ContinuationWrapper                                              _continuationWrapper;
+        ContinuationEnumerator                                              _continuationEnumerator;
+#if GENERATE_NAME
+        string _name;
+#endif
 #if DEBUG && !PROFILER
         static readonly bool IS_TASK_STRUCT = typeof(TTask).IsValueType;
 #endif

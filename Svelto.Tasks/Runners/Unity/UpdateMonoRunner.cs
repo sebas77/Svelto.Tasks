@@ -1,6 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.Common;
 using Svelto.Tasks.Internal;
 using Svelto.Tasks.Unity.Internal;
 
@@ -20,15 +21,24 @@ namespace Svelto.Tasks.Unity
         {
         }
     }
-    
-    public class UpdateMonoRunner<T> : BaseRunner<T> where T: ISveltoTask
-    {
-        public UpdateMonoRunner(string name):base(name)
-        {
-            var info = new CoroutineRunner<T>.StandardRunningTasksInfo { runnerName = name };
 
-            _processEnumerator = new CoroutineRunner<T>.Process<CoroutineRunner<T>.StandardRunningTasksInfo>
-                (_newTaskRoutines, _coroutines, _flushingOperation, info);
+    public class UpdateMonoRunner<T> : UpdateMonoRunner<T, StandardRunningTasksInfo> where T : ISveltoTask
+    {
+        public UpdateMonoRunner(string name) : base(name, new StandardRunningTasksInfo())
+        {
+        }
+    }
+    
+    public class UpdateMonoRunner<T, TFlowModifier> : BaseRunner<T> where T: ISveltoTask 
+                                                                    where TFlowModifier:IRunningTasksInfo
+    {
+        public UpdateMonoRunner(string name, TFlowModifier modifier):base(name)
+        {
+            modifier.runnerName = name;
+
+            _processEnumerator =
+                new CoroutineRunner<T>.Process<TFlowModifier, PlatformProfiler>
+                (_newTaskRoutines, _coroutines, _flushingOperation, modifier);
             
             UnityCoroutineRunner.StartUpdateCoroutine(_processEnumerator);
         }
