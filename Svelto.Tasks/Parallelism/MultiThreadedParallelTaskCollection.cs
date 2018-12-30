@@ -150,21 +150,20 @@ namespace Svelto.Tasks.Parallelism
             //prepare a single multithread runner for each group of fiber like task collections
             //number of threads can be less than the number of tasks to run
             for (int i = 0; i < numberOfThreads; i++)
-                _runners[i] = new MultiThreadRunner("MultiThreadedParallelRunner #".FastConcat(i), false, tightTasks);
+                _runners[i] = new MultiThreadRunner("MultiThreadedParallelRunner ".FastConcat(_name," #").FastConcat(i), 
+                                                    false, tightTasks);
+
+            Func<Exception, bool> ptcOnOnException = (e) =>  {
+                                                                    DecrementConcurrentOperationsCounter();
+                                                                    return false;
+                                                             };
 
             Action ptcOnOnComplete = DecrementConcurrentOperationsCounter;
-            Func<Exception, bool> ptcOnOnException = (e) =>
-                                                     {
-                                                         DecrementConcurrentOperationsCounter();
-                                                         return false;
-                                                     };
-
-
             //prepare the fiber-like paralleltasks
             for (int i = 0; i < numberOfThreads; i++)
             {
                 var ptask = TaskRunner.Instance.AllocateNewTaskRoutine(_runners[i]);
-                var ptc   = new ParallelTaskCollection("MultiThreaded ParallelTaskCollection #".FastConcat(i));
+                var ptc   = new ParallelTaskCollection("MultiThreaded ParallelTaskCollection ".FastConcat(_name," #").FastConcat(i));
 
                 ptc.onComplete  += ptcOnOnComplete;
                 ptc.onException += ptcOnOnException;
@@ -179,7 +178,8 @@ namespace Svelto.Tasks.Parallelism
         bool RunMultiThreadParallelTasks()
         {
             if (_taskRoutines == null)
-                throw new MultiThreadedParallelTaskCollectionException("can't run a MultiThreadedParallelTaskCollection once killed");
+                throw new MultiThreadedParallelTaskCollectionException("can't run a MultiThreadedParallelTaskCollection " +
+                                                                       "once killed");
             
             if (isRunning == false)
             {
