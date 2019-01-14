@@ -53,7 +53,7 @@ namespace Svelto.Tasks.Enumerators
                     Reset();
                 
                 if (timedOut)
-                    Utilities.Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
+                    Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
                 
                 return false;
             }

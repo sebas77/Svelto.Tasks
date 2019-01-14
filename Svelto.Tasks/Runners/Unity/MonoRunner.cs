@@ -35,7 +35,7 @@ namespace Svelto.Tasks.Unity
 
         ~MonoRunner()
         {
-            Utilities.Console.LogWarning("MonoRunner has been garbage collected, this could have serious" +
+            Console.LogWarning("MonoRunner has been garbage collected, this could have serious" +
                                                 "consequences, are you sure you want this? ".FastConcat(_name));
             
             StopAllCoroutines();
