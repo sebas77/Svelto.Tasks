@@ -171,7 +171,7 @@ namespace Svelto.Tasks
 
                     return _coroutines.Count;
                 }
-            }
+            }    
 
             void QuickLockingMechanism()
             {
@@ -246,8 +246,9 @@ namespace Svelto.Tasks
 
             internal void RunCoroutineFiber()
             {
-#if ENABLE_PLATFORM_PROFILER                          
-                using (var platformProfiler = new Common.PlatformProfilerMT(name))
+#if ENABLE_PLATFORM_PROFILER
+                var platformProfiler = new Common.PlatformProfilerMT();
+                using (platformProfiler.StartNewSession(name))
 #endif    
                 {
                     while (_breakThread == false)

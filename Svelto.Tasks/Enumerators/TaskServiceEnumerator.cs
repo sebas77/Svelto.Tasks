@@ -12,11 +12,11 @@ namespace Svelto.Tasks.Enumerators
     /// (some ITask some not). Otherwise it should never be used
     /// explicitly 
     /// </summary>
-    public class ServiceEnumerator: IEnumerator
+    public class TaskServiceEnumerator: IEnumerator
     {
         public object Current { get { return null; } }
 
-        public ServiceEnumerator(IServiceTask task)
+        public TaskServiceEnumerator(IServiceTask task)
         {
             DBC.Tasks.Check.Require((task is IEnumerable == false) && (task is IEnumerator == false), "Tasks and IEnumerators are mutually exclusive");
 
@@ -73,9 +73,9 @@ namespace Svelto.Tasks.Enumerators
         bool _started;
     }
 
-    public class ServiceEnumerator<Token> : ServiceEnumerator, ITaskChain<Token>
+    public class TaskServiceEnumerator<Token> : TaskServiceEnumerator, ITaskChain<Token>
     {
-        public ServiceEnumerator(IServiceTask task) : base(task)
+        public TaskServiceEnumerator(IServiceTask task) : base(task)
         {}
 
         public Token token { get; set; }
