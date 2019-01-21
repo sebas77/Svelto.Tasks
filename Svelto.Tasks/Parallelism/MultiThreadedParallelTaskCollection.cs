@@ -29,6 +29,8 @@ namespace Svelto.Tasks.Parallelism
         /// </param>
         public MultiThreadedParallelTaskCollection(string name, uint numberOfThreads, bool tightTasks)
         {
+            DBC.Tasks.Check.Require(numberOfThreads > 1, "doesn't make much sense to use this with just 1 thread");
+            
             _name = name;
             
             InitializeThreadsAndData(numberOfThreads, tightTasks);
