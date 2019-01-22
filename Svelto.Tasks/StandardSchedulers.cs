@@ -16,7 +16,6 @@ namespace Svelto.Tasks
         static EarlyUpdateMonoRunner<IEnumerator> _earlyScheduler;
 #endif
         
-
         public static IRunner<IEnumerator> multiThreadScheduler { get { if (_multiThreadScheduler == null) _multiThreadScheduler = new MultiThreadRunner("MultiThreadRunner", false);
             return _multiThreadScheduler;
         } }
@@ -47,7 +46,7 @@ namespace Svelto.Tasks
 
         internal static void StartYieldInstruction(this IEnumerator instruction)
         {
-            _coroutineScheduler.StartYieldInstruction(instruction);
+            (coroutineScheduler as CoroutineMonoRunner).StartYieldInstruction(instruction);
         }
 #else
         public static IRunner<IEnumerator> standardScheduler 
