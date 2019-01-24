@@ -5,6 +5,7 @@
 using Svelto.Utilities;
 using System;
 using System.Collections;
+using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
@@ -33,12 +34,19 @@ namespace Svelto.Tasks
     //The Continuation Wrapper contains a valid value until the task is not stopped. After that it should be released.
     public class ContinuationWrapper : IEnumerator
     {
+        public ContinuationWrapper(bool poolIt = false)
+        {
+            _poolIt = poolIt;
+        }
+        
         public bool MoveNext()
         {
             ThreadUtility.MemoryBarrier();
             if (_completed == true)
             {
                 _completed = false;
+                if (_poolIt)
+                    ContinuationWrapperPool.Push(this);
                 ThreadUtility.MemoryBarrier();
                 return false;
             }
@@ -68,7 +76,20 @@ namespace Svelto.Tasks
             get { return null; }
         }
 
+        ~ContinuationWrapper()
+        {
+            if (_poolIt)
+            {
+                _completed = false;
+
+                ContinuationWrapperPool.Push(this);
+
+                GC.ReRegisterForFinalize(this);
+            }
+        }
+
         volatile bool _completed;
+        readonly bool _poolIt;
     }
 }
 
@@ -86,7 +107,8 @@ namespace Svelto.Tasks.Internal
         {
             if (_sveltoTask.MoveNext() == false)
             {
-                _sveltoTask._continuationWrapper.Completed();
+                _continuationWrapper.Completed();
+                _continuationWrapper = null;
                 
                 CleanUpOnRecycle();
                 _pool.PushTaskBack(this);
@@ -133,20 +155,22 @@ namespace Svelto.Tasks.Internal
             _sveltoTask._name = task.ToString();
 #endif
             _sveltoTask._threadSafeStates.paused = true;
-            _sveltoTask._continuationWrapper.Reset();
+            
+            _continuationWrapper = ContinuationWrapperPool.Pull();
+                       
             _sveltoTask._threadSafeStates.started = true;
             _sveltoTask.SetTask(task);
             _sveltoTask._threadSafeStates.paused = false;
             
             runner.StartCoroutine(this);
 
-            return _sveltoTask._continuationWrapper;
+            return _continuationWrapper;
         }
         
         public override string ToString()
         {
 #if !GENERATE_NAME            
-             return "PooledTask";
+            return "PooledTask";
 #else
             return _sveltoTask._name;
 #endif    
@@ -154,6 +178,8 @@ namespace Svelto.Tasks.Internal
 
         readonly SveltoTask<IEnumerator> _sveltoTask;
         readonly SveltoTasksPool        _pool;
+        internal ContinuationWrapper _continuationWrapper;
+
     }
 
     sealed class TaskRoutine<T>: ISveltoTask<T>, ITaskRoutine<T> where T:IEnumerator
@@ -162,6 +188,7 @@ namespace Svelto.Tasks.Internal
         {
             _sveltoTask = new SveltoTask<T>();
             _runner = runner;
+            _continuationWrapper = new ContinuationWrapper();
         }
 
         public bool MoveNext()
@@ -179,12 +206,12 @@ namespace Svelto.Tasks.Internal
                     _sveltoTask.SetTask(_pendingTask);
 
                     _sveltoTask._threadSafeStates = new SveltoTask<T>.State();
-                    _sveltoTask._continuationWrapper.Reset();
+                    _continuationWrapper.Reset();
 
                     _sveltoTask.ClearInvokes();
                 }
                 else
-                    _sveltoTask._continuationWrapper.Completed();
+                    _continuationWrapper.Completed();
                 
                 _pendingTask = default(T);
                 _previousContinuationWrapper = null;
@@ -233,7 +260,7 @@ namespace Svelto.Tasks.Internal
             _sveltoTask._threadSafeStates.paused = true;
             _sveltoTask.OnTaskInterrupted();
             
-            var continuationWrapper = _sveltoTask._continuationWrapper;
+            var continuationWrapper = _continuationWrapper;
             
             var newTask = _taskGenerator != null ? _taskGenerator() : _taskEnumerator;
 
@@ -244,9 +271,9 @@ namespace Svelto.Tasks.Internal
                 //Start() Start() is perceived as a continuation of the previous task therefore it won't
                 //cause the continuation wrapper to stop
                 _pendingTask                     = newTask;
-                _previousContinuationWrapper      = _sveltoTask._continuationWrapper;
+                _previousContinuationWrapper      = _continuationWrapper;
 
-                continuationWrapper = _sveltoTask._continuationWrapper = new ContinuationWrapper();
+                continuationWrapper = _continuationWrapper = new ContinuationWrapper();
                 
                 Resume(); //if it's paused, must resume
             }
@@ -263,7 +290,7 @@ namespace Svelto.Tasks.Internal
                 }
 
                 _sveltoTask.SetTask(newTask);
-                _sveltoTask._continuationWrapper.Reset();
+                _continuationWrapper.Reset();
                 _sveltoTask.ClearInvokes();
 
                 if (_sveltoTask._threadSafeStates.isRunning == false)
@@ -332,6 +359,7 @@ namespace Svelto.Tasks.Internal
         readonly SveltoTask<T> _sveltoTask;
         readonly IRunner<T>    _runner;
         
+        ContinuationWrapper         _continuationWrapper;
         Action<SveltoTaskException> _onFail;
         Action                      _onStop;
         ContinuationWrapper         _previousContinuationWrapper;
@@ -434,7 +462,6 @@ namespace Svelto.Tasks.Internal
 #if DEBUG && !PROFILER
                             DBC.Tasks.Check.Assert(_threadSafeStates.started == true, _callStartFirstError);
 #endif
-                            
                             completed = !_stackingTask.MoveNext();
 
                             var current = _stackingTask.Current;
@@ -500,7 +527,6 @@ namespace Svelto.Tasks.Internal
         internal SveltoTask()
         {
             _coroutineWrapper    = new SerialTaskCollection<T>(1);
-            _continuationWrapper = new ContinuationWrapper();
         }
 
         internal void SetTask(T task)
@@ -522,7 +548,6 @@ namespace Svelto.Tasks.Internal
 #endif
         }
         
-        internal          ContinuationWrapper     _continuationWrapper;
         internal          State                   _threadSafeStates;
         internal readonly SerialTaskCollection<T> _coroutineWrapper;
         
