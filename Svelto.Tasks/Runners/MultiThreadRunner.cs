@@ -65,6 +65,9 @@ namespace Svelto.Tasks
 
         ~MultiThreadRunner()
         {
+            Console.LogWarning("MultiThreadRunner has been garbage collected, this could have serious" +
+                                                        "consequences, are you sure you want this? ".FastConcat(_runnerData.name));
+                                                        
             Dispose();
         }
 

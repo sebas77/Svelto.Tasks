@@ -24,6 +24,6 @@ namespace Svelto.Tasks.Internal
             return new PooledSveltoTask(this);
         }
 
-        LockFreeQueue<PooledSveltoTask> _pool = new LockFreeQueue<PooledSveltoTask>();
+        readonly LockFreeQueue<PooledSveltoTask> _pool = new LockFreeQueue<PooledSveltoTask>();
     }
 }
