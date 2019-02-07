@@ -69,6 +69,15 @@ namespace Svelto.Tasks.Parallelism
                 Add(new ParallelRunEnumerator<T>(ref job, itemsPerThread * runnersLength, reminder));
         }
 
+        public void Clear()
+        {
+            isRunning = false;
+            foreach (var parallelTask in _parallelTasks) parallelTask.Clear();
+
+            _numberOfTasksAdded = 0;
+            _numberOfConcurrentOperationsToRun = 0;
+        }
+
         public bool MoveNext()
         {
             if (ThreadUtility.VolatileRead(ref _isDisposed)) return false;
