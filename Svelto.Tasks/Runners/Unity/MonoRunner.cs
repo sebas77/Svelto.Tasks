@@ -38,7 +38,7 @@ namespace Svelto.Tasks.Unity
             Console.LogWarning("MonoRunner has been garbage collected, this could have serious" +
                                                 "consequences, are you sure you want this? ".FastConcat(_name));
             
-            StopAllCoroutines();
+            ShutDown();
         }
         
         /// <summary>
@@ -52,6 +52,8 @@ namespace Svelto.Tasks.Unity
             UnityCoroutineRunner<T>.StopRoutines(_flushingOperation);
 
             _newTaskRoutines.Clear();
+            
+            _flushingOperation.kill = true;
         }
 
         public virtual void StartCoroutine(ISveltoTask<T> task)
@@ -61,12 +63,18 @@ namespace Svelto.Tasks.Unity
             _newTaskRoutines.Enqueue(task); //careful this could run on another thread!
         }
 
-        public virtual void Dispose()
+        void ShutDown()
         {
             StopAllCoroutines();
 
-            _flushingOperation.kill = true;
-            
+            _newTaskRoutines.Clear();
+            _coroutines.Clear();
+        }
+
+        public virtual void Dispose()
+        {
+            ShutDown();
+
             GC.SuppressFinalize(this);
         }
         

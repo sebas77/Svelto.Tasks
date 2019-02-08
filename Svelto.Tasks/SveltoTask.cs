@@ -177,9 +177,9 @@ namespace Svelto.Tasks.Internal
         }
 
         readonly SveltoTask<IEnumerator> _sveltoTask;
-        readonly SveltoTasksPool        _pool;
-        internal ContinuationWrapper _continuationWrapper;
-
+        readonly SveltoTasksPool         _pool;
+        
+        ContinuationWrapper     _continuationWrapper;
     }
 
     sealed class TaskRoutine<T>: ISveltoTask<T>, ITaskRoutine<T> where T:IEnumerator
