@@ -124,6 +124,9 @@ namespace Svelto.Tasks
 
         ~MultiThreadRunner()
         {
+            Console.LogWarning("MultiThreadRunner has been garbage collected, this could have serious" +
+                                                        "consequences, are you sure you want this? ".FastConcat(_runnerData.name));
+                                                        
             Dispose();
         }
 
@@ -207,7 +210,7 @@ namespace Svelto.Tasks
 
                     return _coroutines.Count;
                 }
-            }
+            }    
 
             void QuickLockingMechanism()
             {
@@ -279,6 +282,8 @@ namespace Svelto.Tasks
 
             internal void RunCoroutineFiber()
             {
+
+
                 ThreadUtility.MemoryBarrier();
                 while (_process.MoveNext(false))
                 {

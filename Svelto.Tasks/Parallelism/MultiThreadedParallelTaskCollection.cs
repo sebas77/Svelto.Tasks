@@ -56,6 +56,7 @@ namespace Svelto.Tasks.Parallelism
         public MultiThreadedParallelTaskCollection(string name, uint numberOfThreads, bool tightTasks)
         {
             _decrementRunningThread = DecrementRunningThread;
+            DBC.Tasks.Check.Require(numberOfThreads > 1, "doesn't make much sense to use this with just 1 thread");
             
             _name = name;
             
@@ -77,6 +78,15 @@ namespace Svelto.Tasks.Parallelism
             parallelTaskCollection.Add(ref enumerator);
 
             _numberOfConcurrentOperationsToRun = Math.Min(_parallelTasks.Length, _numberOfTasksAdded);
+        }
+        
+        public void Clear()
+        {
+            isRunning = false;
+            foreach (var parallelTask in _parallelTasks) parallelTask.Clear();
+
+            _numberOfTasksAdded = 0;
+            _numberOfConcurrentOperationsToRun = 0;
         }
         
         public bool MoveNext()

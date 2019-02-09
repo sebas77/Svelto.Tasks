@@ -103,7 +103,7 @@ namespace Svelto.Tasks
         /// </summary>
         public void Reset()
         {
-            DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
+            isRunning = false;
             
             var count = _listOfStacks.Count;
             for (int index = 0; index < count; ++index)
@@ -145,7 +145,7 @@ namespace Svelto.Tasks
 
         public void Clear()
         {
-            DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
+            isRunning = false;
             
             var stacks = _listOfStacks.ToArrayFast();
             var count = _listOfStacks.Count;

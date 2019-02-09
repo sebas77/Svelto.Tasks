@@ -6,7 +6,7 @@ namespace Svelto.Tasks.Internal
     {
         static ContinuationWrapperPool()
         {
-            for (int i = 0; i < 100000; i++) _pool.Enqueue(new ContinuationEnumerator());
+            for (int i = 0; i < 1000; i++) _pool.Enqueue(new ContinuationEnumerator());
         }
         
         public static ContinuationEnumerator RetrieveFromPool()
