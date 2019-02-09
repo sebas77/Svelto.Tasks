@@ -10,7 +10,7 @@ namespace Svelto.Tasks.ExtraLean
 {
     public static class TaskRunnerExtensions
     {
-        public static void Run<TTask, TRunner>(this TTask enumerator, TRunner runner)
+        public static void RunOn<TTask, TRunner>(this TTask enumerator, TRunner runner)
             where TTask : IEnumerator where TRunner : class, IInternalRunner<ExtraLeanSveltoTask<TTask>>
         {
             new ExtraLeanSveltoTask<TTask>().Run(runner, ref enumerator, false);

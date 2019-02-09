@@ -3,7 +3,7 @@ using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-        struct TimeSlicedRunningInfo : IRunningTasksInfo
+    public struct TimeSlicedRunningInfo : IRunningTasksInfo
         {
             public TimeSlicedRunningInfo(float maxMilliseconds)
             {

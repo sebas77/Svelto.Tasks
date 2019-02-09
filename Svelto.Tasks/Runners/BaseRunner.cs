@@ -37,7 +37,7 @@ namespace Svelto.Tasks
 
         ~BaseRunner()
         {
-            Utilities.Console.LogWarning(this._name.FastConcat(" has been garbage collected, this could have serious" +
+            Console.LogWarning(this._name.FastConcat(" has been garbage collected, this could have serious" +
                                          "consequences, are you sure you want this? "));
             
             StopAllCoroutines();

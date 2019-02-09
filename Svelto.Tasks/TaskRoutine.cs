@@ -246,7 +246,7 @@ namespace Svelto.Tasks.Internal
                                 }
                                 catch (Exception onStopException)
                                 {
-                                    Utilities.Console.LogException("Svelto.Tasks task OnStop callback threw an exception: "
+                                    Console.LogException("Svelto.Tasks task OnStop callback threw an exception: "
                                                                       .FastConcat(base.ToString()), onStopException);
                                 }
                             }
@@ -271,7 +271,7 @@ namespace Svelto.Tasks.Internal
                                     }
                                     catch (Exception onStopException)
                                     {
-                                        Utilities.Console
+                                        Console
                                            .LogException("Svelto.Tasks task OnStop callback threw an exception: "
                                                             .FastConcat(base.ToString()), onStopException);
                                     }
@@ -289,14 +289,14 @@ namespace Svelto.Tasks.Internal
                                     }
                                     catch (Exception onFailException)
                                     {
-                                        Utilities.Console
+                                        Console
                                            .LogException("Svelto.Tasks task OnFail callback threw an exception: "
                                                             .FastConcat(base.ToString()), onFailException);
                                     }
                                 }
                                 else
                                 {
-                                    Utilities.Console.LogException("a Svelto.Tasks task threw an exception:  "
+                                    Console.LogException("a Svelto.Tasks task threw an exception:  "
                                                                 .FastConcat(base.ToString()), e);
                                 }
                             }
@@ -313,7 +313,7 @@ namespace Svelto.Tasks.Internal
                 }
                 catch (Exception e)
                 {
-                    Utilities.Console.LogException(
+                    Console.LogException(
                             new SveltoTaskException("Something went drastically wrong inside a PausableTask", e));
 
                     throw;

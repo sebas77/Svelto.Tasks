@@ -24,7 +24,7 @@ namespace Svelto.Tasks.Unity.Internal
             }
             catch
             {
-                Svelto.Utilities.Console.LogError
+                Svelto.Console.LogError
                     ("While Unity runners can be referenced from inside other threads, " +
                      "their very first use must happen inside the Unity main thread");
             }

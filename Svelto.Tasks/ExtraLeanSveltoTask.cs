@@ -74,7 +74,7 @@ namespace Svelto.Tasks
                         {
                             completed = true;
                             
-                            Utilities.Console.LogException("a Svelto.Tasks task threw an exception at:  "
+                            Console.LogException("a Svelto.Tasks task threw an exception at:  "
                                                               .FastConcat(ToString()), e);
                         }
                     }

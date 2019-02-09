@@ -8,19 +8,19 @@ namespace Svelto.Tasks
     ///Several tasks must run on the runner to make sense. TaskCollections are considered
     ///single tasks, so they don't count (may change in future)
     /// </summary>
-    struct TimeBoundRunningInfo : IRunningTasksInfo
+    public struct TimeBoundRunningInfo : IRunningTasksInfo
     {
-        public TimeBoundRunningInfo(float maxMilliseconds):this()
+        public TimeBoundRunningInfo(float maxMilliseconds) : this()
         {
             _maxMilliseconds = (long) (maxMilliseconds * 10000);
-            _stopWatch           = new Stopwatch();
+            _stopWatch       = new Stopwatch();
         }
-            
+
         public bool CanMoveNext(ref int nextIndex, TaskContract currentResult, int coroutinesCount)
         {
             if (_stopWatch.ElapsedTicks > _maxMilliseconds)
                 return false;
-                 
+
             return true;
         }
 
@@ -38,6 +38,6 @@ namespace Svelto.Tasks
         public string runnerName { get; set; }
 
         readonly Stopwatch _stopWatch;
-        readonly long _maxMilliseconds;
+        readonly long      _maxMilliseconds;
     }
 }
