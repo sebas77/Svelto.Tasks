@@ -73,7 +73,8 @@ namespace Svelto.Tasks
 
         public void Dispose()
         {
-            Kill(null);
+            if (_runnerData != null)
+                Kill(null);
             
             GC.SuppressFinalize(this);
         }

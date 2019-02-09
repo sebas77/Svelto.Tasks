@@ -128,6 +128,9 @@ namespace Svelto.Tasks.Parallelism
 
             while (_disposingThreads > 0) 
                 ThreadUtility.TakeItEasy();
+            
+            for (int i = 0; i < _runners.Length; i++)
+                _runners[i].Dispose();
 
             _runners            = null;
             _parallelTasks      = null;
