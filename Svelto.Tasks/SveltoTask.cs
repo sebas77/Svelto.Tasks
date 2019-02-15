@@ -13,13 +13,11 @@ namespace Svelto.Tasks
     {
         public SveltoTaskException(Exception e)
             : base(e.ToString(), e)
-        {
-        }
+        {}
 
         public SveltoTaskException(string message, Exception e)
             : base(message.FastConcat(" -", e.ToString()), e)
-        {
-        }
+        {}
     }
 
     public interface ISveltoTask<T> where T:IEnumerator
@@ -42,12 +40,14 @@ namespace Svelto.Tasks
         public bool MoveNext()
         {
             ThreadUtility.MemoryBarrier();
+            
             if (_completed == true)
             {
                 _completed = false;
                 if (_poolIt)
                     ContinuationWrapperPool.Push(this);
                 ThreadUtility.MemoryBarrier();
+                
                 return false;
             }
 
@@ -57,17 +57,14 @@ namespace Svelto.Tasks
         internal void Completed()
         {
             _completed = true;
+            
             ThreadUtility.MemoryBarrier();
-        }
-
-        public bool completed
-        {
-            get { return _completed; }
         }
 
         public void Reset()
         {
             _completed = false;
+            
             ThreadUtility.MemoryBarrier();
         }
 
@@ -83,8 +80,6 @@ namespace Svelto.Tasks
                 _completed = false;
 
                 ContinuationWrapperPool.Push(this);
-
-                GC.ReRegisterForFinalize(this);
             }
         }
 
@@ -211,8 +206,10 @@ namespace Svelto.Tasks.Internal
                     _sveltoTask.ClearInvokes();
                 }
                 else
+                {
                     _continuationWrapper.Completed();
-                
+                }
+
                 _pendingTask = default(T);
                 _previousContinuationWrapper = null;
 
@@ -271,7 +268,7 @@ namespace Svelto.Tasks.Internal
                 //Start() Start() is perceived as a continuation of the previous task therefore it won't
                 //cause the continuation wrapper to stop
                 _pendingTask                     = newTask;
-                _previousContinuationWrapper      = _continuationWrapper;
+                _previousContinuationWrapper     = _continuationWrapper;
 
                 continuationWrapper = _continuationWrapper = new ContinuationWrapper();
                 

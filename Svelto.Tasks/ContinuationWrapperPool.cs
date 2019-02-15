@@ -1,4 +1,5 @@
 using Svelto.DataStructures;
+using System;
 
 namespace Svelto.Tasks.Internal
 {
@@ -14,13 +15,18 @@ namespace Svelto.Tasks.Internal
             ContinuationWrapper task;
 
             if (_pool.Dequeue(out task))
+            {
+                GC.ReRegisterForFinalize(task);
+
                 return task;
+            }
 
             return Create();
         }
 
         internal static void Push(ContinuationWrapper task)
         {
+            GC.SuppressFinalize(task); //will be register again once pulled from the pool
             _pool.Enqueue(task);
         }
 
@@ -32,3 +38,4 @@ namespace Svelto.Tasks.Internal
         static readonly LockFreeQueue<ContinuationWrapper> _pool = new LockFreeQueue<ContinuationWrapper>();
     }
 }
+    
