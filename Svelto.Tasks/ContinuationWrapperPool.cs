@@ -24,7 +24,7 @@ namespace Svelto.Tasks.Internal
             _pool.Enqueue(task);
         }
 
-        static ContinuationEnumerator CreateEmpty()
+        static ContinuationEnumerator CreateEmpty() 
         {
             return new ContinuationEnumerator();
         }

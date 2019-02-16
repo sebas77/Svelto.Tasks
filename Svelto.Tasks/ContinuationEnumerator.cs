@@ -24,21 +24,13 @@ namespace Svelto.Tasks
             ThreadUtility.VolatileWrite(ref _completed, true);
         }
 
-        public bool completed
-        {
-            get { return _completed; }
-        }
-
         public void Reset()
         {
             _completed = false;
         }
 
-        public object Current
-        {
-            get { return null; }
-        }
-       
+        public object Current => null;
+
         bool _completed;
     }
 }

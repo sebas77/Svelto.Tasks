@@ -7,26 +7,31 @@ using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    public class ExtraLeanUpdateMonoRunner<T> : UpdateMonoRunner<ExtraLeanSveltoTask<T>> where 
-        T:IEnumerator
+    namespace ExtraLean
     {
-        public ExtraLeanUpdateMonoRunner(string name) : base(name)
+        public class UpdateMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<ExtraLeanSveltoTask<T>> where
+            T : IEnumerator
         {
+            public UpdateMonoRunner(string name) : base(name)
+            {
+            }
         }
     }
-    
-    public class LeanUpdateMonoRunner<T> : UpdateMonoRunner<LeanSveltoTask<T>> where T:IEnumerator<TaskContract>
+
+    namespace Lean
     {
-        public LeanUpdateMonoRunner(string name) : base(name)
+        public class UpdateMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<LeanSveltoTask<T>> where T : IEnumerator<TaskContract>
         {
+            public UpdateMonoRunner(string name) : base(name)
+            {
+            }
         }
     }
 
     public class UpdateMonoRunner<T> : UpdateMonoRunner<T, StandardRunningTasksInfo> where T : ISveltoTask
     {
         public UpdateMonoRunner(string name) : base(name, new StandardRunningTasksInfo())
-        {
-        }
+        {}
     }
     
     public class UpdateMonoRunner<T, TFlowModifier> : BaseRunner<T> where T: ISveltoTask 

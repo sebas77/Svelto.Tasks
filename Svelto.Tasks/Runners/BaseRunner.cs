@@ -71,11 +71,6 @@ namespace Svelto.Tasks
             if (immediate)
                 _processEnumerator.MoveNext(true);
         }
-        
-        public void Step()
-        {
-            _processEnumerator.MoveNext(true);
-        }
 
         public virtual void Dispose()
         {

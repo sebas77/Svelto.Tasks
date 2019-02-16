@@ -327,7 +327,9 @@ namespace Svelto.Tasks.Internal
         internal string                _name;
 #endif
 #if DEBUG && !PROFILER
+#pragma warning disable 649
             string _callStartFirstError;
+#pragma warning restore 649
 #endif
         }
     }

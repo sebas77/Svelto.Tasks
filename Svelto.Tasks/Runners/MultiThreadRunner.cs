@@ -132,7 +132,7 @@ namespace Svelto.Tasks
 
         public void Dispose()
         {
-            if (_runnerData != null)
+            if (isKilled == false)
                 Kill(null);
             
             GC.SuppressFinalize(this);
@@ -151,7 +151,7 @@ namespace Svelto.Tasks
 
         public void StartCoroutine(ref TTask task, bool immediate)
         {
-            if (_runnerData == null)
+            if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
             
             _runnerData.newTaskRoutines.Enqueue(task);
@@ -160,7 +160,7 @@ namespace Svelto.Tasks
 
         public void StopAllCoroutines()
         {
-            if (_runnerData == null)
+            if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to stop tasks on a killed runner");
             
             _runnerData.newTaskRoutines.Clear();
@@ -169,12 +169,21 @@ namespace Svelto.Tasks
             ThreadUtility.MemoryBarrier();
         }
 
-        public void Kill(Action onThreadKilled)
+        internal void Kill(Action onThreadKilled)
         {
-            if (_runnerData == null)
+            if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to kill an already killed runner");
             
             _runnerData.Kill(onThreadKilled);
+            _runnerData = null;
+        }
+        
+        public void Kill()
+        {
+            if (isKilled == true)
+                throw new MultiThreadRunnerException("Trying to kill an already killed runner");
+            
+            _runnerData.Kill(null);
             _runnerData = null;
         }
         
@@ -194,7 +203,7 @@ namespace Svelto.Tasks
                 _isRunningTightTasks = isRunningTightTasks;
                 _flushingOperation   = new CoroutineRunner<TTask>.FlushingOperation();
                 modifier.runnerName  = name;
-                _process = new CoroutineRunner<TTask>.Process<TFlowModifier,
+                _process             = new CoroutineRunner<TTask>.Process<TFlowModifier,
                     PlatformProfilerMT>(newTaskRoutines, _coroutines, _flushingOperation, modifier); 
 
                 if (relaxed)
@@ -283,9 +292,8 @@ namespace Svelto.Tasks
 
             internal void RunCoroutineFiber()
             {
-
-
                 ThreadUtility.MemoryBarrier();
+                
                 while (_process.MoveNext(false))
                 {
                     if (_flushingOperation.kill == false)

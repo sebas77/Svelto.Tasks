@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections;
+using DBC.Tasks;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
@@ -13,18 +14,19 @@ namespace Svelto.Tasks
         internal ContinuationEnumerator Run<TRunner>(TRunner runner, ref TTask task, bool immediate)
             where TRunner : class, IInternalRunner<ExtraLeanSveltoTask<TTask>>
         {
-#if DEBUG && !PROFILER            
-            DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
-                "A valid enumerator is required to enable an ExtraLeanSveltTask ".FastConcat(ToString()));
-#endif    
+#if DEBUG && !PROFILER
+            Check.Require(IS_TASK_STRUCT || task != null,
+                          "A valid enumerator is required to enable an ExtraLeanSveltTask "
+                             .FastConcat(ToString()));
+#endif
 
-            DBC.Tasks.Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
+            Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
 
 #if GENERATE_NAME
             _name = task.ToString();
 #endif
             _threadSafeSveltoTaskStates.started = true;
-            _runningTask = task;
+            _runningTask                        = task;
 
             runner.StartCoroutine(ref this, immediate);
 
@@ -36,11 +38,11 @@ namespace Svelto.Tasks
 #if GENERATE_NAME
             if (_name == null)
                 _name = base.ToString();
-    
+
             return _name;
 #else
             return "ExtraLeanSveltoTask";
-#endif            
+#endif
         }
 
         public void Stop()
@@ -48,54 +50,51 @@ namespace Svelto.Tasks
             _threadSafeSveltoTaskStates.explicitlyStopped = true;
         }
 
-        public TaskContract Current
-        {
-            get { return Yield.It; }
-        }
+        public TaskContract Current => Yield.It;
 
         /// <summary>
-        /// Move Next is called by the current runner, which could be on another thread! that means that the
-        /// --->class states used in this function must be thread safe<-----
+        ///     Move Next is called by the current runner, which could be on another thread! that means that the
+        ///     --->class states used in this function must be thread safe<-----
         /// </summary>
         /// <returns></returns>
         public bool MoveNext()
         {
-                DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false,
-                                        "ExtraLeanSveltoTask impossible state ".FastConcat(ToString()));
+            Check.Require(_threadSafeSveltoTaskStates.completed == false,
+                          "ExtraLeanSveltoTask impossible state ".FastConcat(ToString()));
 
-                    bool completed;
-                    if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
-                    {
-                        try
-                        {
-                            completed = !_runningTask.MoveNext();
-                        }
-                        catch (Exception e)
-                        {
-                            completed = true;
-                            
-                            Console.LogException("a Svelto.Tasks task threw an exception at:  "
-                                                              .FastConcat(ToString()), e);
-                        }
-                    }
-                    else
-                        completed = true;
+            bool completed;
+            if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
+            {
+                try
+                {
+                    completed = !_runningTask.MoveNext();
+                }
+                catch (Exception e)
+                {
+                    completed = true;
+    
+                    Console.LogException("a Svelto.Tasks task threw an exception at:  "
+                                            .FastConcat(ToString()), e);
+                }
+            }
+            else
+                completed = true;
 
-                    if (completed == true)
-                    {
-                        _threadSafeSveltoTaskStates.completed = true;
-                        
-                        return false;
-                    }
+            if (completed)
+            {
+                _threadSafeSveltoTaskStates.completed = true;
 
-                return true;
+                return false;
+            }
+
+            return true;
         }
 
         SveltoTaskState _threadSafeSveltoTaskStates;
         TTask           _runningTask;
 
 #if GENERATE_NAME
-        string                _name;
+        string _name;
 #endif
 #if DEBUG && !PROFILER
         static readonly bool IS_TASK_STRUCT = typeof(TTask).IsValueType;

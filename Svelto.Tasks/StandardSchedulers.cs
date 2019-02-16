@@ -1,6 +1,7 @@
 using System.Collections;
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using Svelto.Tasks.Unity;
+
 #endif
 
 namespace Svelto.Tasks.ExtraLean
@@ -11,7 +12,7 @@ namespace Svelto.Tasks.ExtraLean
 
 #if UNITY_5 || UNITY_5_3_OR_NEWER
         static ExtraLeanCoroutineMonoRunner<IEnumerator> _coroutineScheduler;
-        static ExtraLeanUpdateMonoRunner<IEnumerator> _updateScheduler;
+        static Unity.ExtraLean.UpdateMonoRunner<IEnumerator> _updateScheduler;
 #if UNITY_5 || UNITY_5_3_OR_NEWER && later        
         static PhysicMonoRunner      _physicScheduler;
         static LateMonoRunner        _lateScheduler;
@@ -36,7 +37,12 @@ namespace Svelto.Tasks.ExtraLean
             return _coroutineScheduler;
         } }
         
-        public static ExtraLeanUpdateMonoRunner<IEnumerator> updateScheduler { get { if (_updateScheduler == null) _updateScheduler = new ExtraLeanUpdateMonoRunner<IEnumerator>("StandardMonoRunner");
+        public static Unity.ExtraLean.UpdateMonoRunner<IEnumerator> updateScheduler
+        {
+            get
+            {
+                if (_updateScheduler == null)
+                    _updateScheduler = new Unity.ExtraLean.UpdateMonoRunner<IEnumerator>("StandardMonoRunner");
             return _updateScheduler;
         } }
 #if UNITY_5 || UNITY_5_3_OR_NEWER && later        
