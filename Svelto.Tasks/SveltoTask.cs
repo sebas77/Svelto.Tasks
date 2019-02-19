@@ -26,7 +26,7 @@ namespace Svelto.Tasks
     }
 
     //The Continuation Wrapper contains a valid value until the task is not stopped. After that it should be released.
-    public class ContinuationWrapper : IEnumerator
+    internal class ContinuationWrapper : IEnumerator, IContinuationWrapper
     {
         public ContinuationWrapper(bool poolIt = false) { _poolIt = poolIt; }
 
@@ -76,6 +76,10 @@ namespace Svelto.Tasks
 
         volatile bool _completed;
         readonly bool _poolIt;
+    }
+
+    public interface IContinuationWrapper
+    {
     }
 }
 
@@ -174,9 +178,7 @@ namespace Svelto.Tasks.Internal
         {
             if (_sveltoTask.MoveNext(_onFail, _onStop) == false)
             {
-                var pendingTask = _sveltoTask._threadSafeStates.pendingTask;
-
-                if (pendingTask == true)
+                if (_sveltoTask._threadSafeStates.pendingTask == true)
                 {
                     _sveltoTask._threadSafeStates = new SveltoTask<T>.State();
 
@@ -186,15 +188,15 @@ namespace Svelto.Tasks.Internal
                     //start new coroutine using this task this will put _started to true (it was already though)
                     //it uses the current runner to start the pending task
                     DBC.Tasks.Check.Require(_runner != null, "SetScheduler function has never been called");
+                    
+                    //assign new task
+                    _sveltoTask.SetTask(_pendingTask);
 
                     //recreate a new instance of the task
                     _pendingTask = default(T);
 
                     //old task is finished with
                     _previousContinuationWrapper = null;
-
-                    //assign new task
-                    _sveltoTask.SetTask(_pendingTask);
 
                     //reset current wrapper
                     _continuationWrapper.Reset();
@@ -234,7 +236,7 @@ namespace Svelto.Tasks.Internal
             _taskEnumerator = taskEnumerator;
         }
 
-        public ContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null)
+        public IContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null)
         {
             DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null,
                                     "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");

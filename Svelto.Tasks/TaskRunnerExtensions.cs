@@ -11,12 +11,12 @@ public static class TaskRunnerExtensions
     /// <param name="runner"></param>
     /// <param name="task"></param>
     /// <returns></returns>
-    public static ContinuationWrapper RunOnScheduler(this IEnumerator enumerator, IRunner<IEnumerator> runner)
+    public static IContinuationWrapper RunOnScheduler(this IEnumerator enumerator, IRunner<IEnumerator> runner)
     {
         return TaskRunner.Instance.RunOnScheduler(runner, enumerator);
     }
 
-    public static ContinuationWrapper Run(this IEnumerator enumerator)
+    public static IContinuationWrapper Run(this IEnumerator enumerator)
     {
         return TaskRunner.Instance.Run(enumerator);
     }

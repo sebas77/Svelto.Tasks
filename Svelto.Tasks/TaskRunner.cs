@@ -49,7 +49,7 @@ namespace Svelto.Tasks
             StandardSchedulers.standardScheduler.isPaused = false;
         }
 
-        public ContinuationWrapper Run(IEnumerator task)
+        public IContinuationWrapper Run(IEnumerator task)
         {
             return RunOnScheduler(StandardSchedulers.standardScheduler, task);
         }
@@ -60,7 +60,7 @@ namespace Svelto.Tasks
         /// <param name="runner"></param>
         /// <param name="task"></param>
         /// <returns></returns>
-        public ContinuationWrapper RunOnScheduler(IRunner<IEnumerator> runner, IEnumerator task) 
+        public IContinuationWrapper RunOnScheduler(IRunner<IEnumerator> runner, IEnumerator task) 
         {
             return _taskPool.RetrieveTaskFromPool().Start(runner, task);
         }
