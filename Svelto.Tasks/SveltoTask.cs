@@ -43,9 +43,9 @@ namespace Svelto.Tasks
             
             if (_completed == true)
             {
-                _completed = false;
                 if (_poolIt)
                     ContinuationWrapperPool.Push(this);
+                
                 ThreadUtility.MemoryBarrier();
                 
                 return false;
@@ -190,7 +190,12 @@ namespace Svelto.Tasks.Internal
         {
             if (_sveltoTask.MoveNext(_onFail, _onStop) == false)
             {
-                if (_sveltoTask._threadSafeStates.pendingTask == true)
+                var pendingTask = _sveltoTask._threadSafeStates.pendingTask;
+                
+                _sveltoTask._threadSafeStates = new SveltoTask<T>.State();
+                _sveltoTask.ClearInvokes();
+                
+                if (pendingTask == true)
                 {
                     _previousContinuationWrapper.Completed();
 
@@ -199,19 +204,18 @@ namespace Svelto.Tasks.Internal
                     DBC.Tasks.Check.Require(_runner != null, "SetScheduler function has never been called");
 
                     _sveltoTask.SetTask(_pendingTask);
-
-                    _sveltoTask._threadSafeStates = new SveltoTask<T>.State();
+    
                     _continuationWrapper.Reset();
-
-                    _sveltoTask.ClearInvokes();
+                    
+                    _pendingTask                 = default(T);
+                    _previousContinuationWrapper = null;
+                    
+                    _sveltoTask._threadSafeStates.started = true;
+                    
+                    return true;
                 }
-                else
-                {
-                    _continuationWrapper.Completed();
-                }
 
-                _pendingTask = default(T);
-                _previousContinuationWrapper = null;
+                _continuationWrapper.Completed();
 
                 return false;
             }
@@ -251,7 +255,7 @@ namespace Svelto.Tasks.Internal
             DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null,
                                     "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
             
-            _onStop = onStop;
+            _onStop = onStop; //should have a previous on stop and on fail?
             _onFail = onFail;
 
             _sveltoTask._threadSafeStates.paused = true;
@@ -269,6 +273,7 @@ namespace Svelto.Tasks.Internal
                 //cause the continuation wrapper to stop
                 _pendingTask                     = newTask;
                 _previousContinuationWrapper     = _continuationWrapper;
+                _sveltoTask._threadSafeStates.pendingTask = true;
 
                 continuationWrapper = _continuationWrapper = new ContinuationWrapper();
                 
