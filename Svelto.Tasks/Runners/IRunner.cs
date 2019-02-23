@@ -15,12 +15,9 @@ namespace Svelto.Tasks
         int numberOfQueuedTasks  { get; }
         int numberOfProcessingTasks { get; }
     }
-}
 
-namespace Svelto.Tasks.Internal
-{
-    public interface IInternalRunner<T> where T:ISveltoTask
+    public interface IRunner<T> where T:ISveltoTask
     {
-        void StartCoroutine(ref T task, bool immediate);
+        void StartCoroutine(ref T task/*, bool immediate*/);
     }
 }

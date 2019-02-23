@@ -1,32 +1,33 @@
+using System.Collections;
 using System.Collections.Generic;
 
-namespace Svelto.Tasks.Lean
+namespace Svelto.Tasks.ExtraLean
 {
     public static class StandardSchedulers
     {
-        static MultiThreadRunner<IEnumerator<TaskContract>>    _multiThreadScheduler;
+        static MultiThreadRunner<IEnumerator>    _multiThreadScheduler;
 #if UNITY_5 || UNITY_5_3_OR_NEWER    
-        static Unity.CoroutineMonoRunner<IEnumerator<TaskContract>>  _coroutineScheduler;
-        static Unity.UpdateMonoRunner<IEnumerator<TaskContract>>     _updateScheduler;
+        static Unity.CoroutineMonoRunner<IEnumerator>  _coroutineScheduler;
+        static Unity.UpdateMonoRunner<IEnumerator>     _updateScheduler;
 #if later    
         static PhysicMonoRunner<TaskRoutine<IEnumerator<TaskContract>>>      _physicScheduler;
         static LateMonoRunner<TaskRoutine<IEnumerator<TaskContract>>>        _lateScheduler;       
         static EarlyUpdateMonoRunner<TaskRoutine<IEnumerator<TaskContract>>> _earlyScheduler;
 #endif
 #endif
-        public static MultiThreadRunner<IEnumerator<TaskContract>> multiThreadScheduler =>
-            _multiThreadScheduler ?? (_multiThreadScheduler = new MultiThreadRunner<IEnumerator<TaskContract>
+        public static MultiThreadRunner<IEnumerator> multiThreadScheduler =>
+            _multiThreadScheduler ?? (_multiThreadScheduler = new MultiThreadRunner<IEnumerator
                                           >("StandardMultiThreadRunner", false));
 
 #if UNITY_5 || UNITY_5_3_OR_NEWER        
         internal static IRunner standardScheduler => updateScheduler;
 
-        public static Unity.CoroutineMonoRunner<IEnumerator<TaskContract>> coroutineScheduler =>
-            _coroutineScheduler ?? (_coroutineScheduler = new Unity.CoroutineMonoRunner<IEnumerator<TaskContract>>("StandardCoroutineRunner"));
+        public static Unity.CoroutineMonoRunner<IEnumerator> coroutineScheduler =>
+            _coroutineScheduler ?? (_coroutineScheduler = new Unity.CoroutineMonoRunner<IEnumerator>("StandardCoroutineRunner"));
 
-        public static Unity.UpdateMonoRunner<IEnumerator<TaskContract>> updateScheduler =>
+        public static Unity.UpdateMonoRunner<IEnumerator> updateScheduler =>
             _updateScheduler ?? (_updateScheduler =
-                                     new Unity.UpdateMonoRunner<IEnumerator<TaskContract>>("StandardUpdateRunner"));
+                                     new Unity.UpdateMonoRunner<IEnumerator>("StandardUpdateRunner"));
 #if later        
         public static PhysicMonoRunner<TaskRoutine<IEnumerator<TaskContract>>> physicScheduler { get { if (_physicScheduler == null) _physicScheduler = new PhysicMonoRunner<TaskRoutine<IEnumerator<TaskContract>>>("StandardPhysicRunner");
             return _physicScheduler;

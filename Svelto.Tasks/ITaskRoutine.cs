@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Svelto.Tasks.Enumerators;
 
 //ITaskRoutine allocated explicitly have several features not 
 //available on task started implicitly with the extension

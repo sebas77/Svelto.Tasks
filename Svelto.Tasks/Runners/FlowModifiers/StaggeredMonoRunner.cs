@@ -16,7 +16,7 @@ namespace Svelto.Tasks
             runnerName            = null;
         }
 
-        public bool CanMoveNext(ref int nextIndex, TaskContract currentResult, int coroutinesCount)
+        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount)
         {
             if (_iterations >= _maxTasksPerIteration - 1)
             {

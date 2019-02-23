@@ -1,4 +1,5 @@
 using System;
+using JetBrains.Annotations;
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
 
@@ -12,7 +13,7 @@ namespace Svelto.Tasks
     /// Remember, unless you are using the StandardSchedulers, nothing hold your runners. Be careful that if you
     /// don't hold a reference, they will be garbage collected even if tasks are still running
     /// </summary>
-    public abstract class BaseRunner<T> : IRunner, IInternalRunner<T> where T: ISveltoTask
+    public abstract class BaseRunner<T> : IRunner, IRunner<T> where T: ISveltoTask
     {
         public bool isStopping           { get { return _flushingOperation.stopping; } }
         public bool isKilled             { get {return _flushingOperation.kill;} }
@@ -64,12 +65,12 @@ namespace Svelto.Tasks
             _newTaskRoutines.Clear();
         }
 
-        public void StartCoroutine(ref T task, bool immediate)
+        void IRunner<T>.StartCoroutine([CanBeNull] ref T task /*, bool immediate*/)
         {
             _newTaskRoutines.Enqueue(task);
             
-            if (immediate)
-                _processEnumerator.MoveNext(true);
+            //if (immediate)
+              //  _processEnumerator.MoveNext(true);
         }
 
         public virtual void Dispose()

@@ -2,7 +2,7 @@ namespace Svelto.Tasks.Internal
 {
     public interface IRunningTasksInfo
     {
-        bool CanMoveNext(ref int nextIndex, TaskContract currentResult, int coroutinesCount);
+        bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount);
         bool   CanProcessThis(ref int index);
         void   Reset();
         

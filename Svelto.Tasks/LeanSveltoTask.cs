@@ -4,13 +4,17 @@
 
 using System;
 using System.Collections.Generic;
+using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Internal;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Lean
 {
-    public struct LeanSveltoTask<TTask>: ISveltoTask where TTask : IEnumerator<TaskContract>
+    public struct SveltoTask<TTask>: ISveltoTask where TTask : IEnumerator<TaskContract>
     {
-        internal ContinuationEnumerator Start<TRunner>(TRunner runner, ref TTask task, bool immediate) where TRunner: class, IInternalRunner<LeanSveltoTask<TTask>>
+        internal ContinuationEnumerator Run<TRunner>(TRunner   runner,
+                                                       ref TTask task/*,
+                                                       bool      immediate*/)
+            where TRunner : class, IRunner<SveltoTask<TTask>>
         {
 #if DEBUG && !PROFILER                        
             DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
@@ -19,14 +23,11 @@ namespace Svelto.Tasks
             DBC.Tasks.Check.Require(runner != null, "SetScheduler function has never been called");
 #endif            
     
-#if GENERATE_NAME
-            _name = task.ToString();
-#endif
-            _continuationEnumerator               = ContinuationWrapperPool.RetrieveFromPool();
-            _sveltoTask                          = new SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>>(ref task, runner);
+            _continuationEnumerator = new ContinuationEnumerator(ContinuationPool.RetrieveFromPool());
+            _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<SveltoTask<TTask>>>(ref task, runner);
             _threadSafeSveltoTaskStates.started = true;
             
-            runner.StartCoroutine(ref this, immediate);
+            runner.StartCoroutine(ref this/*, immediate*/);
 
             return _continuationEnumerator;
         }
@@ -48,49 +49,50 @@ namespace Svelto.Tasks
             _threadSafeSveltoTaskStates.explicitlyStopped = true;
         }
 
-        public TaskContract Current
-        {
-            get { return _sveltoTask.Current; }
-        }
-        
+        TaskContract ISveltoTask.Current => throw new Exception();
+        TTask Current => _sveltoTask.task;
+
         public bool MoveNext()
         {
             DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false,
-                                    "ExtraLeanSveltoTask impossible state ".FastConcat(ToString()));
-            bool completed;
-            if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
+                                    "impossible state ".FastConcat(ToString()));
+            bool completed = false;
+            try
             {
-                try
+                if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
                 {
-                    completed = !_sveltoTask.MoveNext();
+                    try
+                    {
+                        completed = !_sveltoTask.MoveNext();
+                    }
+                    catch (Exception e)
+                    {
+                        completed = true;
+
+                        Console.LogException("a Svelto.Tasks task threw an exception at:  ".FastConcat(ToString()), e);
+
+                        throw;
+                    }
                 }
-                catch (Exception e)
-                {
+                else
                     completed = true;
-                        
-                    Console.LogException("a Svelto.Tasks task threw an exception at:  "
-                                                      .FastConcat(ToString()), e);
-                }
             }
-            else
-                completed = true;
-
-            if (completed == true)
+            finally
             {
-                _continuationEnumerator.Completed();
-                ContinuationWrapperPool.PushBack(_continuationEnumerator);
-                _continuationEnumerator                  = null;
-                _threadSafeSveltoTaskStates.completed = true;
-                        
-                return false;
+                if (completed == true)
+                {
+                    _continuationEnumerator.ce.ReturnToPool();
+                    _continuationEnumerator = default;
+                    _threadSafeSveltoTaskStates.completed = true;
+                }                
             }
 
-            return true;
+            return !completed;
         }
 
-        SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>> _sveltoTask;
-        SveltoTaskState                                                  _threadSafeSveltoTaskStates;
-        ContinuationEnumerator                                              _continuationEnumerator;
+        SveltoTaskWrapper<TTask, IRunner<SveltoTask<TTask>>> _sveltoTask;
+        SveltoTaskState                                      _threadSafeSveltoTaskStates;
+        ContinuationEnumerator                               _continuationEnumerator;
 #if GENERATE_NAME
         string _name;
 #endif

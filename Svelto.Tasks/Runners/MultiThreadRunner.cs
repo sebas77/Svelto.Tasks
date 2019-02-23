@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -13,17 +14,56 @@ using System.Threading.Tasks;
 
 namespace Svelto.Tasks
 {
-    public sealed class MultiThreadRunner:MultiThreadRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
+    namespace Lean
     {
-        public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+        public sealed class MultiThreadRunner:MultiThreadRunner<IEnumerator<TaskContract>>
         {
-        }
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
 
-        public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
-        {
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
         }
+        
+        public class MultiThreadRunner<T>:Svelto.Tasks.MultiThreadRunner<SveltoTask<T>> where T : IEnumerator<TaskContract>
+        {
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
+
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
+        }   
     }
+    
+    namespace ExtraLean
+    {
+        public sealed class MultiThreadRunner:MultiThreadRunner<IEnumerator>
+        {
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
 
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
+        }
+        
+        public class MultiThreadRunner<T>:Svelto.Tasks.MultiThreadRunner<SveltoTask<T>> where T : IEnumerator
+        {
+            public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
+            {
+            }
+
+            public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
+            {
+            }
+        }   
+    }
+    
     public class MultiThreadRunner<TTask> : MultiThreadRunner<TTask, StandardRunningTasksInfo> where TTask : ISveltoTask
     {
         public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : 
@@ -41,7 +81,7 @@ namespace Svelto.Tasks
     /// </summary>
     /// <typeparam name="TTask"></typeparam>
     /// <typeparam name="TFlowModifier"></typeparam>
-    public class MultiThreadRunner<TTask, TFlowModifier> : IRunner, IInternalRunner<TTask> where TTask: ISveltoTask
+    public class MultiThreadRunner<TTask, TFlowModifier> : IRunner, IRunner<TTask> where TTask: ISveltoTask
                                                                                            where TFlowModifier:IRunningTasksInfo
     {
         /// <summary>
@@ -149,7 +189,7 @@ namespace Svelto.Tasks
 #endif
         }
 
-        public void StartCoroutine(ref TTask task, bool immediate)
+        public void StartCoroutine(ref TTask task/*, bool immediate*/)
         {
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
@@ -255,7 +295,10 @@ namespace Svelto.Tasks
 
                 while (_watch.ElapsedTicks < _interval)
                 {
-                    ThreadUtility.Wait(ref quickIterations);
+                    if ((_interval - _watch.ElapsedTicks) < 16000)
+                        ThreadUtility.Wait(ref quickIterations);
+                    else
+                        ThreadUtility.TakeItEasy();
 
                     if (ThreadUtility.VolatileRead(ref _flushingOperation.kill) == true) return;
                 }

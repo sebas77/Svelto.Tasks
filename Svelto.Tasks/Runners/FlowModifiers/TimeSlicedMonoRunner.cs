@@ -12,7 +12,7 @@ namespace Svelto.Tasks.Unity
                 runnerName = null;
             }
 
-            public bool CanMoveNext(ref int nextIndex, TaskContract currentResult, int coroutineCount)
+            public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutineCount)
             {
                 //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
                 if (_stopWatch.ElapsedTicks > maxTicks)

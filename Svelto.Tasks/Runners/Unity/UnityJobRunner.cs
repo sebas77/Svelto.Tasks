@@ -15,7 +15,7 @@ namespace Svelto.Tasks
 {
     namespace Lean
     {
-        public sealed class UnityJobRunner : UnityJobRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
+        public sealed class UnityJobRunner : UnityJobRunner<SveltoTask<IEnumerator<TaskContract>>>
         {
             public UnityJobRunner(string name, bool relaxed = false, bool tightTasks = false) :
                 base(name, relaxed, tightTasks)
@@ -26,7 +26,7 @@ namespace Svelto.Tasks
     
     namespace ExtraLean
     {
-        public sealed class UnityJobRunner : UnityJobRunner<ExtraLeanSveltoTask<IEnumerator>>
+        public sealed class UnityJobRunner : UnityJobRunner<SveltoTask<IEnumerator>>
         {
             public UnityJobRunner(string name, bool relaxed = false, bool tightTasks = false) :
                 base(name, relaxed, tightTasks)
@@ -48,7 +48,7 @@ namespace Svelto.Tasks
     /// </summary>
     /// <typeparam name="TTask"></typeparam>
     /// <typeparam name="TFlowModifier"></typeparam>
-    public class UnityJobRunner<TTask, TFlowModifier> : IRunner, IInternalRunner<TTask> where TTask: ISveltoTask
+    public class UnityJobRunner<TTask, TFlowModifier> : IRunner, IRunner<TTask> where TTask: ISveltoTask
            where TFlowModifier:IRunningTasksInfo
     {
         /// <summary>
@@ -137,7 +137,7 @@ namespace Svelto.Tasks
 
         }
 
-        public void StartCoroutine(ref TTask task, bool immediate)
+        public void StartCoroutine(ref TTask task/*, bool immediate*/)
         {
             if (isKilled == true)
                 throw new JobRunnerException("Trying to start a task on a killed runner");

@@ -5,19 +5,17 @@
 using System;
 using System.Collections;
 using DBC.Tasks;
-using Svelto.Tasks.Internal;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.ExtraLean
 {
-    public struct ExtraLeanSveltoTask<TTask> : ISveltoTask where TTask : IEnumerator
+    public struct SveltoTask<TTask> : ISveltoTask where TTask : IEnumerator
     {
-        internal ContinuationEnumerator Run<TRunner>(TRunner runner, ref TTask task, bool immediate)
-            where TRunner : class, IInternalRunner<ExtraLeanSveltoTask<TTask>>
+        internal void Run<TRunner>(TRunner runner, ref TTask task/* , bool immediate*/)
+            where TRunner : class, IRunner<SveltoTask<TTask>>
         {
 #if DEBUG && !PROFILER
-            Check.Require(IS_TASK_STRUCT || task != null,
-                          "A valid enumerator is required to enable an ExtraLeanSveltTask "
-                             .FastConcat(ToString()));
+            DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
+                "A valid enumerator is required to enable an ExtraLeanSveltTask ".FastConcat(ToString()));
 #endif
 
             Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
@@ -28,9 +26,7 @@ namespace Svelto.Tasks
             _threadSafeSveltoTaskStates.started = true;
             _runningTask                        = task;
 
-            runner.StartCoroutine(ref this, immediate);
-
-            return null;
+            runner.StartCoroutine(ref this/*, immediate*/);
         }
 
         public override string ToString()
@@ -64,23 +60,11 @@ namespace Svelto.Tasks
 
             bool completed;
             if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
-            {
-                try
-                {
-                    completed = !_runningTask.MoveNext();
-                }
-                catch (Exception e)
-                {
-                    completed = true;
-    
-                    Console.LogException("a Svelto.Tasks task threw an exception at:  "
-                                            .FastConcat(ToString()), e);
-                }
-            }
+                completed = !_runningTask.MoveNext();
             else
                 completed = true;
 
-            if (completed)
+            if (completed == true)
             {
                 _threadSafeSveltoTaskStates.completed = true;
 

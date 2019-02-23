@@ -1,3 +1,4 @@
+#if later
 #if ENABLE_PLATFORM_PROFILER || TASKS_PROFILER_ENABLED || (DEBUG && !PROFILER)
 #define GENERATE_NAME
 #endif
@@ -5,21 +6,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.Tasks.Enumerators;
 
-namespace Svelto.Tasks.Internal
+namespace Svelto.Tasks
 {
     public sealed class TaskRoutine<TTask>: ISveltoTask, ITaskRoutine<TTask> where TTask: IEnumerator<TaskContract>
     {
         const string CALL_START_FIRST_ERROR = "Enumerating PausableTask without starting it, please call Start() first";
         
-        private TaskRoutine()
-        {}
-        
-        public TaskRoutine(IInternalRunner<TaskRoutine<TTask>> runner)
+        public TaskRoutine(IRunner<TaskRoutine<TTask>> runner)
         {
             _sveltoTask = new SveltoTask();
             _runner     = runner;
-            _continuationEnumerator = ContinuationWrapperPool.RetrieveFromPool();
+            _continuationEnumerator = new ContinuationEnumerator();
         }
 
         public bool MoveNext()
@@ -28,21 +27,24 @@ namespace Svelto.Tasks.Internal
             {
                 if (_sveltoTask._threadSafeSveltoTaskStates.pendingTask == true)
                 {
-                    _previousContinuationEnumerator.Completed();
+                    _previousContinuationEnumerator.ce.ReturnToPool();
 
                     //start new coroutine using this task this will put _started to true (it was already though)
                     //it uses the current runner to start the pending task
                     DBC.Tasks.Check.Require(_runner != null, "SetScheduler function has never been called");
 
-                    _sveltoTask._stackingTask = new SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>>(ref _pendingTask);
-                    _sveltoTask._threadSafeSveltoTaskStates = new SveltoTaskState();
-                    _continuationEnumerator.Reset();
+                    _sveltoTask._stackingTask =
+                        new SveltoTaskWrapper<TTask, Svelto.Tasks.IRunner<Lean.SveltoTask<TTask>>>(ref _pendingTask);
+                    
+                    _continuationEnumerator.ce.Reset();
                 }
                 else
-                    _continuationEnumerator.Completed();
+                    _continuationEnumerator.ce.ReturnToPool();
                 
-                _pendingTask                 = default(TTask);
-                _previousContinuationEnumerator = null;
+                _sveltoTask._threadSafeSveltoTaskStates = new SveltoTaskState();
+                
+                _pendingTask                 = default;
+                _previousContinuationEnumerator = default;
 
                 return false;
             }
@@ -124,13 +126,14 @@ namespace Svelto.Tasks.Internal
                     newTask.Reset();
                 }
 
-                _sveltoTask._stackingTask = new SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>>(ref newTask);
+                _sveltoTask._stackingTask = new SveltoTaskWrapper<TTask, IRunner<Lean.SveltoTask<TTask>>>(ref newTask);
 
                 if (_sveltoTask._threadSafeSveltoTaskStates.isRunning == false)
                 {
                     _sveltoTask._threadSafeSveltoTaskStates         = new SveltoTaskState();
                     _sveltoTask._threadSafeSveltoTaskStates.started = true;
                     var taskRoutine = this;
+                    
                     _runner.StartCoroutine(ref taskRoutine, immediate);
                 }
             }
@@ -191,7 +194,7 @@ namespace Svelto.Tasks.Internal
 
 
         SveltoTask              _sveltoTask;
-        readonly IInternalRunner<TaskRoutine<TTask>> _runner;
+        readonly IRunner<TaskRoutine<TTask>> _runner;
         
         Action<SveltoTaskException> _onFail;
         Action                      _onStop;
@@ -321,7 +324,7 @@ namespace Svelto.Tasks.Internal
             }
 
             internal SveltoTaskState _threadSafeSveltoTaskStates;
-            internal SveltoTaskWrapper<TTask, IInternalRunner<LeanSveltoTask<TTask>>> _stackingTask;
+            internal SveltoTaskWrapper<TTask, IRunner<Lean.SveltoTask<TTask>>> _stackingTask;
 
 #if GENERATE_NAME
         internal string                _name;
@@ -334,3 +337,13 @@ namespace Svelto.Tasks.Internal
         }
     }
 }
+
+    public static TaskRoutine<TTask> ToTaskRoutine<TTask, TRunner>(this TTask enumerator, TRunner runner)
+        where TTask : IEnumerator<TaskContract> where TRunner : class, IRunner<TaskRoutine<TTask>>
+    {
+        var taskroutine = TaskRunner.AllocateNewTaskRoutine<TTask, TRunner>(runner);
+        taskroutine.SetEnumerator(enumerator);
+        return taskroutine;
+    }
+
+#endif

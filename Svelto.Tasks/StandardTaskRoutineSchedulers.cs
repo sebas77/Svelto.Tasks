@@ -1,3 +1,4 @@
+#if later
 using System.Collections.Generic;
 using Svelto.Tasks.Internal;
 
@@ -9,8 +10,8 @@ namespace Svelto.Tasks
 {
     public static class StandardTaskRoutineSchedulers
     {
-        static MultiThreadRunner<TaskRoutine<IEnumerator<TaskContract>>> _multiThreadScheduler;
 #if UNITY_5 || UNITY_5_3_OR_NEWER && later
+        static MultiThreadRunner<TaskRoutine<IEnumerator<TaskContract>>> _multiThreadScheduler;
         static CoroutineMonoRunner<TaskRoutine<IEnumerator<TaskContract>>>   _coroutineScheduler;
         static PhysicMonoRunner<TaskRoutine<IEnumerator<TaskContract>>>      _physicScheduler;
         static LateMonoRunner<TaskRoutine<IEnumerator<TaskContract>>>        _lateScheduler;
@@ -82,3 +83,4 @@ namespace Svelto.Tasks
         }
     }
 }
+#endif

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks
 {
@@ -11,11 +10,13 @@ namespace Svelto.Tasks
         /// <returns>
         /// New reusable TaskRoutine
         /// </returns>
-        public static TaskRoutine<T> AllocateNewTaskRoutine<T, W>(W runner) where T: IEnumerator<TaskContract> where W:IInternalRunner<TaskRoutine<T>>
+#if later         
+        public static TaskRoutine<T> AllocateNewTaskRoutine<T, W>
+            (W runner) where T : IEnumerator<TaskContract> where W : class, IRunner<TaskRoutine<T>>
         {
             return new TaskRoutine<T>(runner);
         }
-        
+#endif        
         public static void StopAndCleanupAllDefaultSchedulers()
         {
             Lean.StandardSchedulers.KillSchedulers();

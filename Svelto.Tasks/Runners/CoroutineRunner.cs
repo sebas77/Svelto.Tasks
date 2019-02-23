@@ -28,7 +28,6 @@ namespace Svelto.Tasks.Internal
                 _coroutines        = coroutines;
                 _flushingOperation = flushingOperation;
                 _info              = info;
-                _profiler          = new PlatformProfiler();
             }    
 
             public bool MoveNext(bool immediate)
@@ -44,7 +43,9 @@ namespace Svelto.Tasks.Internal
                     
                     var coroutinesCount = _coroutines.Count;
                     
-                    if (coroutinesCount == 0 || _flushingOperation.paused == true && _flushingOperation.stopping == false) return true;
+                    if (coroutinesCount == 0 ||
+                        _flushingOperation.paused == true && _flushingOperation.stopping == false)
+                        return true;
 
                     _info.Reset();
 
@@ -59,11 +60,11 @@ namespace Svelto.Tasks.Internal
 
                     bool mustExit;
                     
+                    var coroutines = _coroutines.ToArrayFast();
+                    
                     do
                     {
                         if (_info.CanProcessThis(ref index) == false) break;
-                        
-                        var coroutines = _coroutines.ToArrayFast();    
 
                         bool result;
                         
@@ -76,20 +77,30 @@ namespace Svelto.Tasks.Internal
                             result =
                             Profiler.TaskProfiler.MonitorUpdateDuration(coroutines[index], _info.runnerName);
 #else
-                            result = coroutines[index].MoveNext();
+                        result = coroutines[index].MoveNext();
 #endif
+                        //MoveNext may now cause tasks to run immediately and therefore increase the array size
+                        //this side effect is due to the fact that I don't have a stack for each task anymore
+                        //like I used to do in Svelto tasks 1.5 and therefore running new enumerators would
+                        //mean to add new coroutines. However I do not want to iterate over the new coroutines
+                        //during this iteration, so I won't modify coroutinesCount
+                        //avoid this complexity disabling run immediate
+                        //coroutines = _coroutines.ToArrayFast();
+                        
                         int previousIndex = index;
                         
                         if (result == false)
                         {
                             _coroutines.UnorderedRemoveAt(index);
+                            
                             coroutinesCount--;
                         }
                         else
                             index++;
 
-                        mustExit = (coroutinesCount == 0 ||
-                                    _info.CanMoveNext(ref index, coroutines[previousIndex].Current, coroutinesCount) == false || index >= coroutinesCount);
+                        mustExit = (coroutinesCount == 0 || immediate || 
+                            _info.CanMoveNext(ref index, ref coroutines[previousIndex], coroutinesCount) == false ||
+                            index >= coroutinesCount);
                     } 
                     while (!mustExit);
                 }
@@ -107,7 +118,9 @@ namespace Svelto.Tasks.Internal
             readonly FlushingOperation  _flushingOperation;
             
             TRunningInfo _info;
-            PlatformProfiler _profiler;
+#if ENABLE_PLATFORM_PROFILER            
+            PlatformProfiler _profiler = new PlatformProfiler();
+#endif
         }
         
         public class FlushingOperation
@@ -120,7 +133,7 @@ namespace Svelto.Tasks.Internal
     
     public struct StandardRunningTasksInfo:IRunningTasksInfo
     {
-        public bool CanMoveNext(ref int nextIndex, TaskContract currentResult, int coroutinesCount)
+        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount)
         {
             return true;
         }
