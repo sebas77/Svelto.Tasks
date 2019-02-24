@@ -54,6 +54,11 @@ namespace Svelto.Tasks
             _flushingOperation.paused = false;
         }
 
+        public void Step()
+        {
+            _processEnumerator.MoveNext(false);
+        }
+
         /// <summary>
         /// TaskRunner doesn't stop executing tasks between scenes it's the final user responsibility to stop the tasks
         /// if needed

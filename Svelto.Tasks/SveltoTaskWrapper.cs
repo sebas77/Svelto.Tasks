@@ -51,8 +51,8 @@ namespace Svelto.Tasks
 
                 //a new TaskContract is created, holding the continuationEnumerator of the new task
                 var continuation = ((TTask) _taskContinuation._continuingTask).RunImmediate(_taskContinuation._runner);
-
-                _current = new TaskContract(continuation);
+                
+                _current = continuation.isRunning == true ? new TaskContract(continuation) : new TaskContract();
             }
 
             return true;

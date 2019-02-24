@@ -20,9 +20,8 @@ namespace Svelto.Tasks.Enumerators
     public void Reset()
     {}
 
-    TaskContract IEnumerator<TaskContract>.Current => Yield.It;
-
-    object IEnumerator.Current => null;
+    public TaskContract Current => Yield.It;
+    object IEnumerator. Current => throw new NotSupportedException();
 
     public override string ToString()
     {
@@ -53,14 +52,15 @@ namespace Svelto.Tasks.Enumerators
 
     public bool MoveNext()
     {
-      return _func(ref _value);
+        return _func(ref _value);
     }
 
     public void Reset()
     {}
 
-    TaskContract IEnumerator<TaskContract>.Current => Yield.It;
-    object IEnumerator.Current => null;
+    public TaskContract Current => Yield.It;
+    object IEnumerator. Current => throw new NotSupportedException();
+    public T            value   => _value;
 
     public override string ToString()
     {
@@ -78,7 +78,7 @@ namespace Svelto.Tasks.Enumerators
     {}
 
     readonly FuncRef<T, bool> _func;
-    string              _name;
-    T                   _value;
+    string                    _name;
+    T                         _value;
   }
 }

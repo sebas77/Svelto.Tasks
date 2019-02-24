@@ -82,7 +82,6 @@ namespace Svelto.Tasks.Lean
                 if (completed == true)
                 {
                     _continuationEnumerator.ce.ReturnToPool();
-                    _continuationEnumerator = default;
                     _threadSafeSveltoTaskStates.completed = true;
                 }                
             }
