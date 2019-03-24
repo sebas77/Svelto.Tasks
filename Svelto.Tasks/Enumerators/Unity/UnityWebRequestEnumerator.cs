@@ -1,3 +1,4 @@
+#if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.Networking;
@@ -45,3 +46,4 @@ namespace Svelto.Tasks.Enumerators
         readonly UnityWebRequest _www;
     }
 }
+#endif
