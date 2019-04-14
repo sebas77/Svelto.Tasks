@@ -37,6 +37,11 @@ namespace Svelto.Tasks.Internal
                 using (_profiler.StartNewSession(_info.runnerName))
 #endif
                 {
+                    if (_flushingOperation.stopping == true && _coroutines.Count == 0)
+                    { //once all the coroutines are flushed the loop can return accepting new tasks
+                        _flushingOperation.stopping = false;
+                    }
+
                     //don't start anything while flushing
                     if (_newTaskRoutines.Count > 0 && false == _flushingOperation.stopping) 
                         _newTaskRoutines.DequeueAllInto(_coroutines);
@@ -45,8 +50,10 @@ namespace Svelto.Tasks.Internal
                     
                     if (coroutinesCount == 0 ||
                         _flushingOperation.paused == true && _flushingOperation.stopping == false)
+                    {
                         return true;
-
+                    }
+                        
                     _info.Reset();
 
                     //I decided to adopt this strategy instead to call MoveNext() directly when a task
@@ -71,11 +78,11 @@ namespace Svelto.Tasks.Internal
                         if (_flushingOperation.stopping) coroutines[index].Stop();
 
 #if ENABLE_PLATFORM_PROFILER
-                        using (_profiler.BeginSample(coroutines[index].ToString()))
+                        using (_profiler.Sample(coroutines[index].name))
 #endif
 #if TASKS_PROFILER_ENABLED
-                            result =
-                            Profiler.TaskProfiler.MonitorUpdateDuration(coroutines[index], _info.runnerName);
+                        result =
+                            Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName, _profiler);
 #else
                         result = coroutines[index].MoveNext();
 #endif
@@ -83,8 +90,8 @@ namespace Svelto.Tasks.Internal
                         //this side effect is due to the fact that I don't have a stack for each task anymore
                         //like I used to do in Svelto tasks 1.5 and therefore running new enumerators would
                         //mean to add new coroutines. However I do not want to iterate over the new coroutines
-                        //during this iteration, so I won't modify coroutinesCount
-                        //avoid this complexity disabling run immediate
+                        //during this iteration, so I won't modify coroutinesCount avoid this complexity disabling run
+                        //immediate
                         //coroutines = _coroutines.ToArrayFast();
                         
                         int previousIndex = index;
@@ -105,11 +112,6 @@ namespace Svelto.Tasks.Internal
                     while (!mustExit);
                 }
 
-                if (_flushingOperation.stopping == true && _coroutines.Count == 0)
-                { //once all the coroutines are flushed the loop can return accepting new tasks
-                    _flushingOperation.stopping = false;
-                }
-
                 return true;
             }
             
@@ -118,9 +120,7 @@ namespace Svelto.Tasks.Internal
             readonly FlushingOperation  _flushingOperation;
             
             TRunningInfo _info;
-#if ENABLE_PLATFORM_PROFILER            
-            PlatformProfiler _profiler = new PlatformProfiler();
-#endif
+            readonly PlatformProfiler _profiler = new PlatformProfiler();
         }
         
         public class FlushingOperation

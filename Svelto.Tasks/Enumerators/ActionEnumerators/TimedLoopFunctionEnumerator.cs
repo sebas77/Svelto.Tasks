@@ -13,10 +13,7 @@ namespace Svelto.Tasks.Enumerators
             _action = action;
         }
 
-        public object Current
-        {
-            get { return null; }
-        }
+        public object Current => null;
 
         public bool MoveNext()
         {

@@ -1,10 +1,11 @@
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Svelto.Tasks
 {
     /// <summary>
     /// Be sure you know what you are doing when you are using the Sync runner, it will stall the current thread!
-    /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead. 
+    /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead.
     /// </summary>
     namespace Lean
     {
@@ -14,11 +15,19 @@ namespace Svelto.Tasks
         }
     }
 
+    namespace ExtraLean
+    {
+        public class SyncRunner : SyncRunner<SveltoTask<IEnumerator>>
+        {
+            public SyncRunner(int timeout = 1000) : base(timeout) { }
+        }
+    }
+
     public class SyncRunner<T> : IRunner, IRunner<T> where T: ISveltoTask
     {
         public bool isStopping { private set; get; }
-        public bool isKilled { get { return false; } }
-        
+        public bool isKilled => false;
+
         public void Pause()
         {
             throw new System.NotImplementedException();
@@ -46,9 +55,9 @@ namespace Svelto.Tasks
         public void StopAllCoroutines()
         {}
 
-        public int numberOfRunningTasks { get { return 0; } }
-        public int numberOfQueuedTasks { get { return 0; } }
-        public int numberOfProcessingTasks { get { return 0; } }
+        public int numberOfRunningTasks => 0;
+        public int numberOfQueuedTasks => 0;
+        public int numberOfProcessingTasks => 0;
         public void Dispose() {}
 
         readonly int _timeout;

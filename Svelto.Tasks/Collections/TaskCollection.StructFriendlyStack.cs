@@ -10,7 +10,7 @@ namespace Svelto.Tasks
             int _nextFreeStackIndex;
 
             public bool isValid() { return _stack != null; }
-            public int count { get { return _nextFreeStackIndex; } }
+            public int count => _nextFreeStackIndex;
 
             public StructFriendlyStack(int stackSize)
             {

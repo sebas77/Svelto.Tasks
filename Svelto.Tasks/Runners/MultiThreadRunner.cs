@@ -120,13 +120,7 @@ namespace Svelto.Tasks
             _runnerData.isPaused = false;
         }
         
-        public bool paused
-        {
-            get
-            {
-                return _runnerData.isPaused;
-            }
-        }
+        public bool paused => _runnerData.isPaused;
 
         public bool isStopping
         {
@@ -137,25 +131,13 @@ namespace Svelto.Tasks
             }
         }
 
-        public bool isKilled
-        {
-            get { return _runnerData == null; }
-        }
+        public bool isKilled => _runnerData == null;
 
-        public int numberOfRunningTasks
-        {
-            get { return _runnerData.Count; }
-        }
-        
-        public int numberOfQueuedTasks
-        {
-            get { return  _runnerData.newTaskRoutines.Count; }
-        }
+        public int numberOfRunningTasks => _runnerData.Count;
 
-        public int numberOfProcessingTasks
-        {
-            get { return _runnerData.Count + _runnerData.newTaskRoutines.Count; }
-        }
+        public int numberOfQueuedTasks => _runnerData.newTaskRoutines.Count;
+
+        public int numberOfProcessingTasks => _runnerData.Count + _runnerData.newTaskRoutines.Count;
 
         public override string ToString()
         {
@@ -376,7 +358,7 @@ namespace Svelto.Tasks
             
             internal bool isPaused
             {
-                get { return _flushingOperation.paused; }
+                get => _flushingOperation.paused;
                 set
                 {
                     ThreadUtility.VolatileWrite(ref _flushingOperation.paused, value);
@@ -387,11 +369,8 @@ namespace Svelto.Tasks
 
             internal bool waitForFlush
             {
-                get { return _flushingOperation.stopping; }
-                set
-                {
-                    ThreadUtility.VolatileWrite(ref _flushingOperation.stopping, value);
-                }
+                get => _flushingOperation.stopping;
+                set => ThreadUtility.VolatileWrite(ref _flushingOperation.stopping, value);
             }
 
             internal readonly ThreadSafeQueue<TTask> newTaskRoutines;

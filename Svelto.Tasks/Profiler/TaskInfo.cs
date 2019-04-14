@@ -11,12 +11,12 @@ namespace Svelto.Tasks.Profiler
     {
         const int NUM_FRAMES_TO_AVERAGE = 100;
 
-        public string taskName { get { return _threadInfo.FastConcat(_taskName); } }
-        public double lastUpdateDuration { get { return _lastUpdateDuration; } }
-        public double minUpdateDuration { get { return _minUpdateDuration; } }
-        public double maxUpdateDuration { get { return _maxUpdateDuration; } }
-        public double currentUpdateDuration { get { return _updateFrameTimes.Count == 0 ? 0 : _currentUpdateDuration / _updateFrameTimes.Count; } }
-        public double averageUpdateDuration { get { return _averageUpdateDuration / _totaleFrames; } }
+        public string taskName => _threadInfo.FastConcat(_taskName);
+        public double lastUpdateDuration => _lastUpdateDuration;
+        public double minUpdateDuration => _minUpdateDuration;
+        public double maxUpdateDuration => _maxUpdateDuration;
+        public double currentUpdateDuration => _updateFrameTimes.Count == 0 ? 0 : _currentUpdateDuration / _updateFrameTimes.Count;
+        public double averageUpdateDuration => _averageUpdateDuration / _totaleFrames;
 
         public TaskInfo(string name) : this()
         {

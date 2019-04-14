@@ -11,6 +11,8 @@ namespace Svelto.Tasks.Enumerators
             _seconds = seconds;
             _init    = false;
         }
+        
+        public bool IsDone() { return !MoveNext(); }
 
         public bool MoveNext()
         {
@@ -34,10 +36,7 @@ namespace Svelto.Tasks.Enumerators
             _init = false;
         }
 
-        public TaskContract Current
-        {
-            get { return Yield.It; }
-        }
+        public TaskContract Current => Yield.It;
 
         public void Reset(float seconds)
         {
@@ -45,8 +44,8 @@ namespace Svelto.Tasks.Enumerators
             _init    = false;
         }
 
-        object IEnumerator.Current { get { return null; } }
-        
+        object IEnumerator.Current => null;
+
         public void Dispose()
         {}
 

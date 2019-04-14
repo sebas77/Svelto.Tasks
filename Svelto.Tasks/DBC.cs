@@ -302,14 +302,8 @@ namespace DBC.Tasks
 		public static bool UseAssertions
 		{
 			
-			get
-			{
-				return useAssertions;
-			}
-			set
-			{
-				useAssertions = value;
-			}
+			get => useAssertions;
+			set => useAssertions = value;
 		}
 		
 		#endregion // Interface
@@ -321,13 +315,7 @@ namespace DBC.Tasks
 		/// <summary>
 		/// Is exception handling being used?
 		/// </summary>
-		private static bool UseExceptions
-		{
-			get
-			{
-				return !useAssertions;
-			}
-		}
+		private static bool UseExceptions => !useAssertions;
 
 		// Are trace assertion statements being used? 
 		// Default is to use exception handling.

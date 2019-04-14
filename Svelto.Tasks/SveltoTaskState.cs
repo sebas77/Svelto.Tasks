@@ -15,7 +15,7 @@ namespace Svelto.Tasks
 
             public bool completed
             {
-                get { return BIT(COMPLETED_BIT); }
+                get => BIT(COMPLETED_BIT);
                 set
                 {
                     if (value) 
@@ -27,7 +27,7 @@ namespace Svelto.Tasks
             
             public bool pendingTask
             {
-                get { return BIT(PENDING_BIT); }
+                get => BIT(PENDING_BIT);
                 set
                 {
                     if (value) 
@@ -39,7 +39,7 @@ namespace Svelto.Tasks
 
             public bool explicitlyStopped
             {
-                get { return BIT(EXPLICITLY_STOPPED); }
+                get => BIT(EXPLICITLY_STOPPED);
                 set
                 {
                     if (value) 
@@ -51,7 +51,7 @@ namespace Svelto.Tasks
 
             public bool paused
             {
-                get { return BIT(PAUSED_BIT); }
+                get => BIT(PAUSED_BIT);
                 set
                 {
                     if (value) 
@@ -63,7 +63,7 @@ namespace Svelto.Tasks
 
             public bool started
             {
-                get { return BIT(STARTED_BIT); }
+                get => BIT(STARTED_BIT);
                 set
                 {
                     if (value) 
@@ -75,7 +75,7 @@ namespace Svelto.Tasks
 
             public bool taskEnumeratorJustSet
             {
-                get { return BIT(TASK_ENUMERATOR_JUST_SET); }
+                get => BIT(TASK_ENUMERATOR_JUST_SET);
                 set
                 {
                     if (value) 

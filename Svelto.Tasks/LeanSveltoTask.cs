@@ -16,6 +16,7 @@ namespace Svelto.Tasks.Lean
                                                        bool      immediate*/)
             where TRunner : class, IRunner<SveltoTask<TTask>>
         {
+            _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<SveltoTask<TTask>>>(ref task, runner);
 #if DEBUG && !PROFILER                        
             DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
                                     "A valid enumerator is required to enable a LeanSveltTask ".FastConcat(ToString()));
@@ -24,7 +25,6 @@ namespace Svelto.Tasks.Lean
 #endif            
     
             _continuationEnumerator = new ContinuationEnumerator(ContinuationPool.RetrieveFromPool());
-            _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<SveltoTask<TTask>>>(ref task, runner);
             _threadSafeSveltoTaskStates.started = true;
             
             runner.StartCoroutine(ref this/*, immediate*/);
@@ -36,7 +36,7 @@ namespace Svelto.Tasks.Lean
         {
 #if GENERATE_NAME
             if (_name == null)
-                _name = base.ToString();
+                _name = _sveltoTask.task.ToString();
     
             return _name;
 #else
@@ -49,13 +49,14 @@ namespace Svelto.Tasks.Lean
             _threadSafeSveltoTaskStates.explicitlyStopped = true;
         }
 
+        public string name => ToString();
+
         TaskContract ISveltoTask.Current => throw new Exception();
         TTask Current => _sveltoTask.task;
 
         public bool MoveNext()
         {
-            DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false,
-                                    "impossible state ".FastConcat(ToString()));
+            DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false, "impossible state ");
             bool completed = false;
             try
             {

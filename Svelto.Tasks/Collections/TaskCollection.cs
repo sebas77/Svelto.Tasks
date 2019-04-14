@@ -35,7 +35,7 @@ namespace Svelto.Tasks
         protected TaskCollection(string name, int initialSize)
         {
             _name = name;
-            _listOfStacks = new FasterList<StructFriendlyStack>(initialSize);
+            _listOfStacks = new FasterList<StructFriendlyStack>((uint) initialSize);
             var buffer = _listOfStacks.ToArrayFast();
             for (int i = 0; i < initialSize; i++)
                 buffer[i] = new StructFriendlyStack(1);
@@ -138,10 +138,7 @@ namespace Svelto.Tasks
             }
         }
 
-        object IEnumerator.Current
-        {
-            get { return CurrentStack; }
-        }
+        object IEnumerator.Current => CurrentStack;
 
         public void Clear()
         {
@@ -180,7 +177,7 @@ namespace Svelto.Tasks
                 return TaskState.yieldIt;
 
             //can be a Svelto.Tasks Break
-            if (returnObject.breakit == Break.It || returnObject.breakit == Break.AndStop)
+            if (returnObject.breakIt == Break.It || returnObject.breakIt == Break.AndStop)
                 return TaskState.breakIt;
 
             if (returnObject.enumerator is T) //can be a compatible IEnumerator
@@ -201,8 +198,8 @@ namespace Svelto.Tasks
             return _name;
         }
         
-        protected int taskCount { get { return _listOfStacks.Count; }}
-        protected StructFriendlyStack[] rawListOfStacks { get { return _listOfStacks.ToArrayFast(); } }
+        protected int taskCount => _listOfStacks.Count;
+        protected StructFriendlyStack[] rawListOfStacks => _listOfStacks.ToArrayFast();
 
         protected abstract void ProcessTask(ref T Task);
         protected abstract bool RunTasksAndCheckIfDone();

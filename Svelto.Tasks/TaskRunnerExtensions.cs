@@ -43,12 +43,17 @@ namespace Svelto.Tasks.Lean
 
 public static class TaskRunnerExtensions
 {
-    public static TaskContract Continue<T>(this T enumerator) where T:class,IEnumerator<TaskContract> 
+    public static TaskContract Continue<T>(this T enumerator) where T:class, IEnumerator<TaskContract> 
+    {
+        return new TaskContract(enumerator);
+    }
+    
+    public static TaskContract Continue(this IEnumerator enumerator)
     {
         return new TaskContract(enumerator);
     }
 
-    public static void Complete<T>(this T enumerator, int _timeout = 0) where T : IEnumerator
+    public static T Complete<T>(this T enumerator, int _timeout = 0) where T : IEnumerator
     {
         var quickIterations = 0;
 
@@ -71,8 +76,10 @@ public static class TaskRunnerExtensions
             else
                 while (enumerator.MoveNext());
         }
-    }
 
+        return enumerator;
+    }
+    
     internal static void CompleteTask<T>(ref T enumerator, int _timeout = 0) where T : ISveltoTask
     {
         var quickIterations = 0;

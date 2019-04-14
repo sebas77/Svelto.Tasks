@@ -20,17 +20,14 @@ namespace Svelto.Tasks.Enumerators
             _wait.Reset();
         }
 
-        public TaskContract Current
-        {
-            get { return Yield.It; }
-        }
+        public TaskContract Current => Yield.It;
 
         public void Reset(float seconds)
         {
             _wait.Reset(seconds);
         }
 
-        object IEnumerator.Current { get { return null; } }
+        object IEnumerator.Current => null;
 
         ReusableWaitForSecondsEnumerator _wait;
 

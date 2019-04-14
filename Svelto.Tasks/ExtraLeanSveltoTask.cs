@@ -2,7 +2,6 @@
 #define GENERATE_NAME
 #endif
 
-using System;
 using System.Collections;
 using DBC.Tasks;
 
@@ -13,18 +12,15 @@ namespace Svelto.Tasks.ExtraLean
         internal void Run<TRunner>(TRunner runner, ref TTask task/* , bool immediate*/)
             where TRunner : class, IRunner<SveltoTask<TTask>>
         {
+            _runningTask  = task;
+            
 #if DEBUG && !PROFILER
             DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
                 "A valid enumerator is required to enable an ExtraLeanSveltTask ".FastConcat(ToString()));
-#endif
-
             Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
-
-#if GENERATE_NAME
-            _name = task.ToString();
 #endif
+            
             _threadSafeSveltoTaskStates.started = true;
-            _runningTask                        = task;
 
             runner.StartCoroutine(ref this/*, immediate*/);
         }
@@ -33,7 +29,7 @@ namespace Svelto.Tasks.ExtraLean
         {
 #if GENERATE_NAME
             if (_name == null)
-                _name = base.ToString();
+                _name = _runningTask.ToString();
 
             return _name;
 #else
@@ -46,6 +42,8 @@ namespace Svelto.Tasks.ExtraLean
             _threadSafeSveltoTaskStates.explicitlyStopped = true;
         }
 
+        public string name => ToString();
+
         public TaskContract Current => Yield.It;
 
         /// <summary>
@@ -55,8 +53,7 @@ namespace Svelto.Tasks.ExtraLean
         /// <returns></returns>
         public bool MoveNext()
         {
-            Check.Require(_threadSafeSveltoTaskStates.completed == false,
-                          "ExtraLeanSveltoTask impossible state ".FastConcat(ToString()));
+            Check.Require(_threadSafeSveltoTaskStates.completed == false, "ExtraLeanSveltoTask impossible state ");
 
             bool completed;
             if (_threadSafeSveltoTaskStates.explicitlyStopped == false)

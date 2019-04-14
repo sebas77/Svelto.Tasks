@@ -12,7 +12,7 @@ namespace Svelto.Tasks.Enumerators
             _www         = www;
             _www.timeout = timeOutInSeconds;
 
-            _www.SendWebRequest();
+                _www.SendWebRequest();
         }
 
         public bool MoveNext()
@@ -23,24 +23,18 @@ namespace Svelto.Tasks.Enumerators
         public void Reset()
         { }
 
-        object IEnumerator.Current
-        {
-            get { return _www; }
-        }
+        object IEnumerator.Current => _www;
 
         TaskContract IEnumerator<TaskContract>.Current { get; }
 
-        public UnityWebRequest Current
-        {
-            get { return _www; }
-        }
+        public UnityWebRequest Current => _www;
 
         public void Dispose()
         {
             _www.Dispose();
         }
 
-        public UnityWebRequest www { get { return _www; } }
+        public UnityWebRequest www => _www;
 
         readonly UnityWebRequest _www;
     }

@@ -15,10 +15,7 @@ namespace Svelto.Tasks.Enumerators
             _interval = intervalMS;
         }
 
-        public object Current
-        {
-            get { return null; }
-        }
+        public object Current => null;
 
         public bool MoveNext()
         {

@@ -1,11 +1,6 @@
 using System;
-using JetBrains.Annotations;
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
-
-#if TASKS_PROFILER_ENABLED
-using Svelto.Tasks.Profiler;
-#endif
 
 namespace Svelto.Tasks
 {
@@ -15,18 +10,18 @@ namespace Svelto.Tasks
     /// </summary>
     public abstract class BaseRunner<T> : IRunner, IRunner<T> where T: ISveltoTask
     {
-        public bool isStopping           { get { return _flushingOperation.stopping; } }
-        public bool isKilled             { get {return _flushingOperation.kill;} }
-        
-        public int numberOfRunningTasks    { get { return _coroutines.Count; } }
-        public int numberOfQueuedTasks     { get { return _newTaskRoutines.Count; } }
-        public int numberOfProcessingTasks { get { return _newTaskRoutines.Count + _coroutines.Count; }}
-        
+        public bool isStopping => _flushingOperation.stopping;
+        public bool isKilled => _flushingOperation.kill;
+
+        public int numberOfRunningTasks => _coroutines.Count;
+        public int numberOfQueuedTasks => _newTaskRoutines.Count;
+        public int numberOfProcessingTasks => _newTaskRoutines.Count + _coroutines.Count;
+
         protected BaseRunner(string name, int size)
         {
             _name = name;
             _newTaskRoutines = new ThreadSafeQueue<T>(size);
-            _coroutines = new FasterList<T>(size);
+            _coroutines = new FasterList<T>((uint) size);
         }
         
         protected BaseRunner(string name)
@@ -70,7 +65,7 @@ namespace Svelto.Tasks
             _newTaskRoutines.Clear();
         }
 
-        void IRunner<T>.StartCoroutine([CanBeNull] ref T task /*, bool immediate*/)
+        void IRunner<T>.StartCoroutine(ref T task /*, bool immediate*/)
         {
             _newTaskRoutines.Enqueue(task);
             

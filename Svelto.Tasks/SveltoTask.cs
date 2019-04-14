@@ -22,6 +22,8 @@ namespace Svelto.Tasks
         bool MoveNext();
 
         void Stop();
+
+        string name { get; }
     }
 }
 
