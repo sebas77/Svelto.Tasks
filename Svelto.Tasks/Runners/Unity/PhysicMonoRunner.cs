@@ -57,8 +57,7 @@ namespace Svelto.Tasks
             {
                 modifier.runnerName = name;
 
-                _processEnumerator =
-                    new CoroutineRunner<T>.Process<TFlowModifier, PlatformProfiler>
+                _processEnumerator = new CoroutineRunner<T>.Process<TFlowModifier>
                         (_newTaskRoutines, _coroutines, _flushingOperation, modifier);
 
                 UnityCoroutineRunner.StartPhysicCoroutine(_processEnumerator);

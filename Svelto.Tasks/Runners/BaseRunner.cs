@@ -1,4 +1,5 @@
 using System;
+using Svelto.Common;
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
 
@@ -36,7 +37,7 @@ namespace Svelto.Tasks
             Console.LogWarning(this._name.FastConcat(" has been garbage collected, this could have serious" +
                                          "consequences, are you sure you want this? "));
             
-            StopAllCoroutines();
+            Stop();
         }
 
         public void Pause()
@@ -51,14 +52,17 @@ namespace Svelto.Tasks
 
         public void Step()
         {
-            _processEnumerator.MoveNext(false);
+            using (var platform = new PlatformProfiler(this._name))
+            {
+                _processEnumerator.MoveNext(false, platform);
+            }
         }
 
         /// <summary>
         /// TaskRunner doesn't stop executing tasks between scenes it's the final user responsibility to stop the tasks
         /// if needed
         /// </summary>
-        public virtual void StopAllCoroutines()
+        public virtual void Stop()
         {
             CoroutineRunner<T>.StopRoutines(_flushingOperation);
 
@@ -75,7 +79,7 @@ namespace Svelto.Tasks
 
         public virtual void Dispose()
         {
-            StopAllCoroutines();
+            Stop();
 
             CoroutineRunner<T>.KillProcess(_flushingOperation);
             

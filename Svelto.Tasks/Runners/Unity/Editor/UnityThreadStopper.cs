@@ -16,7 +16,7 @@ namespace Svelto.Tasks.Internal
         {
             if (state == PlayModeStateChange.ExitingPlayMode)
             {
-                TaskRunner.StopAndCleanupAllDefaultSchedulers();
+                TaskRunner.Dispose();
             }
         }
     }
@@ -33,7 +33,7 @@ namespace Svelto.Tasks.Internal
         {
             if (state == PlayModeStateChange.ExitingPlayMode)
             {
-                TaskRunner.StopAndCleanupAllDefaultSchedulers();
+                TaskRunner.Dispose();
             }
         }
     }

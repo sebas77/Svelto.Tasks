@@ -52,7 +52,7 @@ namespace Svelto.Tasks
         /// TaskRunner doesn't stop executing tasks between scenes it's the final user responsibility to stop the
         /// tasks if needed
         /// </summary>
-        public void StopAllCoroutines()
+        public void Stop()
         {}
 
         public int numberOfRunningTasks => 0;

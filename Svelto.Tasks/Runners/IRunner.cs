@@ -9,7 +9,7 @@ namespace Svelto.Tasks
 
         void Pause();
         void Resume();
-        void StopAllCoroutines();
+        void Stop();
 
         int numberOfRunningTasks { get; }
         int numberOfQueuedTasks  { get; }

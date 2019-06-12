@@ -65,7 +65,7 @@ namespace Svelto.Tasks
         {
             [FieldOffset(0)] internal float single;
             [FieldOffset(0)] internal int   int32;
-            [FieldOffset(0)] internal uint   uint32;
+            [FieldOffset(0)] internal uint  uint32;
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -81,11 +81,6 @@ namespace Svelto.Tasks
         }
 
         public static implicit operator TaskContract(float number)
-        {
-            return new TaskContract(number);
-        }
-
-        public static implicit operator TaskContract(long number)
         {
             return new TaskContract(number);
         }

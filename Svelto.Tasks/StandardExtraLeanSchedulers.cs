@@ -117,14 +117,14 @@ namespace Svelto.Tasks.ExtraLean
         public static void StopAllCoroutines()
         {
             if (_multiThreadScheduler != null && multiThreadScheduler.isKilled == false)
-                _multiThreadScheduler.StopAllCoroutines();
+                _multiThreadScheduler.Stop();
             
 #if UNITY_5 || UNITY_5_3_OR_NEWER            
-            _coroutineScheduler?.StopAllCoroutines();
-            _updateScheduler?.StopAllCoroutines();
-            _physicScheduler?.StopAllCoroutines();
-            _lateScheduler?.StopAllCoroutines();
-            _earlyScheduler?.StopAllCoroutines();
+            _coroutineScheduler?.Stop();
+            _updateScheduler?.Stop();
+            _physicScheduler?.Stop();
+            _lateScheduler?.Stop();
+            _earlyScheduler?.Stop();
 #endif
         }
     }

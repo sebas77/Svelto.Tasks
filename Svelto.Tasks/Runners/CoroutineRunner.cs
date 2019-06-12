@@ -17,9 +17,8 @@ namespace Svelto.Tasks.Internal
             flushingOperation.kill = true;
         }
 
-        public class Process<TRunningInfo, PlatformProfiler> : IProcessSveltoTasks 
+        public class Process<TRunningInfo> : IProcessSveltoTasks 
                                                                  where TRunningInfo: IRunningTasksInfo
-                                                                 where PlatformProfiler:IPlatformProfiler, new()
         {
             public Process( ThreadSafeQueue<T> newTaskRoutines, FasterList<T> coroutines,
                             FlushingOperation flushingOperation, TRunningInfo info)
@@ -30,12 +29,10 @@ namespace Svelto.Tasks.Internal
                 _info              = info;
             }    
 
-            public bool MoveNext(bool immediate)
+            public bool MoveNext<PlatformProfiler>(bool immediate,
+                in PlatformProfiler platformProfiler) where PlatformProfiler : IPlatformProfiler
             {
                 if (_flushingOperation.kill) return false;
-#if ENABLE_PLATFORM_PROFILER
-                using (_profiler.StartNewSession(_info.runnerName))
-#endif
                 {
                     if (_flushingOperation.stopping == true && _coroutines.Count == 0)
                     { //once all the coroutines are flushed the loop can return accepting new tasks
@@ -47,7 +44,6 @@ namespace Svelto.Tasks.Internal
                         _newTaskRoutines.DequeueAllInto(_coroutines);
                     
                     var coroutinesCount = _coroutines.Count;
-                    
                     if (coroutinesCount == 0 ||
                         _flushingOperation.paused == true && _flushingOperation.stopping == false)
                     {
@@ -78,7 +74,7 @@ namespace Svelto.Tasks.Internal
                         if (_flushingOperation.stopping) coroutines[index].Stop();
 
 #if ENABLE_PLATFORM_PROFILER
-                        using (_profiler.Sample(coroutines[index].name))
+                        using (platformProfiler.Sample(coroutines[index].name))
 #endif
 #if TASKS_PROFILER_ENABLED
                         result =
@@ -120,7 +116,6 @@ namespace Svelto.Tasks.Internal
             readonly FlushingOperation  _flushingOperation;
             
             TRunningInfo _info;
-            readonly PlatformProfiler _profiler = new PlatformProfiler();
         }
         
         public class FlushingOperation

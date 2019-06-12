@@ -1,5 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
+using Svelto.Common;
 using Svelto.DataStructures;
 using Svelto.Tasks.Internal;
 using UnityEngine;
@@ -17,28 +18,27 @@ namespace Svelto.Tasks.Unity.Internal
         {
             while (true)
             {
-                ExecuteRoutines(_coroutineProcesses);
+                using (var platform = new PlatformProfiler("coroutine tasks")) ExecuteRoutines(_coroutineProcesses, platform);
                 
                 yield return _waitForEndOfFrame;
-                
-                ExecuteRoutines(_endOfFrameRoutines);
+            
+                using (var platform = new PlatformProfiler("endOfFrame tasks")) ExecuteRoutines(_endOfFrameRoutines, platform);
             }
         }
         
         public void Update()
         {
-            ExecuteRoutines(_earlyProcesses);
-            ExecuteRoutines(_updateProcesses);
+            using (var platform = new PlatformProfiler("early tasks")) ExecuteRoutines(_earlyProcesses, platform);
+            using (var platform = new PlatformProfiler("update tasks")) ExecuteRoutines(_updateProcesses, platform);
         }
 
-        static void ExecuteRoutines(FasterListThreadSafe<IProcessSveltoTasks> list)
+        static void ExecuteRoutines(FasterListThreadSafe<IProcessSveltoTasks> list, PlatformProfiler profiler)
         {
-            int count;
-            var routines = list.ToArrayFast(out count);
+            var routines = list.ToArrayFast(out var count);
 
             for (int i = 0; i < count; i++)
             {
-                var ret = routines[i].MoveNext(false);
+                var ret = routines[i].MoveNext(false, profiler);
                 if (ret == false)
                 {
                     list.UnorderedRemoveAt(i);
@@ -70,7 +70,7 @@ namespace Svelto.Tasks.Unity.Internal
 
         void LateUpdate()
         {
-            ExecuteRoutines(_lateRoutines);
+            using (var platform = new PlatformProfiler("late tasks")) ExecuteRoutines(_lateRoutines, platform);
         }
 
         public void StartLateCoroutine(IProcessSveltoTasks enumerator)
@@ -80,7 +80,7 @@ namespace Svelto.Tasks.Unity.Internal
         
         void FixedUpdate()
         {
-            ExecuteRoutines(_physicRoutines);
+            using (var platform = new PlatformProfiler("physic tasks")) ExecuteRoutines(_physicRoutines, platform);
         }
 
         public void StartPhysicCoroutine(IProcessSveltoTasks enumerator)

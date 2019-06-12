@@ -17,9 +17,9 @@ namespace Svelto.Tasks
             return new TaskRoutine<T>(runner);
         }
 #endif        
-        public static void StopAndCleanupAllDefaultSchedulers()
+        public static void Dispose()
         {
-            Lean.StandardSchedulers.KillSchedulers();
+            Lean.StandardSchedulers.Dispose();
             ExtraLean.StandardSchedulers.KillSchedulers();
         }
 
@@ -35,9 +35,9 @@ namespace Svelto.Tasks
             ExtraLean.StandardSchedulers.Resume();
         }
 
-        public static void StopAllCoroutines()
+        public static void Stop()
         {
-            Lean.StandardSchedulers.StopAllCoroutines();
+            Lean.StandardSchedulers.Stop();
             ExtraLean.StandardSchedulers.StopAllCoroutines();
         }
     }

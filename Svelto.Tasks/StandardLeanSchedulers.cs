@@ -66,7 +66,7 @@ namespace Svelto.Tasks.Lean
 
         //physicScheduler -> earlyScheduler -> updateScheduler -> coroutineScheduler -> lateScheduler
 
-        internal static void KillSchedulers()
+        internal static void Dispose()
         {
             if (_multiThreadScheduler != null && multiThreadScheduler.isKilled == false)
                 _multiThreadScheduler.Dispose();
@@ -112,17 +112,17 @@ namespace Svelto.Tasks.Lean
 #endif
         }
 
-        public static void StopAllCoroutines()
+        public static void Stop()
         {
             if (_multiThreadScheduler != null && multiThreadScheduler.isKilled == false)
-                _multiThreadScheduler.StopAllCoroutines();
+                _multiThreadScheduler.Stop();
             
 #if UNITY_5 || UNITY_5_3_OR_NEWER            
-            _coroutineScheduler?.StopAllCoroutines();
-            _updateScheduler?.StopAllCoroutines();
-            _physicScheduler?.StopAllCoroutines();
-            _lateScheduler?.StopAllCoroutines();
-            _earlyScheduler?.StopAllCoroutines();
+            _coroutineScheduler?.Stop();
+            _updateScheduler?.Stop();
+            _physicScheduler?.Stop();
+            _lateScheduler?.Stop();
+            _earlyScheduler?.Stop();
 #endif
         }
     }

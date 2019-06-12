@@ -19,23 +19,19 @@ namespace Svelto.Tasks
         public sealed class MultiThreadRunner:MultiThreadRunner<IEnumerator<TaskContract>>
         {
             public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
-            {
-            }
+            {}
 
             public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
-            {
-            }
+            {}
         }
         
         public class MultiThreadRunner<T>:Svelto.Tasks.MultiThreadRunner<SveltoTask<T>> where T : IEnumerator<TaskContract>
         {
             public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
-            {
-            }
+            {}
 
             public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
-            {
-            }
+            {}
         }   
     }
     
@@ -44,23 +40,19 @@ namespace Svelto.Tasks
         public sealed class MultiThreadRunner:MultiThreadRunner<IEnumerator>
         {
             public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
-            {
-            }
+            {}
 
             public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
-            {
-            }
+            {}
         }
         
         public class MultiThreadRunner<T>:Svelto.Tasks.MultiThreadRunner<SveltoTask<T>> where T : IEnumerator
         {
             public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : base(name, relaxed, tightTasks)
-            {
-            }
+            {}
 
             public MultiThreadRunner(string name, float intervalInMs) : base(name, intervalInMs)
-            {
-            }
+            {}
         }   
     }
     
@@ -68,12 +60,10 @@ namespace Svelto.Tasks
     {
         public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) : 
             base(name, new StandardRunningTasksInfo(), relaxed, tightTasks)
-        {
-        }
+        {}
 
         public MultiThreadRunner(string name, float intervalInMs) : base(name, new StandardRunningTasksInfo(), intervalInMs)
-        {
-        }
+        {}
     }
     /// <summary>
     /// The multithread runner always uses just one thread to run all the couroutines
@@ -180,7 +170,7 @@ namespace Svelto.Tasks
             _runnerData.UnlockThread();
         }
 
-        public void StopAllCoroutines()
+        public void Stop()
         {
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to stop tasks on a killed runner");
@@ -225,8 +215,8 @@ namespace Svelto.Tasks
                 _isRunningTightTasks = isRunningTightTasks;
                 _flushingOperation   = new CoroutineRunner<TTask>.FlushingOperation();
                 modifier.runnerName  = name;
-                _process             = new CoroutineRunner<TTask>.Process<TFlowModifier,
-                    PlatformProfilerMT>(newTaskRoutines, _coroutines, _flushingOperation, modifier); 
+                _process             = new CoroutineRunner<TTask>.Process<TFlowModifier>
+                    (newTaskRoutines, _coroutines, _flushingOperation, modifier); 
 
                 if (relaxed)
                     _lockingMechanism = RelaxedLockingMechanism;
@@ -319,7 +309,7 @@ namespace Svelto.Tasks
             {
                 ThreadUtility.MemoryBarrier();
                 
-                while (_process.MoveNext(false))
+                while (_process.MoveNext(false, new PlatformProfilerMT(name)))
                 {
                     if (_flushingOperation.kill == false)
                     {
@@ -387,8 +377,8 @@ namespace Svelto.Tasks
             int                _interlock;
             int                _yieldingCount;
 
-            readonly CoroutineRunner<TTask>.FlushingOperation                          _flushingOperation;
-            readonly CoroutineRunner<TTask>.Process<TFlowModifier, PlatformProfilerMT> _process;
+            readonly CoroutineRunner<TTask>.FlushingOperation      _flushingOperation;
+            readonly CoroutineRunner<TTask>.Process<TFlowModifier> _process;
         }
     }
 
