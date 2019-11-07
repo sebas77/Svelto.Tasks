@@ -4,25 +4,27 @@ using System.Collections.Generic;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public struct ReusableWaitForSecondsEnumerator:IEnumerator<TaskContract>
+    public struct ReusableWaitForSecondsEnumerator : IEnumerator<TaskContract>
     {
-        public ReusableWaitForSecondsEnumerator(float seconds):this()
+        public ReusableWaitForSecondsEnumerator(float seconds) : this()
         {
             _seconds = seconds;
-            _init    = false;
+            _init = false;
         }
-        
-        public bool IsDone() { return !MoveNext(); }
+
+        public bool IsDone()
+        {
+            return !MoveNext();
+        }
 
         public bool MoveNext()
         {
             if (_init == false)
             {
                 _future = DateTime.UtcNow.AddSeconds(_seconds);
-                _init   = true;
+                _init = true;
             }
-            else
-            if (_future <= DateTime.UtcNow)
+            else if (_future <= DateTime.UtcNow)
             {
                 Reset();
                 return false;
@@ -41,16 +43,18 @@ namespace Svelto.Tasks.Enumerators
         public void Reset(float seconds)
         {
             _seconds = seconds;
-            _init    = false;
+            _init = false;
         }
+
+        public void Dispose()
+        {
+        }
+
 
         object IEnumerator.Current => null;
 
-        public void Dispose()
-        {}
-
         DateTime _future;
-        float    _seconds;
-        bool     _init;
+        float _seconds;
+        bool _init;
     }
 }

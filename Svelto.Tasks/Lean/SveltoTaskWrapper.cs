@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.Lean
 {
     struct SveltoTaskWrapper<TTask, TRunner>
-        where TTask : IEnumerator<TaskContract> where TRunner : class, IRunner<Lean.SveltoTask<TTask>>
+        where TTask : IEnumerator<TaskContract> where TRunner : class, IRunner<Lean.LeanSveltoTask<TTask>>
     {
         public SveltoTaskWrapper(ref TTask task, TRunner runner) : this()
         {
@@ -41,17 +41,17 @@ namespace Svelto.Tasks
                     var continuation =
                         ((TTask) _taskContinuation._continuingTask).RunImmediate(_taskContinuation._runner);
 
-                    _current = continuation.isRunning == true ? new TaskContract(continuation) : new TaskContract();
+                    _current = continuation.isRunning == true ? 
+                        new TaskContract(continuation) : 
+                        new TaskContract(); //todo what was this case for?
 
                     return true;
                 }
-                else
-                {
-                    if (_current.enumerator.MoveNext() == true)
-                        return true;
 
-                    _current = new TaskContract();
-                }
+                if (_current.enumerator.MoveNext() == true)
+                    return true;
+
+                _current = new TaskContract();  //todo what was this case for?
             }
 
             //continue the normal execution of this task

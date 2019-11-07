@@ -18,7 +18,7 @@ namespace Svelto.Tasks.Internal
         }
 
         public class Process<TRunningInfo> : IProcessSveltoTasks 
-                                                                 where TRunningInfo: IRunningTasksInfo
+            where TRunningInfo: IRunningTasksInfo
         {
             public Process( ThreadSafeQueue<T> newTaskRoutines, FasterList<T> coroutines,
                             FlushingOperation flushingOperation, TRunningInfo info)
@@ -29,8 +29,8 @@ namespace Svelto.Tasks.Internal
                 _info              = info;
             }    
 
-            public bool MoveNext<PlatformProfiler>(bool immediate,
-                in PlatformProfiler platformProfiler) where PlatformProfiler : IPlatformProfiler
+            public bool MoveNext<PlatformProfiler>(bool immediate, in PlatformProfiler platformProfiler) 
+                where PlatformProfiler : IPlatformProfiler<DisposableSampler>
             {
                 if (_flushingOperation.kill) return false;
                 {
@@ -53,7 +53,7 @@ namespace Svelto.Tasks.Internal
                     _info.Reset();
 
                     //I decided to adopt this strategy instead to call MoveNext() directly when a task
-                    //must be executed immediately. However this works only if I do not update the coroutinescount
+                    //must be executed immediately. However this works only if I do not update the coroutines count
                     //after the MoveNext which on its turn could run immediately another task.
                     //this can cause a stack of MoveNext, which works only because I add the task to run immediately
                     //at the end of the list and the child MoveNext executes only the new one. When the stack

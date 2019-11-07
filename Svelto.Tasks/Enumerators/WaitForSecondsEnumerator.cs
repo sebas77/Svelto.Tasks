@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace Svelto.Tasks.Enumerators
 {
-    public class WaitForSecondsEnumerator:IEnumerator<TaskContract>
+    public class WaitForSecondsEnumerator : IEnumerator<TaskContract>
     {
         public WaitForSecondsEnumerator(float seconds)
         {
-            _wait = new ReusableWaitForSecondsEnumerator(seconds); 
+            _wait = new ReusableWaitForSecondsEnumerator(seconds);
         }
 
         public bool MoveNext()
@@ -32,7 +32,7 @@ namespace Svelto.Tasks.Enumerators
         ReusableWaitForSecondsEnumerator _wait;
 
         public void Dispose()
-        {}
+        {
+        }
     }
 }
-

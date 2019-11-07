@@ -1,7 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Common;
 using Svelto.Tasks.Internal;
 using Svelto.Tasks.Unity.Internal;
 
@@ -14,16 +13,22 @@ namespace Svelto.Tasks
             public LateMonoRunner(string name) : base(name)
             {
             }
+            public LateMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
+            {
+            }
         }
-        
-        public class LateMonoRunner<T> : Svelto.Tasks.Unity.LateMonoRunner<SveltoTask<T>> where T : IEnumerator<TaskContract>
+
+        public class LateMonoRunner<T> : Svelto.Tasks.Unity.LateMonoRunner<LeanSveltoTask<T>> where T : IEnumerator<TaskContract>
         {
             public LateMonoRunner(string name) : base(name)
             {
             }
+            public LateMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
+            {
+            }
         }
     }
-    
+
     namespace ExtraLean.Unity
     {
         public class LateMonoRunner: LateMonoRunner<IEnumerator>
@@ -31,11 +36,17 @@ namespace Svelto.Tasks
             public LateMonoRunner(string name) : base(name)
             {
             }
+            public LateMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
+            {
+            }
         }
-        
-        public class LateMonoRunner<T> : Svelto.Tasks.Unity.LateMonoRunner<SveltoTask<T>> where T : IEnumerator
+
+        public class LateMonoRunner<T> : Svelto.Tasks.Unity.LateMonoRunner<ExtraLeanSveltoTask<T>> where T : IEnumerator
         {
             public LateMonoRunner(string name) : base(name)
+            {
+            }
+            public LateMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
             {
             }
         }
@@ -45,7 +56,10 @@ namespace Svelto.Tasks
     {
         public class LateMonoRunner<T> : LateMonoRunner<T, StandardRunningTasksInfo> where T : ISveltoTask
         {
-            public LateMonoRunner(string name) : base(name, new StandardRunningTasksInfo())
+            public LateMonoRunner(string name) : base(name, 0, new StandardRunningTasksInfo())
+            {
+            }
+            public LateMonoRunner(string name, uint runningOrder) : base(name, runningOrder, new StandardRunningTasksInfo())
             {
             }
         }
@@ -53,7 +67,7 @@ namespace Svelto.Tasks
         public class LateMonoRunner<T, TFlowModifier> : BaseRunner<T> where T : ISveltoTask
                                                                         where TFlowModifier : IRunningTasksInfo
         {
-            public LateMonoRunner(string name, TFlowModifier modifier) : base(name)
+            public LateMonoRunner(string name, uint runningOrder, TFlowModifier modifier) : base(name)
             {
                 modifier.runnerName = name;
 
@@ -61,7 +75,7 @@ namespace Svelto.Tasks
                     new CoroutineRunner<T>.Process<TFlowModifier>
                         (_newTaskRoutines, _coroutines, _flushingOperation, modifier);
 
-                UnityCoroutineRunner.StartLateCoroutine(_processEnumerator);
+                UnityCoroutineRunner.StartLateCoroutine(_processEnumerator, runningOrder);
             }
         }
     }

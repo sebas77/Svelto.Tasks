@@ -1,7 +1,6 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Common;
 using Svelto.Tasks.Internal;
 using Svelto.Tasks.Unity.Internal;
 
@@ -17,33 +16,45 @@ namespace Svelto.Tasks
     /// </summary>
     namespace Lean.Unity
     {
-        public class CoroutineMonoRunner : Svelto.Tasks.Unity.UpdateMonoRunner<SveltoTask<IEnumerator<TaskContract>>>
+        public class CoroutineMonoRunner : Svelto.Tasks.Unity.UpdateMonoRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
         {
             public CoroutineMonoRunner(string name) : base(name)
             {
             }
+            public CoroutineMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
+            {
+            }
         }
-        
-        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<SveltoTask<T>> where T : IEnumerator<TaskContract>
+
+        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<LeanSveltoTask<T>> where T : IEnumerator<TaskContract>
         {
             public CoroutineMonoRunner(string name) : base(name)
+            {
+            }
+            public CoroutineMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
             {
             }
         }
     }
-    
+
     namespace ExtraLean.Unity
     {
-        public class CoroutineMonoRunner : Svelto.Tasks.Unity.UpdateMonoRunner<SveltoTask<IEnumerator>>
+        public class CoroutineMonoRunner : Svelto.Tasks.Unity.UpdateMonoRunner<ExtraLeanSveltoTask<IEnumerator>>
         {
             public CoroutineMonoRunner(string name) : base(name)
             {
             }
+            public CoroutineMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
+            {
+            }
         }
-        
-        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<SveltoTask<T>> where T : IEnumerator
+
+        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<ExtraLeanSveltoTask<T>> where T : IEnumerator
         {
             public CoroutineMonoRunner(string name) : base(name)
+            {
+            }
+            public CoroutineMonoRunner(string name, uint runningOrder) : base(name, runningOrder)
             {
             }
         }
@@ -53,7 +64,10 @@ namespace Svelto.Tasks
     {
         public class CoroutineMonoRunner<T> : CoroutineMonoRunner<T, StandardRunningTasksInfo> where T : ISveltoTask
         {
-            public CoroutineMonoRunner(string name) : base(name, new StandardRunningTasksInfo())
+            public CoroutineMonoRunner(string name) : base(name, 0, new StandardRunningTasksInfo())
+            {
+            }
+            public CoroutineMonoRunner(string name, uint runningOrder) : base(name, runningOrder, new StandardRunningTasksInfo())
             {
             }
         }
@@ -61,7 +75,7 @@ namespace Svelto.Tasks
         public class CoroutineMonoRunner<T, TFlowModifier> : BaseRunner<T> where T : ISveltoTask
                                                                            where TFlowModifier : IRunningTasksInfo
         {
-            public CoroutineMonoRunner(string name, TFlowModifier modifier) : base(name)
+            public CoroutineMonoRunner(string name, uint runningOrder, TFlowModifier modifier) : base(name)
             {
                 modifier.runnerName = name;
 
@@ -69,7 +83,7 @@ namespace Svelto.Tasks
                     new CoroutineRunner<T>.Process<TFlowModifier>
                         (_newTaskRoutines, _coroutines, _flushingOperation, modifier);
 
-                UnityCoroutineRunner.StartCoroutine(_processEnumerator);
+                UnityCoroutineRunner.StartCoroutine(_processEnumerator, runningOrder);
             }
 
             public void StartYieldInstruction(IEnumerator instruction)

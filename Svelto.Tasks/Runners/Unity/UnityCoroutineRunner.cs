@@ -29,47 +29,47 @@ namespace Svelto.Tasks.Unity.Internal
                      "their very first use must happen inside the Unity main thread");
             }
         }
-        
-        public static void StartUpdateCoroutine(IProcessSveltoTasks process)
+
+        public static void StartUpdateCoroutine(IProcessSveltoTasks process, uint runningOrder)
         {
             if (_runnerBehaviour != null)
-                _runnerBehaviour.StartUpdateCoroutine(process);
-        }
-        
-        public static void StartEarlyUpdateCoroutine(IProcessSveltoTasks process)
-        {
-            if (_runnerBehaviour != null)
-                _runnerBehaviour.StartEarlyUpdateCoroutine(process);
-        }
-        
-        public static void StartEndOfFrameCoroutine(IProcessSveltoTasks process)
-        {
-            if (_runnerBehaviour != null)
-                _runnerBehaviour.StartEndOfFrameCoroutine(process);
-        }
-        
-        public static void StartLateCoroutine(IProcessSveltoTasks process)
-        {
-            if (_runnerBehaviour != null)
-                _runnerBehaviour.StartLateCoroutine(process);
+                _runnerBehaviour.StartUpdateCoroutine(process, runningOrder);
         }
 
-        public static void StartCoroutine(IProcessSveltoTasks process)
+        public static void StartEarlyUpdateCoroutine(IProcessSveltoTasks process, uint runningOrder)
         {
             if (_runnerBehaviour != null)
-                _runnerBehaviour.StartSveltoCoroutine(process);
+                _runnerBehaviour.StartEarlyUpdateCoroutine(process, runningOrder);
         }
-        
+
+        public static void StartEndOfFrameCoroutine(IProcessSveltoTasks process, uint runningOrder)
+        {
+            if (_runnerBehaviour != null)
+                _runnerBehaviour.StartEndOfFrameCoroutine(process, runningOrder);
+        }
+
+        public static void StartLateCoroutine(IProcessSveltoTasks process, uint runningOrder)
+        {
+            if (_runnerBehaviour != null)
+                _runnerBehaviour.StartLateCoroutine(process, runningOrder);
+        }
+
+        public static void StartCoroutine(IProcessSveltoTasks process, uint runningOrder)
+        {
+            if (_runnerBehaviour != null)
+                _runnerBehaviour.StartSveltoCoroutine(process, runningOrder);
+        }
+
         public static void StartYieldCoroutine(IEnumerator yieldInstructionWrapper)
         {
             if (_runnerBehaviour != null)
                 _runnerBehaviour.StartCoroutine(yieldInstructionWrapper);
         }
 
-        public static void StartPhysicCoroutine(IProcessSveltoTasks process)
+        public static void StartPhysicCoroutine(IProcessSveltoTasks process, uint runningOrder)
         {
             if (_runnerBehaviour != null)
-                _runnerBehaviour.StartPhysicCoroutine(process);
+                _runnerBehaviour.StartPhysicCoroutine(process, runningOrder);
         }
     }
 }

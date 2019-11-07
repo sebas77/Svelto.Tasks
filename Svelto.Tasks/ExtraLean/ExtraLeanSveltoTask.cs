@@ -7,10 +7,10 @@ using DBC.Tasks;
 
 namespace Svelto.Tasks.ExtraLean
 {
-    public struct SveltoTask<TTask> : ISveltoTask where TTask : IEnumerator
+    public struct ExtraLeanSveltoTask<TTask> : ISveltoTask where TTask : IEnumerator
     {
         internal void Run<TRunner>(TRunner runner, ref TTask task/* , bool immediate*/)
-            where TRunner : class, IRunner<SveltoTask<TTask>>
+            where TRunner : class, IRunner<ExtraLeanSveltoTask<TTask>>
         {
             _runningTask  = task;
             

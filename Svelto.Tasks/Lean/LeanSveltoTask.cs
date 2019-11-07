@@ -9,14 +9,14 @@ using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Lean
 {
-    public struct SveltoTask<TTask>: ISveltoTask where TTask : IEnumerator<TaskContract>
+    public struct LeanSveltoTask<TTask>: ISveltoTask where TTask : IEnumerator<TaskContract>
     {
         internal ContinuationEnumerator Run<TRunner>(TRunner   runner,
                                                        ref TTask task/*,
                                                        bool      immediate*/)
-            where TRunner : class, IRunner<SveltoTask<TTask>>
+            where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
-            _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<SveltoTask<TTask>>>(ref task, runner);
+            _sveltoTask = new SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>>(ref task, runner);
 #if DEBUG && !PROFILER                        
             DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
                                     "A valid enumerator is required to enable a LeanSveltTask ".FastConcat(ToString()));
@@ -56,7 +56,7 @@ namespace Svelto.Tasks.Lean
 
         public bool MoveNext()
         {
-            DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false, "impossible state ");
+            DBC.Tasks.Check.Require(_threadSafeSveltoTaskStates.completed == false, "impossible state");
             bool completed = false;
             try
             {
@@ -70,7 +70,8 @@ namespace Svelto.Tasks.Lean
                     {
                         completed = true;
 
-                        Console.LogException("a Svelto.Tasks task threw an exception at:  ".FastConcat(ToString()), e);
+                        if (e.InnerException != null)
+                            Console.LogException(e.InnerException);
 
                         throw;
                     }
@@ -90,7 +91,7 @@ namespace Svelto.Tasks.Lean
             return !completed;
         }
 
-        SveltoTaskWrapper<TTask, IRunner<SveltoTask<TTask>>> _sveltoTask;
+        SveltoTaskWrapper<TTask, IRunner<LeanSveltoTask<TTask>>> _sveltoTask;
         SveltoTaskState                                      _threadSafeSveltoTaskStates;
         ContinuationEnumerator                               _continuationEnumerator;
 #if GENERATE_NAME

@@ -9,7 +9,7 @@ namespace Svelto.Tasks
     /// </summary>
     namespace Lean
     {
-        public class SyncRunner : SyncRunner<SveltoTask<IEnumerator<TaskContract>>>
+        public class SyncRunner : SyncRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
         {
             public SyncRunner(int timeout = 1000) : base(timeout) { }
         }
@@ -17,7 +17,7 @@ namespace Svelto.Tasks
 
     namespace ExtraLean
     {
-        public class SyncRunner : SyncRunner<SveltoTask<IEnumerator>>
+        public class SyncRunner : SyncRunner<ExtraLeanSveltoTask<IEnumerator>>
         {
             public SyncRunner(int timeout = 1000) : base(timeout) { }
         }
@@ -53,6 +53,9 @@ namespace Svelto.Tasks
         /// tasks if needed
         /// </summary>
         public void Stop()
+        {}
+
+        public void Flush()
         {}
 
         public int numberOfRunningTasks => 0;
