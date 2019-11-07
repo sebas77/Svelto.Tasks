@@ -1,7 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
-using System.Collections;
 using Svelto.Tasks.Unity;
 #endif
+using System.Collections;
 
 namespace Svelto.Tasks
 {
