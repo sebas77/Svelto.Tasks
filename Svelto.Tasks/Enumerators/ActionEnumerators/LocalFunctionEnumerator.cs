@@ -44,7 +44,7 @@ namespace Svelto.Tasks.Enumerators
   
   public struct LocalFunctionEnumerator<T> : IEnumerator<TaskContract>
   {
-    public LocalFunctionEnumerator(FuncRef<T, bool> func, T value) : this()
+    public LocalFunctionEnumerator(FuncRef<T, bool> func, ref T value) : this()
     {
         _func = func;
         _value = value;

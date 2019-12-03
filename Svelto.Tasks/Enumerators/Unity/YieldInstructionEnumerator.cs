@@ -13,14 +13,14 @@ namespace Svelto.Tasks.Enumerators
         {
             _instruction = instruction;
 
-            UnityCoroutineRunner.StartYieldCoroutine(GetEnumerator());
+            UnityCoroutineRunner.StartYieldInstructionCoroutine(GetEnumerator());
         }
         
         public YieldInstructionEnumerator(AsyncOperation instruction)
         {
             _instruction = instruction;
 
-            UnityCoroutineRunner.StartYieldCoroutine(GetEnumerator());
+            UnityCoroutineRunner.StartYieldInstructionCoroutine(GetEnumerator());
         }
 
         IEnumerator GetEnumerator()

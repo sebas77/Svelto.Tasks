@@ -62,19 +62,7 @@ namespace Svelto.Tasks.Lean
             {
                 if (_threadSafeSveltoTaskStates.explicitlyStopped == false)
                 {
-                    try
-                    {
                         completed = !_sveltoTask.MoveNext();
-                    }
-                    catch (Exception e)
-                    {
-                        completed = true;
-
-                        if (e.InnerException != null)
-                            Console.LogException(e.InnerException);
-
-                        throw;
-                    }
                 }
                 else
                     completed = true;

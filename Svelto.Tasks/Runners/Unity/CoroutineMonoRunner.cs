@@ -16,7 +16,7 @@ namespace Svelto.Tasks
     /// </summary>
     namespace Lean.Unity
     {
-        public class CoroutineMonoRunner : Svelto.Tasks.Unity.UpdateMonoRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
+        public class CoroutineMonoRunner : Svelto.Tasks.Unity.CoroutineMonoRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
         {
             public CoroutineMonoRunner(string name) : base(name)
             {
@@ -26,7 +26,7 @@ namespace Svelto.Tasks
             }
         }
 
-        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<LeanSveltoTask<T>> where T : IEnumerator<TaskContract>
+        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.CoroutineMonoRunner<LeanSveltoTask<T>> where T : IEnumerator<TaskContract>
         {
             public CoroutineMonoRunner(string name) : base(name)
             {
@@ -39,7 +39,7 @@ namespace Svelto.Tasks
 
     namespace ExtraLean.Unity
     {
-        public class CoroutineMonoRunner : Svelto.Tasks.Unity.UpdateMonoRunner<ExtraLeanSveltoTask<IEnumerator>>
+        public class CoroutineMonoRunner : Svelto.Tasks.Unity.CoroutineMonoRunner<ExtraLeanSveltoTask<IEnumerator>>
         {
             public CoroutineMonoRunner(string name) : base(name)
             {
@@ -49,7 +49,7 @@ namespace Svelto.Tasks
             }
         }
 
-        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.UpdateMonoRunner<ExtraLeanSveltoTask<T>> where T : IEnumerator
+        public class CoroutineMonoRunner<T> : Svelto.Tasks.Unity.CoroutineMonoRunner<ExtraLeanSveltoTask<T>> where T : IEnumerator
         {
             public CoroutineMonoRunner(string name) : base(name)
             {
@@ -84,11 +84,6 @@ namespace Svelto.Tasks
                         (_newTaskRoutines, _coroutines, _flushingOperation, modifier);
 
                 UnityCoroutineRunner.StartCoroutine(_processEnumerator, runningOrder);
-            }
-
-            public void StartYieldInstruction(IEnumerator instruction)
-            {
-                UnityCoroutineRunner.StartYieldCoroutine(instruction);
             }
         }
     }

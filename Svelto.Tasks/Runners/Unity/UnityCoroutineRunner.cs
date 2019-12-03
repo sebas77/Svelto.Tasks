@@ -60,7 +60,7 @@ namespace Svelto.Tasks.Unity.Internal
                 _runnerBehaviour.StartSveltoCoroutine(process, runningOrder);
         }
 
-        public static void StartYieldCoroutine(IEnumerator yieldInstructionWrapper)
+        public static void StartYieldInstructionCoroutine(IEnumerator yieldInstructionWrapper)
         {
             if (_runnerBehaviour != null)
                 _runnerBehaviour.StartCoroutine(yieldInstructionWrapper);
