@@ -93,7 +93,7 @@ namespace Svelto.Tasks
             else
             {
                 var stack = new StructFriendlyStack(_INITIAL_STACK_SIZE);
-                _listOfStacks.AddRef(ref stack);
+                _listOfStacks.Add(stack);
                 buffer = _listOfStacks.ToArrayFast();
                 buffer[_listOfStacks.Count - 1].Push(enumerator);
             }
