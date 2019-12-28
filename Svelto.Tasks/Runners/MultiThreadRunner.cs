@@ -252,7 +252,7 @@ namespace Svelto.Tasks
             {
 #if ENABLE_PLATFORM_PROFILER
                 var platformProfiler = new Common.PlatformProfilerMT();
-                using (platformProfiler.StartNewSession(name))
+                using (platformProfiler.Sample(name))
 #endif    
                 {
                     while (_breakThread == false)

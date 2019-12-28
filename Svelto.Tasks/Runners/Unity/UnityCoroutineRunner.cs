@@ -75,7 +75,7 @@ namespace Svelto.Tasks.Unity.Internal
                 if (_flushingOperation.kill) return false;
 #if ENABLE_PLATFORM_PROFILER
                 var _platformProfiler = new Svelto.Common.PlatformProfiler();
-                using (_platformProfiler.StartNewSession(_info.runnerName))
+                using (_platformProfiler.Sample(_info.runnerName))
 #endif
                 {
                     //don't start anything while flushing

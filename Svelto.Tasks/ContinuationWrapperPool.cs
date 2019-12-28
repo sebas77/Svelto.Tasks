@@ -14,7 +14,7 @@ namespace Svelto.Tasks.Internal
         {
             ContinuationWrapper task;
 
-            if (_pool.Dequeue(out task))
+            if (_pool.TryDequeue(out task))
             {
                 GC.ReRegisterForFinalize(task);
 
@@ -35,7 +35,7 @@ namespace Svelto.Tasks.Internal
             return new ContinuationWrapper(true);
         }
 
-        static readonly LockFreeQueue<ContinuationWrapper> _pool = new LockFreeQueue<ContinuationWrapper>();
+        static readonly ThreadSafeQueue<ContinuationWrapper> _pool = new ThreadSafeQueue<ContinuationWrapper>();
     }
 }
     

@@ -8,7 +8,7 @@ namespace Svelto.Tasks.Internal
         {
             PooledSveltoTask task;
 
-            if (_pool.Dequeue(out task))
+            if (_pool.TryDequeue(out task))
                 return task;
 
             return CreateEmptyTask();
@@ -24,6 +24,6 @@ namespace Svelto.Tasks.Internal
             return new PooledSveltoTask(this);
         }
 
-        readonly LockFreeQueue<PooledSveltoTask> _pool = new LockFreeQueue<PooledSveltoTask>();
+        readonly ThreadSafeQueue<PooledSveltoTask> _pool = new ThreadSafeQueue<PooledSveltoTask>();
     }
 }
