@@ -1,4 +1,4 @@
-# Svelto.Tasks
+# Svelto.Tasks 1.5
 ======================
 
 Run Parallel and Serial Promises compliant tasks, even on other threads! Svelto.Tasks is platform agnostic and it runs on every c# platform. However several Unity dedicated schedulers have been written. 
