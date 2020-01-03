@@ -1,0 +1,13 @@
+{
+  "displayName": "Svelto Tasks",
+  "category": "Svelto",
+  "description": "Svelto C# promises compliant multi-threaded tasks runner",
+  "dependencies": {},
+  "keywords": [
+    "svelto"
+  ],
+  "name": "com.sebaslab.svelto.tasks",
+  "unity": "2019.2",
+  "version": "2.9.1",
+  "type": "library"
+}
