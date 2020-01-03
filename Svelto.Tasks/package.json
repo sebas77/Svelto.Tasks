@@ -2,7 +2,9 @@
   "displayName": "Svelto Tasks",
   "category": "Svelto",
   "description": "Svelto C# promises compliant multi-threaded tasks runner",
-  "dependencies": {},
+  "dependencies": {
+    "com.sebaslab.svelto.common": "2.9.1"
+  },
   "keywords": [
     "svelto"
   ],
