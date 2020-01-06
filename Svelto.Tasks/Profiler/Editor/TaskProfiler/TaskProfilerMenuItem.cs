@@ -18,7 +18,7 @@ namespace Svelto.Tasks.Profiler
         [MenuItem("Tasks/Disable Profiler")]
         public static void DisableProfiler()
         {
-            RemoveScriptingDefineSymbolFromAllTargets(BuildTargetGroup.Standalone, "TASKS_PROFILER_ENABLED");
+            RemoveScriptingDefineSymbolFromAllTargets(EditorUserBuildSettings.selectedBuildTargetGroup, "TASKS_PROFILER_ENABLED");
         }
 
         public static void AddScriptingDefineSymbolToAllTargets(BuildTargetGroup group, string defineSymbol)
