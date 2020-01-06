@@ -9,7 +9,7 @@ namespace Svelto.Tasks.Profiler
 {
     public class TasksProfilerBehaviour : MonoBehaviour
     {
-        public FasterList<TaskInfo>  tasks { get { return TaskProfiler.taskInfos.Values; } }
+        public ThreadSafeDictionary<string, TaskInfo> tasks => TaskProfiler.taskInfos;
 
         public void ResetDurations()
         {

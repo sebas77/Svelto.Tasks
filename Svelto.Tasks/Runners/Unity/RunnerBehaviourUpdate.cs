@@ -7,7 +7,12 @@ namespace Svelto.Tasks.Unity.Internal
 {
     class RunnerBehaviourUpdate : MonoBehaviour
     {
-        public void Update()
+        void Awake()
+        {
+            StartCoroutine(WaitForEndOfFrameLoop());
+        }
+
+        void Update()
         {
             ExecuteRoutines(_earlyMainRoutines);
             ExecuteRoutines(_mainRoutines);
@@ -39,12 +44,7 @@ namespace Svelto.Tasks.Unity.Internal
         {
             _earlyMainRoutines.Add(enumerator);
         }
-        
-        void Awake()
-        {
-            StartCoroutine(WaitForEndOfFrameLoop());
-        }
-        
+
         public void StartEndOfFrameCoroutine(IEnumerator enumerator)
         {
             _endOfFrameRoutines.Add(enumerator);

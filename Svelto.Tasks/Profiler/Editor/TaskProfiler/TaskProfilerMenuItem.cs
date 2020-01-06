@@ -12,7 +12,7 @@ namespace Svelto.Tasks.Profiler
         [MenuItem("Tasks/Enable Profiler")]
         public static void EnableProfiler()
         {
-            AddScriptingDefineSymbolToAllTargets(BuildTargetGroup.Standalone, "TASKS_PROFILER_ENABLED");
+            AddScriptingDefineSymbolToAllTargets(EditorUserBuildSettings.selectedBuildTargetGroup, "TASKS_PROFILER_ENABLED");
         }
 
         [MenuItem("Tasks/Disable Profiler")]
@@ -23,25 +23,23 @@ namespace Svelto.Tasks.Profiler
 
         public static void AddScriptingDefineSymbolToAllTargets(BuildTargetGroup group, string defineSymbol)
         {
+            var defineSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group).Split(';').Select(d => d.Trim())
+                .ToList();
+            if (!defineSymbols.Contains(defineSymbol))
             {
-                var defineSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group).Split(';').Select(d => d.Trim()).ToList();
-                if (!defineSymbols.Contains(defineSymbol))
-                {
-                    defineSymbols.Add(defineSymbol);
-                    PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", defineSymbols.ToArray()));
-                }
+                defineSymbols.Add(defineSymbol);
+                PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", defineSymbols.ToArray()));
             }
         }
 
         public static void RemoveScriptingDefineSymbolFromAllTargets(BuildTargetGroup group, string defineSymbol)
         {
+            var defineSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group).Split(';').Select(d => d.Trim())
+                .ToList();
+            if (defineSymbols.Contains(defineSymbol))
             {
-                var defineSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group).Split(';').Select(d => d.Trim()).ToList();
-                if (defineSymbols.Contains(defineSymbol))
-                {
-                    defineSymbols.Remove(defineSymbol);
-                    PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", defineSymbols.ToArray()));
-                }
+                defineSymbols.Remove(defineSymbol);
+                PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", defineSymbols.ToArray()));
             }
         }
     }
