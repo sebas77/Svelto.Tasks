@@ -1,6 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using Svelto.DataStructures;
+using Svelto.Tasks.Internal;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
