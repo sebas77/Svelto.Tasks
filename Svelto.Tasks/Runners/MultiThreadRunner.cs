@@ -3,6 +3,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.DataStructures;
+using Svelto.Tasks.Internal;
 using Svelto.Utilities;
 
 #if NETFX_CORE

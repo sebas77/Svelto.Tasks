@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using Svelto.DataStructures;
+using Svelto.Tasks.Internal;
 using Svelto.Tasks.Unity.Internal;
 
 #if TASKS_PROFILER_ENABLED
