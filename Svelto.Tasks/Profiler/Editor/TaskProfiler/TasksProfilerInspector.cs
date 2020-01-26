@@ -47,7 +47,7 @@ namespace Svelto.Tasks.Profiler
             if (tasks.Length != tasksV.Count)
                 tasks = new TaskInfo[tasksV.Count];
 
-            taskProfilerBehaviour.tasks.CopyTo(tasks, 0);
+            taskProfilerBehaviour.tasks.CopyTo(tasks);
 
             DrawTasksMonitor(tasks);
             DrawTaskList(taskProfilerBehaviour, tasks);

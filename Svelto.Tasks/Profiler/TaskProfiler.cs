@@ -3,13 +3,10 @@
 
 using System.Diagnostics;
 using Svelto.Common;
-using Svelto.Common.Internal;
 using Svelto.DataStructures;
 
 //This profiler is based on the Entitas Visual Debugging tool 
 //https://github.com/sschmid/Entitas-CSharp
-
-
 
 namespace Svelto.Tasks.Profiler
 {
@@ -17,7 +14,7 @@ namespace Svelto.Tasks.Profiler
     {
         static readonly Stopwatch _stopwatch = new Stopwatch();
 
-        static object LOCK_OBJECT = new object();
+        static readonly object LOCK_OBJECT = new object();
 
         internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
             new ThreadSafeDictionary<string, TaskInfo>();
@@ -46,7 +43,8 @@ namespace Svelto.Tasks.Profiler
                 if (taskInfos.TryGetValue(key, out var info) == false)
                 {
                     info = new TaskInfo(samplerName);
-                    info.AddThreadInfo(runnerName.FastConcat(": "));
+#warning Todo for seb: avoid allocation here please                    
+                    info.AddThreadInfo(runnerName);
                     taskInfos.Add(key, ref info);
                 }
                 else

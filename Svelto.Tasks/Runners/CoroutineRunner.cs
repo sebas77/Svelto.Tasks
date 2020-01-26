@@ -30,11 +30,11 @@ namespace Svelto.Tasks.Internal
             }    
 
             public bool MoveNext<PlatformProfiler>(bool immediate, in PlatformProfiler platformProfiler) 
-                where PlatformProfiler : IPlatformProfiler<DisposableSampler>
+                where PlatformProfiler : IPlatformProfiler
             {
                 if (_flushingOperation.kill) return false;
                 {
-                    if (_flushingOperation.stopping == true && _coroutines.Count == 0)
+                    if (_flushingOperation.stopping == true && _coroutines.count == 0)
                     { //once all the coroutines are flushed the loop can return accepting new tasks
                         _flushingOperation.stopping = false;
                     }
@@ -43,7 +43,7 @@ namespace Svelto.Tasks.Internal
                     if (_newTaskRoutines.Count > 0 && false == _flushingOperation.stopping) 
                         _newTaskRoutines.DequeueAllInto(_coroutines);
                     
-                    var coroutinesCount = _coroutines.Count;
+                    var coroutinesCount = _coroutines.count;
                     if (coroutinesCount == 0 ||
                         _flushingOperation.paused == true && _flushingOperation.stopping == false)
                     {
@@ -59,7 +59,7 @@ namespace Svelto.Tasks.Internal
                     //at the end of the list and the child MoveNext executes only the new one. When the stack
                     //goes back to the previous MoveNext, I don't want to execute the new just added task again,
                     //so I can't update the coroutines count, it must stay the previous one/
-                    int index = immediate == true ? coroutinesCount - 1 : 0;
+                    int index = (int) (immediate == true ? coroutinesCount - 1 : 0);
 
                     bool mustExit;
                     
@@ -78,7 +78,8 @@ namespace Svelto.Tasks.Internal
 #endif
 #if TASKS_PROFILER_ENABLED
                         result =
-                            Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName, _profiler);
+                            Profiler.TaskProfiler.MonitorUpdateDuration(ref coroutines[index], _info.runnerName, 
+                                platformProfiler);
 #else
                         result = coroutines[index].MoveNext();
 #endif
@@ -102,7 +103,7 @@ namespace Svelto.Tasks.Internal
                             index++;
 
                         mustExit = (coroutinesCount == 0 || immediate || 
-                            _info.CanMoveNext(ref index, ref coroutines[previousIndex], coroutinesCount) == false ||
+                            _info.CanMoveNext(ref index, ref coroutines[previousIndex], (int) coroutinesCount) == false ||
                             index >= coroutinesCount);
                     } 
                     while (!mustExit);

@@ -66,7 +66,7 @@ namespace Svelto.Tasks
                                 //in order to be able to reuse the task collection, we will keep the stack 
                                 //in its original state. The tasks will be shuffled, but due to the nature
                                 //of the parallel execution, it doesn't matter.
-                                index = SwapStack(index, stacks, taskCount);
+                                index = SwapStack(index, stacks, (int) taskCount);
                                 _stackOffset++; 
                                 //move to the next task
                             }

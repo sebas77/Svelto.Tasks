@@ -12,9 +12,9 @@ namespace Svelto.Tasks
         void Stop();
         void Flush();
 
-        int numberOfRunningTasks { get; }
-        int numberOfQueuedTasks  { get; }
-        int numberOfProcessingTasks { get; }
+        uint numberOfRunningTasks { get; }
+        uint numberOfQueuedTasks  { get; }
+        uint numberOfProcessingTasks { get; }
     }
 
     public interface IRunner<T> where T:ISveltoTask

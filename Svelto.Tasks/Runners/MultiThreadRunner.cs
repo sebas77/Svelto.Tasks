@@ -145,9 +145,9 @@ namespace Svelto.Tasks
             Stop();
         }
 
-        public int numberOfRunningTasks => _runnerData.Count;
-        public int numberOfQueuedTasks => _runnerData.newTaskRoutines.Count;
-        public int numberOfProcessingTasks => _runnerData.Count + _runnerData.newTaskRoutines.Count;
+        public uint numberOfRunningTasks => _runnerData.Count;
+        public uint numberOfQueuedTasks => _runnerData.newTaskRoutines.Count;
+        public uint numberOfProcessingTasks => _runnerData.Count + _runnerData.newTaskRoutines.Count;
         
         public bool hasTasks => numberOfProcessingTasks != 0;
 
@@ -246,13 +246,13 @@ namespace Svelto.Tasks
                     _lockingMechanism = QuickLockingMechanism;
             }
 
-            public int Count
+            public uint Count
             {
                 get
                 {
                     ThreadUtility.MemoryBarrier();
 
-                    return _coroutines.Count;
+                    return _coroutines.count;
                 }
             }
             
@@ -346,7 +346,7 @@ namespace Svelto.Tasks
                             if (_interval > 0)
                                 WaitForInterval();
 
-                            if (_coroutines.Count == 0)
+                            if (_coroutines.count == 0)
                             {
                                 if (newTaskRoutines.Count == 0)
                                     _lockingMechanism();

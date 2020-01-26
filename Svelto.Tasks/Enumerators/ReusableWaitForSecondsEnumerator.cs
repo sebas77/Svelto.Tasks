@@ -14,7 +14,7 @@ namespace Svelto.Tasks.Enumerators
 
         public bool IsDone()
         {
-            return !MoveNext();
+            return MoveNext() == false;
         }
 
         public bool MoveNext()
@@ -47,9 +47,7 @@ namespace Svelto.Tasks.Enumerators
         }
 
         public void Dispose()
-        {
-        }
-
+        { }
 
         object IEnumerator.Current => null;
 

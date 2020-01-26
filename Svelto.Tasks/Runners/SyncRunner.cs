@@ -58,9 +58,9 @@ namespace Svelto.Tasks
         public void Flush()
         {}
 
-        public int numberOfRunningTasks => 0;
-        public int numberOfQueuedTasks => 0;
-        public int numberOfProcessingTasks => 0;
+        public uint numberOfRunningTasks => 0;
+        public uint numberOfQueuedTasks => 0;
+        public uint numberOfProcessingTasks => 0;
         public void Dispose() {}
 
         readonly int _timeout;

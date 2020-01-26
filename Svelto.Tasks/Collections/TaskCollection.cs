@@ -81,7 +81,7 @@ namespace Svelto.Tasks
             DBC.Tasks.Check.Require(isRunning == false, "can't modify a task collection while its running");
             
             var buffer = _listOfStacks.ToArrayFast();
-            var count = _listOfStacks.Count;
+            var count = _listOfStacks.count;
             if (count < buffer.Length && buffer[count].isValid())
             {
                 buffer[count].Clear();
@@ -94,7 +94,7 @@ namespace Svelto.Tasks
                 var stack = new StructFriendlyStack(_INITIAL_STACK_SIZE);
                 _listOfStacks.Add(stack);
                 buffer = _listOfStacks.ToArrayFast();
-                buffer[_listOfStacks.Count - 1].Push(ref enumerator);
+                buffer[_listOfStacks.count - 1].Push(ref enumerator);
             }
         }
         
@@ -105,7 +105,7 @@ namespace Svelto.Tasks
         {
             isRunning = false;
             
-            var count = _listOfStacks.Count;
+            var count = _listOfStacks.count;
             for (int index = 0; index < count; ++index)
             {
                 var stack = _listOfStacks[index];
@@ -129,7 +129,7 @@ namespace Svelto.Tasks
         {
             get
             {
-                if (_listOfStacks.Count > 0)
+                if (_listOfStacks.count > 0)
                     return CurrentStack.Current;
                 
                 return new TaskContract();
@@ -143,7 +143,7 @@ namespace Svelto.Tasks
             isRunning = false;
             
             var stacks = _listOfStacks.ToArrayFast();
-            var count = _listOfStacks.Count;
+            var count = _listOfStacks.count;
             
             for (int index = 0; index < count; ++index)
                 stacks[index].Clear();
@@ -195,7 +195,7 @@ namespace Svelto.Tasks
             return _name;
         }
         
-        protected int taskCount => _listOfStacks.Count;
+        protected uint taskCount => _listOfStacks.count;
         protected StructFriendlyStack[] rawListOfStacks => _listOfStacks.ToArrayFast();
 
         protected abstract void ProcessTask(ref T Task);

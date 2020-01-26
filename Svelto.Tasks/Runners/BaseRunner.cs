@@ -15,9 +15,9 @@ namespace Svelto.Tasks
         public bool isKilled   => _flushingOperation.kill;
         public bool hasTasks => numberOfProcessingTasks != 0;
 
-        public int numberOfRunningTasks    => _coroutines.Count;
-        public int numberOfQueuedTasks     => _newTaskRoutines.Count;
-        public int numberOfProcessingTasks => _newTaskRoutines.Count + _coroutines.Count;
+        public uint numberOfRunningTasks    => _coroutines.count;
+        public uint numberOfQueuedTasks     => _newTaskRoutines.Count;
+        public uint numberOfProcessingTasks => _newTaskRoutines.Count + _coroutines.count;
 
         protected BaseRunner(string name, int size)
         {

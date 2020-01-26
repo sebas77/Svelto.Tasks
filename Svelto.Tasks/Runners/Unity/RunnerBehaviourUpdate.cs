@@ -1,3 +1,5 @@
+
+using System;
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using Svelto.Common;
@@ -12,6 +14,14 @@ namespace Svelto.Tasks.Unity.Internal
         void Awake()
         {
             StartCoroutine(CoroutineProcess());
+        }
+
+        void Update()
+        {
+            using (var platform = new PlatformProfiler("Early tasks")) 
+                ExecuteRoutines(_earlyProcesses, platform);
+            using (var platform = new PlatformProfiler("Update tasks")) 
+                ExecuteRoutines(_updateProcesses, platform);
         }
 
         IEnumerator CoroutineProcess()
@@ -30,15 +40,12 @@ namespace Svelto.Tasks.Unity.Internal
             }
         }
 
-        public void Update()
+        public void OnGUI()
         {
-            using (var platform = new PlatformProfiler("Early tasks")) 
-                ExecuteRoutines(_earlyProcesses, platform);
-            using (var platform = new PlatformProfiler("Update tasks")) 
-                ExecuteRoutines(_updateProcesses, platform);
+            using (var platform = new PlatformProfiler("onGui tasks")) ExecuteRoutines(_onGuiRoutines, platform);
         }
 
-        static void ExecuteRoutines(FasterListThreadSafe<FasterList<IProcessSveltoTasks>> list, PlatformProfiler profiler)
+        static void ExecuteRoutines(ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> list, PlatformProfiler profiler)
         {
             var orderedRoutines = list.ToArrayFast(out var orderedCount);
 
@@ -89,6 +96,13 @@ namespace Svelto.Tasks.Unity.Internal
             _endOfFrameRoutines[(int)runningOrder].Add(enumerator);
         }
 
+        public void StartOnGuiCoroutine(IProcessSveltoTasks enumerator, uint runningOrder)
+        {
+            if (_onGuiRoutines.Count <= runningOrder || _updateProcesses[(int)runningOrder] == null)
+                _onGuiRoutines.Add(runningOrder, new FasterList<IProcessSveltoTasks>());
+            _onGuiRoutines[(int)runningOrder].Add(enumerator);
+        }
+
         void LateUpdate()
         {
             using (var platform = new PlatformProfiler("Late tasks")) ExecuteRoutines(_lateRoutines, platform);
@@ -115,12 +129,13 @@ namespace Svelto.Tasks.Unity.Internal
 
         readonly WaitForEndOfFrame _waitForEndOfFrame = new WaitForEndOfFrame();
 
-        readonly FasterListThreadSafe<FasterList<IProcessSveltoTasks>> _earlyProcesses     = new FasterListThreadSafe<FasterList<IProcessSveltoTasks>>();
-        readonly FasterListThreadSafe<FasterList<IProcessSveltoTasks>> _endOfFrameRoutines = new FasterListThreadSafe<FasterList<IProcessSveltoTasks>>();
-        readonly FasterListThreadSafe<FasterList<IProcessSveltoTasks>> _updateProcesses    = new FasterListThreadSafe<FasterList<IProcessSveltoTasks>>();
-        readonly FasterListThreadSafe<FasterList<IProcessSveltoTasks>> _lateRoutines       = new FasterListThreadSafe<FasterList<IProcessSveltoTasks>>();
-        readonly FasterListThreadSafe<FasterList<IProcessSveltoTasks>> _physicRoutines     = new FasterListThreadSafe<FasterList<IProcessSveltoTasks>>();
-        readonly FasterListThreadSafe<FasterList<IProcessSveltoTasks>> _coroutineProcesses = new FasterListThreadSafe<FasterList<IProcessSveltoTasks>>();
+        readonly ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> _earlyProcesses     = new ThreadSafeFasterList<FasterList<IProcessSveltoTasks>>();
+        readonly ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> _endOfFrameRoutines = new ThreadSafeFasterList<FasterList<IProcessSveltoTasks>>();
+        readonly ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> _updateProcesses    = new ThreadSafeFasterList<FasterList<IProcessSveltoTasks>>();
+        readonly ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> _lateRoutines       = new ThreadSafeFasterList<FasterList<IProcessSveltoTasks>>();
+        readonly ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> _physicRoutines     = new ThreadSafeFasterList<FasterList<IProcessSveltoTasks>>();
+        readonly ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> _coroutineProcesses = new ThreadSafeFasterList<FasterList<IProcessSveltoTasks>>();
+        readonly ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> _onGuiRoutines      = new ThreadSafeFasterList<FasterList<IProcessSveltoTasks>>();
     }
 }
 #endif

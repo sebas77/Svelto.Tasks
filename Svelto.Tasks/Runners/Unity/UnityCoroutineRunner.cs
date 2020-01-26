@@ -71,6 +71,12 @@ namespace Svelto.Tasks.Unity.Internal
             if (_runnerBehaviour != null)
                 _runnerBehaviour.StartPhysicCoroutine(process, runningOrder);
         }
+
+        public static void StartOnGuiCoroutine(IProcessSveltoTasks process, uint runningOrder)
+        {
+            if (_runnerBehaviour != null)
+                _runnerBehaviour.StartOnGuiCoroutine(process, runningOrder);
+        }
     }
 }
 #endif
