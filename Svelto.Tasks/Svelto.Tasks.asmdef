@@ -1,0 +1,10 @@
+{
+    "name": "Svelto.Tasks",
+    "references": [
+        "Svelto.Common"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}
