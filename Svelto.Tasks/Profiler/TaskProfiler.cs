@@ -13,11 +13,7 @@ namespace Svelto.Tasks.Profiler
     public static class TaskProfiler
     {
         static readonly Stopwatch _stopwatch = new Stopwatch();
-        
-        static object LOCK_OBJECT = new object();
-
-        internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
-            new ThreadSafeDictionary<string, TaskInfo>();
+        static readonly FasterDictionary<string, TaskInfo> taskInfos = new FasterDictionary<string, TaskInfo>();
  
         public static bool MonitorUpdateDuration<T>(ISveltoTask<T> sveltoTask, string runnerName) where T : IEnumerator
         {
@@ -31,21 +27,18 @@ namespace Svelto.Tasks.Profiler
 #if ENABLE_PIX_EVENTS            
             PixWrapper.PIXEndEventEx();
 #endif      
-            lock (LOCK_OBJECT)
+            lock (_stopwatch)
             {
-                TaskInfo info;
-                
-                if (taskInfos.TryGetValue(key, out info) == false)
+                if (taskInfos.TryGetValue(key, out var info) == false)
                 {
-                    info = new TaskInfo(sveltoTask.ToString());
-                    info.AddThreadInfo(runnerName.FastConcat(": "));
-                    taskInfos.Add(key, ref info);
+                    info = new TaskInfo(sveltoTask.ToString(), runnerName.FastConcat(": "));
+                    taskInfos.Add(key, info);
                 }
                 else
                 {
-                    info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
+                    info.AddUpdateDuration((float) _stopwatch.Elapsed.TotalMilliseconds);
                     
-                    taskInfos.Update(key, ref info);
+                    taskInfos[key] = info;
                 }
             }
 
@@ -56,7 +49,27 @@ namespace Svelto.Tasks.Profiler
 
         public static void ResetDurations()
         {
+            TaskInfo[] taskInfosValuesArray = taskInfos.GetValuesArray(out var count);
+            for (var index = 0; index < count; index++)
+            {
+                taskInfosValuesArray[index].MarkNextFrame();
+            }
+        }
+        
+        public static void ClearTasks()
+        {
             taskInfos.Clear();
+        }
+
+        public static void CopyAndUpdate(ref TaskInfo[] infos)
+        {
+            lock (_stopwatch)
+            {
+                if (infos == null || infos.Length != taskInfos.Count) 
+                    infos = new TaskInfo[taskInfos.Count];
+                
+                taskInfos.CopyValuesTo(infos);
+            }
         }
     }
 }
