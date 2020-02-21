@@ -33,9 +33,9 @@ namespace Svelto.Tasks.Profiler
         }
         public uint deltaCalls => _deltaCalls;
         
-        public TaskInfo(string name, string threadInfo) : this()
+        public TaskInfo(string name, string runnerName) : this()
         {
-            _taskName = " ".FastConcat(name).FastConcat(threadInfo);
+            _taskName = " ".FastConcat(name, ":", runnerName);
             times = new float[ITERATIONS];
         }
 

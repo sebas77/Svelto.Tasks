@@ -158,7 +158,7 @@ namespace Svelto.Tasks.Profiler
             ProfilerEditorLayout.BeginHorizontal();
             {
                 EditorGUILayout.LabelField("Task Name", EditorStyles.boldLabel);
-                EditorGUILayout.TextArea(title, EditorStyles.boldLabel, GUILayout.MaxWidth(300));
+                EditorGUILayout.TextArea(title, EditorStyles.boldLabel, GUILayout.MaxWidth(400));
             }
             ProfilerEditorLayout.EndHorizontal();
 
@@ -180,7 +180,7 @@ namespace Svelto.Tasks.Profiler
                         string output = avg.FastConcat(cur, min, max, calls);
  
                         EditorGUILayout.LabelField(taskInfo.taskName);
-                        EditorGUILayout.TextArea(output, GetTaskStyle(), GUILayout.MaxWidth(300));
+                        EditorGUILayout.TextArea(output, GetTaskStyle(), GUILayout.MaxWidth(400));
                     }
                     ProfilerEditorLayout.EndHorizontal();
 
