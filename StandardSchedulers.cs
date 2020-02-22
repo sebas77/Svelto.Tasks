@@ -75,6 +75,8 @@ namespace Svelto.Tasks
                 _lateScheduler.Dispose();
             if (_updateScheduler != null)
                 _updateScheduler.Dispose();
+            if (_earlyScheduler != null)
+                _earlyScheduler.Dispose();
             
             _coroutineScheduler = null;
             _physicScheduler = null;

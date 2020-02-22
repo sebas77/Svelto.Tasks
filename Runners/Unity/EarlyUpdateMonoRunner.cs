@@ -4,13 +4,13 @@ using Svelto.Tasks.Unity.Internal;
 
 namespace Svelto.Tasks.Unity
 {
-    class EarlyUpdateMonoRunner : EarlyUpdateMonoRunner<IEnumerator>
+    public class EarlyUpdateMonoRunner : EarlyUpdateMonoRunner<IEnumerator>
     {
         public EarlyUpdateMonoRunner(string name) : base(name)
         {
         }
     }
-    class EarlyUpdateMonoRunner<T> : MonoRunner<T> where T:IEnumerator
+    public class EarlyUpdateMonoRunner<T> : MonoRunner<T> where T:IEnumerator
     {
         public EarlyUpdateMonoRunner(string name):base(name)
         {

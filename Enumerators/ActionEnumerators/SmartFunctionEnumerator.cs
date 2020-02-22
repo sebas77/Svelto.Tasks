@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using Svelto.Utilities;
 
@@ -10,7 +9,7 @@ namespace Svelto.Tasks.Enumerators
     /// <typeparam name="T">
     /// facilitate the use of counters that can be passed by reference to the callback function
     /// </typeparam>
-    public class SmartFunctionEnumerator<T>:IEnumerator, IEnumerator<T>
+    public class SmartFunctionEnumerator<T>: IEnumerator<T>
     {
         public SmartFunctionEnumerator(FuncRef<T, bool> func)
         {
@@ -60,6 +59,5 @@ namespace Svelto.Tasks.Enumerators
         T                _value;
 
         string _name;
-        T _current;
     }
 }

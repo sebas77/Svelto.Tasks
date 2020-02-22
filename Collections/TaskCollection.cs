@@ -216,7 +216,6 @@ namespace Svelto.Tasks
         CollectionTask                           _currentTask;
         int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
-        T                                        _current;
         string                                   _name;
 
         const int _INITIAL_STACK_SIZE = 1;

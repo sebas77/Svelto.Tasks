@@ -7,69 +7,79 @@ using Object = UnityEngine.Object;
 
 namespace Svelto.Tasks.Unity.Internal
 {
-    static class UnityCoroutineRunner<T> where T:IEnumerator
+    internal static class UnityCoroutineRunner
     {
         static RunnerBehaviourUpdate _runnerBehaviour;
 
-        static UnityCoroutineRunner()
+        internal static RunnerBehaviourUpdate runnerBehaviour 
         {
-            GameObject go = new GameObject("Svelto.Tasks.UnityScheduler");
-            _runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
+            get
+            {
+                if (_runnerBehaviour == null)
+                {
+                    GameObject go = GameObject.Find("Svelto.Tasks.UnityScheduler");
+                    if (go != null)
+                        GameObject.DestroyImmediate(go);
+                    go = new GameObject("Svelto.Tasks.UnityScheduler");
+                    _runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
 
-            if (Application.isPlaying)
-                Object.DontDestroyOnLoad(go);
+                    Object.DontDestroyOnLoad(go);
+                }
+
+                return _runnerBehaviour;
+            }
         }
-        
+    }
+
+    static class UnityCoroutineRunner<T> where T : IEnumerator
+    {
         public static void StartUpdateCoroutine(IEnumerator process)
         {
-            _runnerBehaviour.StartUpdateCoroutine(process);
+            UnityCoroutineRunner.runnerBehaviour.StartUpdateCoroutine(process);
         }
-        
+
         public static void StartEarlyUpdateCoroutine(IEnumerator process)
         {
-            _runnerBehaviour.StartEarlyUpdateCoroutine(process);
+            UnityCoroutineRunner.runnerBehaviour.StartEarlyUpdateCoroutine(process);
         }
-        
+
         public static void StartEndOfFrameCoroutine(IEnumerator process)
         {
-            _runnerBehaviour.StartEndOfFrameCoroutine(process);
+            UnityCoroutineRunner.runnerBehaviour.StartEndOfFrameCoroutine(process);
         }
-        
+
         public static void StartLateCoroutine(IEnumerator process)
         {
-            _runnerBehaviour.StartLateCoroutine(process);
+            UnityCoroutineRunner.runnerBehaviour.StartLateCoroutine(process);
         }
 
         public static void StartCoroutine(IEnumerator process)
         {
-            _runnerBehaviour.StartCoroutine(process);
+            UnityCoroutineRunner.runnerBehaviour.StartCoroutine(process);
         }
 
         public static void StartPhysicCoroutine(IEnumerator process)
         {
-            _runnerBehaviour.StartPhysicCoroutine(process);
+            UnityCoroutineRunner.runnerBehaviour.StartPhysicCoroutine(process);
         }
-        
-        public static void StopRoutines(FlushingOperation
-            flushingOperation)
+
+        public static void StopRoutines(FlushingOperation flushingOperation)
         {
             //note: _coroutines will be cleaned by the single tasks stopping silently. in this way they will be put
             //back to the pool. Let's be sure that the runner had the time to stop and recycle the previous tasks
             flushingOperation.stopped = true;
         }
-        
-        internal class Process<RunningInfo> : IEnumerator where RunningInfo: IRunningTasksInfo<T>
+
+        internal class Process<RunningInfo> : IEnumerator where RunningInfo : IRunningTasksInfo<T>
         {
-            public Process( ThreadSafeQueue<ISveltoTask<T>> newTaskRoutines,
-                            FasterList<ISveltoTask<T>>      coroutines, 
-                            FlushingOperation              flushingOperation,
-                            RunningInfo                    info)
+            public Process(ThreadSafeQueue<ISveltoTask<T>> newTaskRoutines, FasterList<ISveltoTask<T>> coroutines,
+                FlushingOperation flushingOperation, RunningInfo info)
             {
                 _newTaskRoutines = newTaskRoutines;
                 _coroutines = coroutines;
                 _flushingOperation = flushingOperation;
                 _info = info;
-            }    
+            }
 
             public bool MoveNext()
             {
@@ -80,24 +90,28 @@ namespace Svelto.Tasks.Unity.Internal
 #endif
                 {
                     //don't start anything while flushing
-                    if (_newTaskRoutines.Count > 0 && false == _flushingOperation.stopped) 
-                        _newTaskRoutines.DequeueAllInto(_coroutines); 
-                    
+                    if (_newTaskRoutines.Count > 0 && false == _flushingOperation.stopped)
+                        _newTaskRoutines.DequeueAllInto(_coroutines);
+
                     if (_coroutines.Count == 0 || _flushingOperation.paused == true) return true;
 
                     _info.Reset();
-                    
-                    int index = _flushingOperation.immediate == true ? _coroutines.Count - 1 : 0;
 
-                    bool mustExit;
+                    int index = _flushingOperation.immediate == true ? _coroutines.Count - 1 : 0;
+                    
+#if TASKS_PROFILER_ENABLED
+                    Profiler.TaskProfiler.ResetDurations(_info.runnerName);
+#endif
+
+                    bool mustExit = false;
                     do
                     {
                         if (_info.CanProcessThis(ref index) == false) break;
-                        
+
                         var coroutines = _coroutines.ToArrayFast();
 
                         bool result;
-                        
+
                         if (_flushingOperation.stopped) coroutines[index].Stop();
 
 #if ENABLE_PLATFORM_PROFILER
@@ -111,7 +125,7 @@ namespace Svelto.Tasks.Unity.Internal
                             result = coroutines[index].MoveNext();
 #endif
                         }
-                        
+
                         var current = coroutines[index].Current;
 
                         if (result == false)
@@ -121,13 +135,13 @@ namespace Svelto.Tasks.Unity.Internal
 
                         var coroutinesCount = _coroutines.Count;
                         mustExit = (coroutinesCount == 0 ||
-                             _info.CanMoveNext(ref index, current) == false || index >= coroutinesCount);
-                    } 
-                    while (!mustExit);
+                                    _info.CanMoveNext(ref index, current) == false || index >= coroutinesCount);
+                    } while (!mustExit);
                 }
 
                 if (_flushingOperation.stopped == true && _coroutines.Count == 0)
-                {   //once all the coroutines are flushed the loop can return accepting new tasks
+                {
+                    //once all the coroutines are flushed the loop can return accepting new tasks
                     _flushingOperation.stopped = false;
                 }
 
@@ -135,18 +149,19 @@ namespace Svelto.Tasks.Unity.Internal
             }
 
             public void Reset()
-            {}
+            {
+            }
 
             public object Current { get; private set; }
-            
+
             readonly ThreadSafeQueue<ISveltoTask<T>> _newTaskRoutines;
             readonly FasterList<ISveltoTask<T>>      _coroutines;
-            readonly FlushingOperation              _flushingOperation;
-            
+            readonly FlushingOperation               _flushingOperation;
+
             RunningInfo _info;
         }
 
-        public struct RunningTasksInfo:IRunningTasksInfo<T>
+        public struct RunningTasksInfo : IRunningTasksInfo<T>
         {
             public bool CanMoveNext(ref int nextIndex, TaskCollection<T>.CollectionTask currentResult)
             {
@@ -159,7 +174,8 @@ namespace Svelto.Tasks.Unity.Internal
             }
 
             public void Reset()
-            {}
+            {
+            }
 
             public string runnerName { get; set; }
         }
@@ -172,7 +188,8 @@ namespace Svelto.Tasks.Unity.Internal
             public bool kill;
         }
 
-        const string GAMEOBJECT_ALREADY_EXISTING_ERROR = "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";
+        const string GAMEOBJECT_ALREADY_EXISTING_ERROR =
+            "A MonoRunner GameObject with the same name was already been used, did you forget to dispose the old one?";
     }
 }
 #endif

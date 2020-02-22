@@ -56,7 +56,7 @@ namespace Svelto.Tasks.Unity.Internal
             {
                 yield return _waitForEndOfFrame;
 
-                ExecuteRoutines(_earlyMainRoutines);
+                ExecuteRoutines(_endOfFrameRoutines);
             }
         }
         

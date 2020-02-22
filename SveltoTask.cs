@@ -11,9 +11,13 @@ namespace Svelto.Tasks
 {
     public class SveltoTaskException : Exception
     {
-        public SveltoTaskException(Exception e) : base(e.ToString(), e) { }
+        public SveltoTaskException(Exception e) : base(e.ToString(), e)
+        {
+        }
 
-        public SveltoTaskException(string message, Exception e) : base(message.FastConcat(" -", e.ToString()), e) { }
+        public SveltoTaskException(string message, Exception e) : base(message.FastConcat(" -", e.ToString()), e)
+        {
+        }
     }
 
     public interface ISveltoTask<T> where T : IEnumerator
@@ -28,7 +32,10 @@ namespace Svelto.Tasks
     //The Continuation Wrapper contains a valid value until the task is not stopped. After that it should be released.
     internal class ContinuationWrapper : IEnumerator, IContinuationWrapper
     {
-        public ContinuationWrapper(bool poolIt = false) { _poolIt = poolIt; }
+        public ContinuationWrapper(bool poolIt = false)
+        {
+            _poolIt = poolIt;
+        }
 
         public bool MoveNext()
         {
@@ -62,7 +69,10 @@ namespace Svelto.Tasks
             ThreadUtility.MemoryBarrier();
         }
 
-        public object Current { get { return null; } }
+        public object Current
+        {
+            get { return null; }
+        }
 
         ~ContinuationWrapper()
         {
@@ -89,7 +99,7 @@ namespace Svelto.Tasks.Internal
     {
         public PooledSveltoTask(SveltoTasksPool pool)
         {
-            _pool       = pool;
+            _pool = pool;
             _sveltoTask = new SveltoTask<IEnumerator>();
         }
 
@@ -109,7 +119,10 @@ namespace Svelto.Tasks.Internal
             return true;
         }
 
-        public void Stop() { _sveltoTask.Stop(); }
+        public void Stop()
+        {
+            _sveltoTask.Stop();
+        }
 
         /// <summary>
         /// Clean up task on complete. This function doesn't need to reset any state, is only to release resources
@@ -125,12 +138,15 @@ namespace Svelto.Tasks.Internal
             _sveltoTask._coroutineWrapper.Clear();
         }
 
-        public TaskCollection<IEnumerator>.CollectionTask Current { get { return _sveltoTask.Current; } }
+        public TaskCollection<IEnumerator>.CollectionTask Current
+        {
+            get { return _sveltoTask.Current; }
+        }
 
         public ContinuationWrapper Start(IRunner<IEnumerator> runner, IEnumerator task)
         {
             DBC.Tasks.Check.Require(task != null,
-                                    "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
+                "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
 
             DBC.Tasks.Check.Require(runner != null, "SetScheduler function has never been called");
 
@@ -160,7 +176,7 @@ namespace Svelto.Tasks.Internal
         }
 
         readonly SveltoTask<IEnumerator> _sveltoTask;
-        readonly SveltoTasksPool         _pool;
+        readonly SveltoTasksPool _pool;
 
         ContinuationWrapper _continuationWrapper;
     }
@@ -169,8 +185,8 @@ namespace Svelto.Tasks.Internal
     {
         public TaskRoutine(IRunner<T> runner)
         {
-            _sveltoTask          = new SveltoTask<T>();
-            _runner              = runner;
+            _sveltoTask = new SveltoTask<T>();
+            _runner = runner;
             _continuationWrapper = new ContinuationWrapper();
         }
 
@@ -188,7 +204,7 @@ namespace Svelto.Tasks.Internal
                     //start new coroutine using this task this will put _started to true (it was already though)
                     //it uses the current runner to start the pending task
                     DBC.Tasks.Check.Require(_runner != null, "SetScheduler function has never been called");
-                    
+
                     //assign new task
                     _sveltoTask.SetTask(_pendingTask);
 
@@ -215,16 +231,22 @@ namespace Svelto.Tasks.Internal
             return true;
         }
 
-        public TaskCollection<T>.CollectionTask Current { get { return _sveltoTask.Current; } }
+        public TaskCollection<T>.CollectionTask Current
+        {
+            get { return _sveltoTask.Current; }
+        }
 
         /// <summary>
         /// Calling SetEnumeratorProvider, SetEnumerator
-        /// on a running task won't stop the task until either 
+        /// on a running task won't stop the task until either
         /// Stop() or Start() is called.
         /// </summary>
         /// <param name="runner"></param>
         /// <returns></returns>
-        public void SetEnumeratorProvider(Func<T> taskGenerator) { _taskGenerator = taskGenerator; }
+        public void SetEnumeratorProvider(Func<T> taskGenerator)
+        {
+            _taskGenerator = taskGenerator;
+        }
 
         public void SetEnumerator(T taskEnumerator)
         {
@@ -239,7 +261,7 @@ namespace Svelto.Tasks.Internal
         public IContinuationWrapper Start(Action<SveltoTaskException> onFail = null, Action onStop = null)
         {
             DBC.Tasks.Check.Require(_taskGenerator != null || _taskEnumerator != null,
-                                    "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
+                "An enumerator or enumerator provider is required to enable this function, please use SetEnumeratorProvider/SetEnumerator before to call start");
 
             _onStop = onStop; //should have a previous on stop and on fail?
             _onFail = onFail;
@@ -250,13 +272,13 @@ namespace Svelto.Tasks.Internal
 
             var newTask = _taskGenerator != null ? _taskGenerator() : _taskEnumerator;
 
-            if (_sveltoTask._threadSafeStates.isRunning         == true &&
+            if (_sveltoTask._threadSafeStates.isRunning == true &&
                 _sveltoTask._threadSafeStates.explicitlyStopped == true)
             {
                 //Stop() Start() causes this (previous continuation wrapper will stop before to start the new one)
                 //Start() Start() is perceived as a continuation of the previous task therefore it won't
                 //cause the continuation wrapper to stop
-                _pendingTask                 = newTask;
+                _pendingTask = newTask;
                 _previousContinuationWrapper = _continuationWrapper;
 
 
@@ -285,7 +307,7 @@ namespace Svelto.Tasks.Internal
 
                 if (_sveltoTask._threadSafeStates.isRunning == false)
                 {
-                    _sveltoTask._threadSafeStates         = new SveltoTask<T>.State();
+                    _sveltoTask._threadSafeStates = new SveltoTask<T>.State();
                     _sveltoTask._threadSafeStates.started = true;
                     _runner.StartCoroutine(this);
                 }
@@ -296,15 +318,30 @@ namespace Svelto.Tasks.Internal
             return continuationWrapper;
         }
 
-        public void Pause() { _sveltoTask._threadSafeStates.paused = true; }
+        public void Pause()
+        {
+            _sveltoTask._threadSafeStates.paused = true;
+        }
 
-        public void Resume() { _sveltoTask._threadSafeStates.paused = false; }
+        public void Resume()
+        {
+            _sveltoTask._threadSafeStates.paused = false;
+        }
 
-        public void Stop() { _sveltoTask.Stop(); }
+        public void Stop()
+        {
+            _sveltoTask.Stop();
+        }
 
-        public bool isRunning { get { return _sveltoTask._threadSafeStates.isRunning; } }
+        public bool isRunning
+        {
+            get { return _sveltoTask._threadSafeStates.isRunning; }
+        }
 
-        public bool isDone { get { return _sveltoTask._threadSafeStates.isDone; } }
+        public bool isDone
+        {
+            get { return _sveltoTask._threadSafeStates.isDone; }
+        }
 
         public override string ToString()
         {
@@ -313,15 +350,14 @@ namespace Svelto.Tasks.Internal
             {
                 if (_taskGenerator == null && _taskEnumerator == null)
                     _sveltoTask._name = base.ToString();
+                else if (_taskEnumerator != null)
+                    _sveltoTask._name = _taskEnumerator.ToString();
                 else
-                    if (_taskEnumerator != null)
-                        _sveltoTask._name = _taskEnumerator.ToString();
-                    else
-                    {
-                        var methodInfo = _taskGenerator.GetMethodInfoEx();
+                {
+                    var methodInfo = _taskGenerator.GetMethodInfoEx();
 
-                        _sveltoTask._name = methodInfo.GetDeclaringType().ToString().FastConcat(".", methodInfo.Name);
-                    }
+                    _sveltoTask._name = methodInfo.GetDeclaringType().ToString().FastConcat(".", methodInfo.Name);
+                }
             }
 
             return _sveltoTask._name;
@@ -332,15 +368,15 @@ namespace Svelto.Tasks.Internal
 
 
         readonly SveltoTask<T> _sveltoTask;
-        readonly IRunner<T>    _runner;
+        readonly IRunner<T> _runner;
 
-        ContinuationWrapper         _continuationWrapper;
+        ContinuationWrapper _continuationWrapper;
         Action<SveltoTaskException> _onFail;
-        Action                      _onStop;
-        ContinuationWrapper         _previousContinuationWrapper;
-        T                           _pendingTask;
-        Func<T>                     _taskGenerator;
-        T                           _taskEnumerator;
+        Action _onStop;
+        ContinuationWrapper _previousContinuationWrapper;
+        T _pendingTask;
+        Func<T> _taskGenerator;
+        T _taskEnumerator;
 
         static readonly bool IS_TASK_STRUCT = typeof(T).IsClass == false && typeof(T).IsInterface == false;
     }
@@ -353,7 +389,10 @@ namespace Svelto.Tasks.Internal
         /// a TaskRoutine can be stopped by the user, but a PooledTask is also stopped when the runner is stopped
         /// explicitly
         /// </summary>
-        internal void Stop() { _threadSafeStates.explicitlyStopped = true; }
+        internal void Stop()
+        {
+            _threadSafeStates.explicitlyStopped = true;
+        }
 
         internal TaskCollection<T>.CollectionTask Current
         {
@@ -381,100 +420,99 @@ namespace Svelto.Tasks.Internal
             /// is called. It's VERY important that a task is not reused until naturally stopped through this mechanism,
             /// otherwise there is the risk to add the same task twice in the runner queue. The new task must be added
             /// in the queue through the pending enumerator functionality
-            try
+            if (_threadSafeStates.isNotCompletedAndNotPaused)
             {
-                if (_threadSafeStates.isNotCompletedAndNotPaused)
+                bool completed;
+                if (_threadSafeStates.explicitlyStopped == true)
                 {
-                    bool completed;
-                    if (_threadSafeStates.explicitlyStopped == true)
-                    {
-                        completed = true;
+                    completed = true;
 
-                        if (onStop != null)
+                    if (onStop != null)
+                    {
+                        try
+                        {
+                            onStop();
+                        }
+                        catch (Exception onStopException)
+                        {
+                            Console
+                                .LogException(
+                                    "Svelto.Tasks task OnStop callback threw an exception: "
+                                        .FastConcat(base.ToString()),
+                                    onStopException);
+                        }
+                    }
+                }
+                else
+                {
+                    try
+                    {
+#if DEBUG && !PROFILER
+                            DBC.Tasks.Check.Assert(_threadSafeStates.started == true, _callStartFirstError);
+#endif
+                        completed = !_stackingTask.MoveNext();
+
+                        var current = _stackingTask.Current;
+                        if (current.breakIt == Break.AndStop && onStop != null)
                         {
                             try
                             {
+                                completed = true;
+
                                 onStop();
                             }
                             catch (Exception onStopException)
                             {
                                 Console
-                                   .LogException("Svelto.Tasks task OnStop callback threw an exception: ".FastConcat(base.ToString()),
-                                                 onStopException);
+                                    .LogException(
+                                        "Svelto.Tasks task OnStop callback threw an exception: ".FastConcat(
+                                            base.ToString()),
+                                        onStopException);
                             }
                         }
                     }
-                    else
+                    catch (Exception e)
                     {
-                        try
+                        completed = true;
+
+                        if (onFail != null && (e is TaskYieldsIEnumerableException) == false)
                         {
-#if DEBUG && !PROFILER
-                            DBC.Tasks.Check.Assert(_threadSafeStates.started == true, _callStartFirstError);
-#endif
-                            completed = !_stackingTask.MoveNext();
-
-                            var current = _stackingTask.Current;
-                            if (current.breakIt == Break.AndStop && onStop != null)
+                            try
                             {
-                                try
-                                {
-                                    completed = true;
-
-                                    onStop();
-                                }
-                                catch (Exception onStopException)
-                                {
-                                    Console
-                                       .LogException("Svelto.Tasks task OnStop callback threw an exception: ".FastConcat(base.ToString()),
-                                                     onStopException);
-                                }
+                                onFail(new SveltoTaskException(e));
                             }
-                        }
-                        catch (Exception e)
-                        {
-                            completed = true;
-
-                            if (onFail != null && (e is TaskYieldsIEnumerableException) == false)
-                            {
-                                try
-                                {
-                                    onFail(new SveltoTaskException(e));
-                                }
-                                catch (Exception onFailException)
-                                {
-                                    Console
-                                       .LogException("Svelto.Tasks task OnFail callback threw an exception: ".FastConcat(base.ToString()),
-                                                     onFailException);
-                                }
-                            }
-                            else
+                            catch (Exception onFailException)
                             {
                                 Console
-                                   .LogException("a Svelto.Tasks task threw an exception:  ".FastConcat(base.ToString()),
-                                                 e);
+                                    .LogException(
+                                        "Svelto.Tasks task OnFail callback threw an exception: ".FastConcat(
+                                            base.ToString()),
+                                        onFailException);
                             }
                         }
+                        else
+                        {
+                            Console
+                                .LogException("a Svelto.Tasks task threw an exception:  ".FastConcat(base.ToString()),
+                                    e);
+                        }
                     }
-
-                    if (completed == true)
-                        _threadSafeStates.completed = true;
                 }
 
-                if (_threadSafeStates.isCompletedAndNotPaused == true)
-                    return false;
-
-                return true;
+                if (completed == true)
+                    _threadSafeStates.completed = true;
             }
-            catch (Exception e)
-            {
-                Console.LogException(new SveltoTaskException("Something went drastically wrong inside a PausableTask",
-                                                             e));
 
-                throw;
-            }
+            if (_threadSafeStates.isCompletedAndNotPaused == true)
+                return false;
+
+            return true;
         }
 
-        internal SveltoTask() { _coroutineWrapper = new SerialTaskCollection<T>(1); }
+        internal SveltoTask()
+        {
+            _coroutineWrapper = new SerialTaskCollection<T>(1);
+        }
 
         internal void SetTask(T task)
         {
@@ -495,10 +533,10 @@ namespace Svelto.Tasks.Internal
 #endif
         }
 
-        internal          State                   _threadSafeStates;
+        internal State _threadSafeStates;
         internal readonly SerialTaskCollection<T> _coroutineWrapper;
 
-        TaskCollection<T>    _stackingTask;
+        TaskCollection<T> _stackingTask;
         static readonly bool IS_TASK_STRUCT = typeof(T).IsClass == false && typeof(T).IsInterface == false;
 
 #if GENERATE_NAME
@@ -512,12 +550,12 @@ namespace Svelto.Tasks.Internal
         {
             byte _value;
 
-            const byte COMPLETED_BIT            = 0x1;
-            const byte STARTED_BIT              = 0x2;
-            const byte EXPLICITLY_STOPPED       = 0x4;
+            const byte COMPLETED_BIT = 0x1;
+            const byte STARTED_BIT = 0x2;
+            const byte EXPLICITLY_STOPPED = 0x4;
             const byte TASK_ENUMERATOR_JUST_SET = 0x8;
-            const byte PAUSED_BIT               = 0x10;
-            const byte PENDING_BIT              = 0x20;
+            const byte PAUSED_BIT = 0x10;
+            const byte PENDING_BIT = 0x20;
 
             public bool completed
             {
@@ -591,11 +629,20 @@ namespace Svelto.Tasks.Internal
                 }
             }
 
-            void SETBIT(byte bitmask) { ThreadUtility.VolatileWrite(ref _value, (byte) (_value | bitmask)); }
+            void SETBIT(byte bitmask)
+            {
+                ThreadUtility.VolatileWrite(ref _value, (byte) (_value | bitmask));
+            }
 
-            void UNSETBIT(int bitmask) { ThreadUtility.VolatileWrite(ref _value, (byte) (_value & ~bitmask)); }
+            void UNSETBIT(int bitmask)
+            {
+                ThreadUtility.VolatileWrite(ref _value, (byte) (_value & ~bitmask));
+            }
 
-            bool BIT(byte bitmask) { return (ThreadUtility.VolatileRead(ref _value) & bitmask) == bitmask; }
+            bool BIT(byte bitmask)
+            {
+                return (ThreadUtility.VolatileRead(ref _value) & bitmask) == bitmask;
+            }
 
             public bool isRunning
             {

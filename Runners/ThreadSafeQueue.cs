@@ -45,11 +45,10 @@ namespace Svelto.Tasks.Internal
         {
             int i = list.Count;
                 
-            list.ExpandBy((uint) _queue.Count);
-            
-            var array = list.ToArrayFast();
-            
             _lockQ.EnterWriteLock();
+            list.ExpandBy((uint) _queue.Count);
+            var array = list.ToArrayFast();
+
             try
             {
                 while (_queue.Count > 0)

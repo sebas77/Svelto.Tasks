@@ -9,11 +9,14 @@ namespace Svelto.Tasks.Profiler
 {
     public class TasksProfilerBehaviour : MonoBehaviour
     {
-        public ThreadSafeDictionary<string, TaskInfo> tasks => TaskProfiler.taskInfos;
-
-        public void ResetDurations()
+        public void ClearTasks()
         {
-            TaskProfiler.ResetDurations();
+            TaskProfiler.ClearTasks();
+        }
+
+        internal void CopyAndUpdate(ref TaskInfo[] taskInfos)
+        {
+            TaskProfiler.CopyAndUpdate(ref taskInfos);
         }
     }
 }
