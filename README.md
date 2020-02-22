@@ -1,4 +1,4 @@
-# Svelto.Tasks 1.5
+# Svelto.Tasks 1.5 [![openupm](https://img.shields.io/npm/v/com.sebaslab.svelto.tasks?label=openupm&registry_uri=https://package.openupm.com)](https://openupm.com/packages/com.sebaslab.svelto.tasks/)
 ======================
 
 Run Parallel and Serial Promises compliant tasks, even on other threads! Svelto.Tasks is platform agnostic and it runs on every c# platform. However several Unity dedicated schedulers have been written. 
