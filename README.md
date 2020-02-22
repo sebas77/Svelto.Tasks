@@ -15,7 +15,7 @@ New Parallelism example: https://github.com/sebas77/Svelto.Tasks.Examples.Millio
 
 ## How to clone the repository:
 
-The folders Svelto.ECS, Svelto.Tasks and Svelto.Common, where present, are submodules pointing to the relavite repositories. If you find them empty, you need to update them through the submodule command. Check some instructions here: https://github.com/sebas77/Svelto.ECS.Vanilla.Example/wiki
+The folders Svelto.ECS, Svelto.Tasks and Svelto.Common, where present, are submodules pointing to the relative repositories. If you find them empty, you need to update them through the submodule command. Check some instructions here: https://github.com/sebas77/Svelto.ECS.Vanilla.Example/wiki
 
 ## [Unity only] How to install it as a package
 
