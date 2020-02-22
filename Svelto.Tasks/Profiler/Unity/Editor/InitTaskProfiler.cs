@@ -1,20 +1,26 @@
 #if UNITY_EDITOR && TASKS_PROFILER_ENABLED
-using UnityEditor;
 using UnityEngine;
 
 namespace Svelto.Tasks.Profiler
 {
     static class InitTaskProfiler
     {
+#if UNITY_2018_3_OR_NEWER
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+#else
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+#endif
         static void InitTaskProfilerMethod()
         {
-            var debugTasksObject = GameObject.Find("Svelto.Tasks.Profiler");
-            if (debugTasksObject == null)
+            if (Application.isPlaying)
             {
-                debugTasksObject = new GameObject("Svelto.Tasks.Profiler");
-                debugTasksObject.gameObject.AddComponent<TasksProfilerBehaviour>();
-                Object.DontDestroyOnLoad(debugTasksObject);
+                var debugTasksObject = GameObject.Find("Svelto.Tasks.Profiler");
+                if (debugTasksObject == null)
+                {
+                    debugTasksObject = new GameObject("Svelto.Tasks.Profiler");
+                    debugTasksObject.gameObject.AddComponent<TasksProfilerBehaviour>();
+                    Object.DontDestroyOnLoad(debugTasksObject);
+                }
             }
         }
     }

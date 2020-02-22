@@ -264,6 +264,10 @@ namespace Svelto.Tasks
 
                         var coroutines = _coroutines.ToArrayFast();
 
+#if TASKS_PROFILER_ENABLED
+                        Profiler.TaskProfiler.ResetDurations(name);
+#endif
+
                         for (var index = 0;
                              index < _coroutines.Count && false == ThreadUtility.VolatileRead(ref _breakThread);
                              ++index)

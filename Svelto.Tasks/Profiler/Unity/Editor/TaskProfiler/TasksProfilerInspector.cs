@@ -171,11 +171,11 @@ namespace Svelto.Tasks.Profiler
                 {
                     ProfilerEditorLayout.BeginHorizontal();
                     {
-                        var cur = string.Format("{0:0.000}", taskInfo.currentUpdateDuration).PadRight(15);
-                        var avg = string.Format("{0:0.000}", taskInfo.averageUpdateDuration).PadRight(15);
-                        var min = string.Format("{0:0.000}", taskInfo.minUpdateDuration).PadRight(15);
-                        var max = string.Format("{0:0.000}", taskInfo.maxUpdateDuration).PadRight(15);
-                        var calls = string.Format("{0}", taskInfo.deltaCalls).PadRight(15);
+                        var cur = (taskInfo.currentUpdateDuration.ToString("000.000")).PadRight(15);
+                        var avg = (taskInfo.averageUpdateDuration.ToString("000.000")).PadRight(15);
+                        var min = (taskInfo.minUpdateDuration.ToString("000.000")).PadRight(15);
+                        var max = (taskInfo.maxUpdateDuration.ToString("000.000")).PadRight(15);
+                        var calls = (taskInfo.deltaCalls.ToString()).PadRight(15);
 
                         string output = avg.FastConcat(cur, min, max, calls);
  

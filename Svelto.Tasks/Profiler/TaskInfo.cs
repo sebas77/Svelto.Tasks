@@ -11,7 +11,7 @@ namespace Svelto.Tasks.Profiler
         public string taskName => _taskName;
         public double minUpdateDuration => _minUpdateDuration;
         public double maxUpdateDuration => _maxUpdateDuration;
-        public float currentUpdateDuration => _currentUpdateDuration;
+        public float currentUpdateDuration => times[_frame];
         public float averageUpdateDuration
         {
             get
