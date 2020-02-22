@@ -13,9 +13,13 @@ If you want to test it out right away with some pre made examples, please don't 
 
 New Parallelism example: https://github.com/sebas77/Svelto.Tasks.Examples.MillionPoints
 
-## how to clone the repository:
+## How to clone the repository:
 
 The folders Svelto.ECS, Svelto.Tasks and Svelto.Common, where present, are submodules pointing to the relavite repositories. If you find them empty, you need to update them through the submodule command. Check some instructions here: https://github.com/sebas77/Svelto.ECS.Vanilla.Example/wiki
+
+## [Unity only] How to install it as a package
+
+http://www.sebaslab.com/distributing-svelto-through-openupm/
 
 ## Svelto Framework is used to develop the following products:
 
