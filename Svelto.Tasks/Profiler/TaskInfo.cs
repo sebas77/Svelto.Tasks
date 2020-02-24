@@ -11,7 +11,7 @@ namespace Svelto.Tasks.Profiler
         public string taskName => _taskName;
         public double minUpdateDuration => _minUpdateDuration;
         public double maxUpdateDuration => _maxUpdateDuration;
-        public float currentUpdateDuration => _currentUpdateDuration;
+        public float currentUpdateDuration => times[_frame];
         public float averageUpdateDuration
         {
             get
@@ -33,9 +33,9 @@ namespace Svelto.Tasks.Profiler
         }
         public uint deltaCalls => _deltaCalls;
         
-        public TaskInfo(string name, string threadInfo) : this()
+        public TaskInfo(string name, string runnerName) : this()
         {
-            _taskName = " ".FastConcat(name).FastConcat(threadInfo);
+            _taskName = " ".FastConcat(name, ":", runnerName);
             times = new float[ITERATIONS];
         }
 

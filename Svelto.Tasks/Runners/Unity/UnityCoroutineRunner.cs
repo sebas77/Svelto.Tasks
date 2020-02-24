@@ -100,7 +100,7 @@ namespace Svelto.Tasks.Unity.Internal
                     int index = _flushingOperation.immediate == true ? _coroutines.Count - 1 : 0;
                     
 #if TASKS_PROFILER_ENABLED
-                    Profiler.TaskProfiler.ResetDurations();
+                    Profiler.TaskProfiler.ResetDurations(_info.runnerName);
 #endif
 
                     bool mustExit = false;
