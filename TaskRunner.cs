@@ -85,17 +85,7 @@ namespace Svelto.Tasks
          {
             _instance = new TaskRunner();
             _instance._taskPool = new SveltoTasksPool();
-
-#if UNITY_EDITOR && TASKS_PROFILER_ENABLED
-            var debugTasksObject = UnityEngine.GameObject.Find("Svelto.Tasks.Profiler");
-            if (debugTasksObject == null)
-            {
-                debugTasksObject = new UnityEngine.GameObject("Svelto.Tasks.Profiler");
-                debugTasksObject.gameObject.AddComponent<Svelto.Tasks.Profiler.TasksProfilerBehaviour>();
-                UnityEngine.Object.DontDestroyOnLoad(debugTasksObject);
-            }
-#endif
-        }
+         }
 
         SveltoTasksPool _taskPool;
      }
