@@ -23,7 +23,8 @@ namespace Svelto.Tasks.Unity.Internal
                     go = new GameObject("Svelto.Tasks.UnityScheduler");
                     _runnerBehaviour = go.AddComponent<RunnerBehaviourUpdate>();
 
-                    Object.DontDestroyOnLoad(go);
+                    if (Application.isPlaying == true)
+                        Object.DontDestroyOnLoad(go);
                 }
 
                 return _runnerBehaviour;

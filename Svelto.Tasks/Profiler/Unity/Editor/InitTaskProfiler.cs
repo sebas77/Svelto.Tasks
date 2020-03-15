@@ -19,7 +19,8 @@ namespace Svelto.Tasks.Profiler
                 {
                     debugTasksObject = new GameObject("Svelto.Tasks.Profiler");
                     debugTasksObject.gameObject.AddComponent<TasksProfilerBehaviour>();
-                    Object.DontDestroyOnLoad(debugTasksObject);
+                    if (Application.isPlaying == true)
+                        Object.DontDestroyOnLoad(debugTasksObject);
                 }
             }
         }
