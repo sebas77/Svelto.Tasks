@@ -24,7 +24,7 @@ http://www.sebaslab.com/distributing-svelto-through-openupm/
 ## Svelto Framework is used to develop the following products:
 
 ![Robocraft](https://i.ytimg.com/vi/JGr1Em2Ip-c/maxresdefault.jpg)
-![Robocraft Infinity](https://news.xbox.com/en-us/wp-content/uploads/Robocraft_Hero-hero.jpg)
+![Robocraft Infinity](https://metro.co.uk/wp-content/uploads/2018/04/keyart.jpg?quality=90&strip=all)
 ![Cardlife](https://i.ytimg.com/vi/q2jaUZjnNyg/maxresdefault.jpg)
 
 **_Note: Dear Svelto Users : Although I am committed to help you and write articles as much as I can, I will never be able to keep all the documentation up to date. If you are a happy svelto user and you want to contribute, please feel free to update the github wiki! 🙏👊_**
