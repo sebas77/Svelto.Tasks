@@ -66,22 +66,6 @@ namespace Svelto.Tasks
             _returnObjects.reference = o;
         }
 
-        [StructLayout(LayoutKind.Explicit)]
-        struct fieldValues
-        {
-            [FieldOffset(0)] internal float single;
-            [FieldOffset(0)] internal int   int32;
-            [FieldOffset(0)] internal uint  uint32;
-            [FieldOffset(0)] internal ulong uint64;
-        }
-
-        [StructLayout(LayoutKind.Explicit)]
-        struct fieldObjects
-        {
-            [FieldOffset(0)] internal object reference;
-            [FieldOffset(0)] internal Break  breakIt;
-        }
-
         public static implicit operator TaskContract(int number)
         {
             return new TaskContract(number);
@@ -159,11 +143,27 @@ namespace Svelto.Tasks
         internal object reference => _currentState == states.value ? _returnObjects.reference : null;
         internal bool hasValue => _currentState == states.value;
         internal bool yieldIt => _currentState == states.yieldit;
-
-        readonly fieldValues            _returnValue;
-        readonly fieldObjects           _returnObjects;
+        
+        readonly FieldValues            _returnValue;
+        readonly FieldObjects           _returnObjects;
         readonly states                 _currentState;
         readonly ContinuationEnumerator _continuation;
+        
+        [StructLayout(LayoutKind.Explicit)]
+        struct FieldValues
+        {
+            [FieldOffset(0)] internal float single;
+            [FieldOffset(0)] internal int   int32;
+            [FieldOffset(0)] internal uint  uint32;
+            [FieldOffset(0)] internal ulong uint64;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        struct FieldObjects
+        {
+            [FieldOffset(0)] internal object reference;
+            [FieldOffset(0)] internal Break  breakIt;
+        }
 
         enum states
         {

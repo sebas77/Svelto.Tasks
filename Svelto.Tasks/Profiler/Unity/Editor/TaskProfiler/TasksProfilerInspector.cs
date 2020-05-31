@@ -26,10 +26,11 @@ namespace Svelto.Tasks.Profiler
 
         float _axisUpperBounds = 2f;
 
-        string avgTitle = "Avg".PadRight(15, ' ');
-        string updateTitle = "Now".PadRight(15, ' ');
-        string minTitle = "Min".PadRight(15, ' ');
-        string maxTitle = "Max";
+        string avgTitle = "    Avg".PadRight(15, ' ');
+        string updateTitle = "      Now".PadRight(15, ' ');
+        string minTitle = "      Min".PadRight(15, ' ');
+        string maxTitle = "      Max".PadRight(15, ' ');
+        string calls = "    Calls";
         
         TasksMonitor _tasksMonitor;
         Queue<float> _taskMonitorData;
@@ -37,17 +38,13 @@ namespace Svelto.Tasks.Profiler
 
         const int SYSTEM_MONITOR_DATA_LENGTH = 300;
 
-        TaskInfo[] tasks = new TaskInfo[1];
+        TaskInfo[] tasks;
         
         public override void OnInspectorGUI()
         {
             var taskProfilerBehaviour = (TasksProfilerBehaviour) target;
-            var tasksV = taskProfilerBehaviour.tasks;
 
-            if (tasks.Length != tasksV.Count)
-                tasks = new TaskInfo[tasksV.Count];
-
-            taskProfilerBehaviour.tasks.CopyTo(tasks);
+            taskProfilerBehaviour.CopyAndUpdate(ref tasks);
 
             DrawTasksMonitor(tasks);
             DrawTaskList(taskProfilerBehaviour, tasks);
@@ -63,7 +60,7 @@ namespace Svelto.Tasks.Profiler
                 {
                     if (GUILayout.Button("Remove Finished Tasks", GUILayout.Width(180), GUILayout.Height(14)))
                     {
-                        taskProfilerBehaviour.ResetDurations();
+                        taskProfilerBehaviour.ClearTasks(); 
                     }
                 }
                 ProfilerEditorLayout.EndHorizontal();
@@ -115,7 +112,7 @@ namespace Svelto.Tasks.Profiler
             double totalDuration = 0;
             for (int i = 0; i < tasks.Length; i++)
             {
-                totalDuration += tasks[i].lastUpdateDuration;
+                totalDuration += tasks[i].currentUpdateDuration;
             }
 
             ProfilerEditorLayout.BeginVerticalBox();
@@ -156,33 +153,34 @@ namespace Svelto.Tasks.Profiler
             }
 
             string title =
-                avgTitle.FastConcat(updateTitle, minTitle, maxTitle);
+                avgTitle.FastConcat(updateTitle, minTitle, maxTitle, calls);
 
             ProfilerEditorLayout.BeginHorizontal();
             {
                 EditorGUILayout.LabelField("Task Name", EditorStyles.boldLabel);
-                EditorGUILayout.TextArea(title, EditorStyles.boldLabel, GUILayout.MaxWidth(300));
+                EditorGUILayout.TextArea(title, EditorStyles.boldLabel, GUILayout.MaxWidth(400));
             }
             ProfilerEditorLayout.EndHorizontal();
 
             int tasksDrawn = 0;
             for (int i = 0; i < tasks.Length; i++)
             {
-                TaskInfo taskInfo = tasks[i];
+                ref TaskInfo taskInfo = ref tasks[i];
 
                 if (taskInfo.taskName.ToLower().Contains(_systemNameSearchTerm.ToLower()))
                 {
                     ProfilerEditorLayout.BeginHorizontal();
                     {
-                        var cur = string.Format("{0:0.000}", taskInfo.currentUpdateDuration).PadRight(15);
-                        var avg = string.Format("{0:0.000}", taskInfo.averageUpdateDuration).PadRight(15);
-                        var min = string.Format("{0:0.000}", taskInfo.minUpdateDuration).PadRight(15);
-                        var max = string.Format("{0:0.000}", taskInfo.maxUpdateDuration);
+                        var cur = (taskInfo.currentUpdateDuration.ToString("000.000")).PadRight(15);
+                        var avg = (taskInfo.averageUpdateDuration.ToString("000.000")).PadRight(15);
+                        var min = (taskInfo.minUpdateDuration.ToString("000.000")).PadRight(15);
+                        var max = (taskInfo.maxUpdateDuration.ToString("000.000")).PadRight(15);
+                        var calls = (taskInfo.deltaCalls.ToString()).PadRight(15);
 
-                        string output = cur.FastConcat(avg.FastConcat(min).FastConcat(max));
-
+                        string output = avg.FastConcat(cur, min, max, calls);
+ 
                         EditorGUILayout.LabelField(taskInfo.taskName);
-                        EditorGUILayout.TextArea(output, GetTaskStyle(), GUILayout.MaxWidth(300));
+                        EditorGUILayout.TextArea(output, GetTaskStyle(), GUILayout.MaxWidth(400));
                     }
                     ProfilerEditorLayout.EndHorizontal();
 
@@ -191,7 +189,6 @@ namespace Svelto.Tasks.Profiler
             }
             return tasksDrawn;
         }
-
 
         static GUIStyle GetTaskStyle()
         {

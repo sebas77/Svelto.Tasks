@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Svelto.Tasks
 {
@@ -6,7 +7,7 @@ namespace Svelto.Tasks
     {
         protected struct StructFriendlyStack
         {
-            T[] _stack;
+            IEnumerator[] _stack;
             int _nextFreeStackIndex;
 
             public bool isValid() { return _stack != null; }
@@ -14,11 +15,11 @@ namespace Svelto.Tasks
 
             public StructFriendlyStack(int stackSize)
             {
-                _stack              = new T[stackSize];
+                _stack              = new IEnumerator[stackSize];
                 _nextFreeStackIndex = 0;
             }
 
-            public void Push(ref T value)
+            public void Push(in IEnumerator value)
             {
                 // Don't reallocate before we actually want to push to it
                 if (_nextFreeStackIndex == _stack.Length)
@@ -38,20 +39,19 @@ namespace Svelto.Tasks
 
                 // Decrease the reference before fetching the value as
                 // the reference points to the next free place
-                T returnValue = _stack[--_nextFreeStackIndex]; 
+                IEnumerator returnValue = _stack[--_nextFreeStackIndex]; 
 
                 // As a safety/security measure, reset value to a default value
                 _stack[_nextFreeStackIndex] = default(T);
 
-                return returnValue;
+                return returnValue as T;
             }
 
-            public T[] Peek(out int index)
+            public ref IEnumerator Peek()
             {
                 DBC.Tasks.Check.Require(_nextFreeStackIndex != 0);
                 
-                index = _nextFreeStackIndex - 1;
-                return _stack;
+                return ref _stack[_nextFreeStackIndex - 1];
             }
 
             public void Clear()

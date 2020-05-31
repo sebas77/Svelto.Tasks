@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Threading;
 using Svelto.Common;
 using Svelto.DataStructures;
+using Svelto.Tasks.DataStructures;
+using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Internal;
 using Svelto.Utilities;
 
@@ -69,14 +71,14 @@ namespace Svelto.Tasks
         }
     }
 
-    public class MultiThreadRunner<TTask> : MultiThreadRunner<TTask, StandardRunningTasksInfo> where TTask : ISveltoTask
+    public class MultiThreadRunner<TTask> : MultiThreadRunner<TTask, StandardRunningInfo> where TTask : ISveltoTask
     {
         public MultiThreadRunner(string name, bool relaxed = false, bool tightTasks = false) :
-            base(name, new StandardRunningTasksInfo(), relaxed, tightTasks)
+            base(name, new StandardRunningInfo(), relaxed, tightTasks)
         {
         }
 
-        public MultiThreadRunner(string name, float intervalInMs) : base(name, new StandardRunningTasksInfo(),
+        public MultiThreadRunner(string name, float intervalInMs) : base(name, new StandardRunningInfo(),
             intervalInMs)
         {
         }
@@ -89,7 +91,7 @@ namespace Svelto.Tasks
     /// <typeparam name="TTask"></typeparam>
     /// <typeparam name="TFlowModifier"></typeparam>
     public class MultiThreadRunner<TTask, TFlowModifier> : IRunner, IRunner<TTask> where TTask : ISveltoTask
-        where TFlowModifier : IRunningTasksInfo
+        where TFlowModifier : IFlowModifier
     {
         /// <summary>
         /// when the thread must run very tight and cache friendly tasks that won't allow the CPU to start new threads,
@@ -183,7 +185,7 @@ namespace Svelto.Tasks
 #endif
         }
 
-        public void StartCoroutine(ref TTask task /*, bool immediate*/)
+        public void StartCoroutine(in TTask task)
         {
             if (isKilled == true)
                 throw new MultiThreadRunnerException("Trying to start a task on a killed runner");
@@ -235,9 +237,9 @@ namespace Svelto.Tasks
                 _interval = (long) (interval * 10000);
                 this.name = name;
                 _isRunningTightTasks = isRunningTightTasks;
-                _flushingOperation = new CoroutineRunner<TTask>.FlushingOperation();
+                _flushingOperation = new SveltoTaskRunner<TTask>.FlushingOperation();
                 modifier.runnerName = name;
-                _process = new CoroutineRunner<TTask>.Process<TFlowModifier>
+                _process = new SveltoTaskRunner<TTask>.Process<TFlowModifier>
                     (newTaskRoutines, _coroutines, _flushingOperation, modifier);
 
                 if (relaxed)
@@ -335,7 +337,7 @@ namespace Svelto.Tasks
                 {
                     while (true)
                     {
-                        if (_process.MoveNext(false, profiler) == false)
+                        if (_process.MoveNext(profiler) == false)
                             break;
 
                         if (_flushingOperation.kill == false)
@@ -405,8 +407,8 @@ namespace Svelto.Tasks
             int                _interlock;
             int                _yieldingCount;
 
-            readonly CoroutineRunner<TTask>.FlushingOperation      _flushingOperation;
-            readonly CoroutineRunner<TTask>.Process<TFlowModifier> _process;
+            readonly SveltoTaskRunner<TTask>.FlushingOperation      _flushingOperation;
+            readonly SveltoTaskRunner<TTask>.Process<TFlowModifier> _process;
         }
     }
 

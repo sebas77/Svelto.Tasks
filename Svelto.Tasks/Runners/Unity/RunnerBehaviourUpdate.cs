@@ -1,6 +1,5 @@
-
-using System;
 #if UNITY_5 || UNITY_5_3_OR_NEWER
+using System;
 using System.Collections;
 using Svelto.Common;
 using Svelto.DataStructures;
@@ -45,23 +44,32 @@ namespace Svelto.Tasks.Unity.Internal
             using (var platform = new PlatformProfiler("onGui tasks")) ExecuteRoutines(_onGuiRoutines, platform);
         }
 
+        void LateUpdate()
+        {
+            using (var platform = new PlatformProfiler("Late tasks")) ExecuteRoutines(_lateRoutines, platform);
+        }
+
+        void FixedUpdate()
+        {
+            using (var platform = new PlatformProfiler("Physic tasks")) ExecuteRoutines(_physicRoutines, platform);
+        }
+
         static void ExecuteRoutines(ThreadSafeFasterList<FasterList<IProcessSveltoTasks>> list, PlatformProfiler profiler)
         {
             var orderedRoutines = list.ToArrayFast(out var orderedCount);
 
             for (int ii = 0; ii < orderedCount; ii++)
             {
-                if (orderedRoutines[ii] == null)
-                    continue;
+                if (orderedRoutines[ii] == null)  continue;
 
-                var routines = orderedRoutines[ii].ToArrayFast(out var count);
-                for (int i = 0; i < count; i++)
+                var routines = orderedRoutines[ii];
+
+                for (int i = 0; i < routines.count; i++)
                 {
-                    var ret = routines[i].MoveNext(false, profiler);
+                    var ret = routines[i].MoveNext(profiler);
                     if (ret == false)
                     {
-                        orderedRoutines[ii].UnorderedRemoveAt(i);
-                        count--;
+                        routines.UnorderedRemoveAt(i);
                         i--;
                     }
                 }
@@ -79,7 +87,15 @@ namespace Svelto.Tasks.Unity.Internal
         {
             if (_updateProcesses.Count <= runningOrder || _updateProcesses[(int)runningOrder] == null)
                 _updateProcesses.Add(runningOrder, new FasterList<IProcessSveltoTasks>());
+
             _updateProcesses[(int)runningOrder].Add(enumerator);
+        }
+        
+        public void StartLateCoroutine(IProcessSveltoTasks enumerator, uint runningOrder)
+        {
+            if (_lateRoutines.Count <= runningOrder || _lateRoutines[(int)runningOrder] == null)
+                _lateRoutines.Add(runningOrder, new FasterList<IProcessSveltoTasks>());
+            _lateRoutines[(int)runningOrder].Add(enumerator);
         }
 
         public void StartEarlyUpdateCoroutine(IProcessSveltoTasks enumerator, uint runningOrder)
@@ -101,23 +117,6 @@ namespace Svelto.Tasks.Unity.Internal
             if (_onGuiRoutines.Count <= runningOrder || _updateProcesses[(int)runningOrder] == null)
                 _onGuiRoutines.Add(runningOrder, new FasterList<IProcessSveltoTasks>());
             _onGuiRoutines[(int)runningOrder].Add(enumerator);
-        }
-
-        void LateUpdate()
-        {
-            using (var platform = new PlatformProfiler("Late tasks")) ExecuteRoutines(_lateRoutines, platform);
-        }
-
-        public void StartLateCoroutine(IProcessSveltoTasks enumerator, uint runningOrder)
-        {
-            if (_lateRoutines.Count <= runningOrder || _lateRoutines[(int)runningOrder] == null)
-                _lateRoutines.Add(runningOrder, new FasterList<IProcessSveltoTasks>());
-            _lateRoutines[(int)runningOrder].Add(enumerator);
-        }
-
-        void FixedUpdate()
-        {
-            using (var platform = new PlatformProfiler("Physic tasks")) ExecuteRoutines(_physicRoutines, platform);
         }
 
         public void StartPhysicCoroutine(IProcessSveltoTasks enumerator, uint runningOrder)

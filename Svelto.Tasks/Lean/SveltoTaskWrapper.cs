@@ -38,12 +38,14 @@ namespace Svelto.Tasks.Lean
                     _taskContinuation._continuingTask = (IEnumerator<TaskContract>) _current.enumerator;
 
                     //a new TaskContract is created, holding the continuationEnumerator of the new task
+                    //TODO Optimize this:
+                    TTask tempQualifier = ((TTask) _taskContinuation._continuingTask);
                     var continuation =
-                        ((TTask) _taskContinuation._continuingTask).RunImmediate(_taskContinuation._runner);
+                        new LeanSveltoTask<TTask>().Run(_taskContinuation._runner, ref tempQualifier/*, false*/);
 
                     _current = continuation.isRunning == true ? 
                         new TaskContract(continuation) : 
-                        new TaskContract(); //todo what was this case for?
+                        new TaskContract(); //end of the enumerator, reset TaskContract?
 
                     return true;
                 }
@@ -51,7 +53,7 @@ namespace Svelto.Tasks.Lean
                 if (_current.enumerator.MoveNext() == true)
                     return true;
 
-                _current = new TaskContract();  //todo what was this case for?
+                _current = new TaskContract();  //end of the enumerator, reset TaskContract?
             }
 
             //continue the normal execution of this task

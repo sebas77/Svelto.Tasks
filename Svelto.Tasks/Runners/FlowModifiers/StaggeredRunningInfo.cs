@@ -1,13 +1,13 @@
 using Svelto.Tasks.Internal;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.FlowModifiers    
 {
     /// <summary>
     /// StaggeredMonoRunner runs not more than maxTasksPerIteration tasks in one single iteration.
     /// Several tasks must run on this runner to make sense. TaskCollections are considered
     /// single tasks, so they don't count (may change in future)
     /// </summary>
-    public struct StaggeredRunningInfo : IRunningTasksInfo
+    public struct StaggeredRunningInfo : IFlowModifier
     {
         public StaggeredRunningInfo(int maxTasksPerIteration)
         {

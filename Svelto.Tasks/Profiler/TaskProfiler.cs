@@ -1,8 +1,10 @@
 #if TASKS_PROFILER_ENABLED
 //#define ENABLE_PIX_EVENTS
 
+using System;
+using System.Collections;
 using System.Diagnostics;
-using Svelto.Common;
+using System.Threading;
 using Svelto.DataStructures;
 
 //This profiler is based on the Entitas Visual Debugging tool 
@@ -12,55 +14,89 @@ namespace Svelto.Tasks.Profiler
 {
     public static class TaskProfiler
     {
-        static readonly Stopwatch _stopwatch = new Stopwatch();
+        static readonly ThreadLocal<Stopwatch> _stopwatch = new ThreadLocal<Stopwatch>(() => new Stopwatch());
+        
+        static readonly object LockObject = new object();
 
-        static readonly object LOCK_OBJECT = new object();
+        static readonly FasterDictionary<string, FasterDictionary<string, TaskInfo>> taskInfos =
+            new FasterDictionary<string, FasterDictionary<string, TaskInfo>>();
 
-        internal static readonly ThreadSafeDictionary<string, TaskInfo> taskInfos =
-            new ThreadSafeDictionary<string, TaskInfo>();
-
-        public static bool MonitorUpdateDuration<T, PP>(ref T sveltoTask, string runnerName, PP profiler)
-            where T : ISveltoTask where PP : IPlatformProfiler
+        public static bool MonitorUpdateDuration<T>(ref T sveltoTask, string runnerName) where T : ISveltoTask
         {
-            var samplerName = sveltoTask.name;
-            var key = samplerName.FastConcat(runnerName);
-            bool result;
-            using (profiler.Sample(samplerName))
-            {
-                _stopwatch.Start();
+            var taskName = sveltoTask.name;
 #if ENABLE_PIX_EVENTS
             PixWrapper.PIXBeginEventEx(0x11000000, key);
 #endif
-                result = sveltoTask.MoveNext();
+            _stopwatch.Value.Start();
+            var result = sveltoTask.MoveNext();
+            _stopwatch.Value.Stop();
 #if ENABLE_PIX_EVENTS
             PixWrapper.PIXEndEventEx();
 #endif
-                _stopwatch.Stop();
-            }
-
-            lock (LOCK_OBJECT)
+            lock (LockObject)
             {
-                if (taskInfos.TryGetValue(key, out var info) == false)
+                ref var infosPerRunnner = ref taskInfos.GetOrCreate(runnerName, () => new FasterDictionary<string, TaskInfo>());
+                if (infosPerRunnner.TryGetValue(taskName, out var info) == false)
                 {
-                    info = new TaskInfo(samplerName);
-#warning Todo for seb: avoid allocation here please                    
-                    info.AddThreadInfo(runnerName);
-                    taskInfos.Add(key, ref info);
+                    info = new TaskInfo(taskName, runnerName);
+                    infosPerRunnner.Add(taskName, info);
                 }
                 else
                 {
-                    info.AddUpdateDuration(_stopwatch.Elapsed.TotalMilliseconds);
+                    info.AddUpdateDuration((float) _stopwatch.Value.Elapsed.TotalMilliseconds);
 
-                    taskInfos.Update(key, ref info);
+                    infosPerRunnner[taskName] = info;
                 }
             }
 
-            _stopwatch.Reset();
+            _stopwatch.Value.Reset();
 
             return result;
         }
 
-        public static void ResetDurations() { taskInfos.Clear(); }
+        public static void ResetDurations(string runnerName)
+        {
+            lock (LockObject)
+            {
+                if (taskInfos.TryGetValue(runnerName, out var info) == true)
+                {
+                    TaskInfo[] taskInfosValuesArray = info.GetValuesArray(out var count);
+                    for (var index = 0; index < count; index++)
+                    {
+                        taskInfosValuesArray[index].MarkNextFrame();
+                    }
+                }
+            }
+        }
+
+        public static void ClearTasks()
+        {
+            lock (LockObject)
+            {
+                taskInfos.FastClear();
+            }
+        }
+
+        public static void CopyAndUpdate(ref TaskInfo[] infos)
+        {
+            lock (LockObject)
+            {
+                uint count = 0;
+
+                foreach (var runner in taskInfos) count += runner.Value.count;
+
+                if (infos == null || infos.Length != count)
+                    infos = new TaskInfo[count];
+
+                count = 0;
+
+                foreach (var runner in taskInfos)
+                {
+                    runner.Value.CopyValuesTo(infos, count);
+                    count += runner.Value.count;
+                }
+            }
+        }
     }
 }
 #endif

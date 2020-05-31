@@ -2,6 +2,7 @@ using System;
 using Svelto.Tasks;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using Svelto.Tasks.Enumerators;
 using Svelto.Utilities;
 
@@ -43,6 +44,9 @@ namespace Svelto.Tasks.Lean
 
 public static class TaskRunnerExtensions
 {
+    static readonly ThreadLocal<Svelto.Tasks.Lean.SyncRunner> _syncRunner = new ThreadLocal<Svelto.Tasks.Lean.SyncRunner>
+        (() => new Svelto.Tasks.Lean.SyncRunner());
+    
     public static TaskContract Continue<T>(this T enumerator) where T:class, IEnumerator<TaskContract> 
     {
         return new TaskContract(enumerator);
@@ -52,8 +56,13 @@ public static class TaskRunnerExtensions
     {
         return new TaskContract(enumerator);
     }
+    
+    public static void Complete<T>(this T enumerator) where T:class, IEnumerator<TaskContract>
+    {
+        _syncRunner.Value.StartCoroutine(enumerator);
+    }
 
-    public static T Complete<T>(this T enumerator, int _timeout = 0) where T : IEnumerator
+    public static void Complete<T>(this T enumerator, int _timeout = 0) where T : IEnumerator
     {
         var quickIterations = 0;
 
@@ -76,46 +85,6 @@ public static class TaskRunnerExtensions
             else
                 while (enumerator.MoveNext());
         }
-
-        return enumerator;
-    }
-    
-    internal static void CompleteTask<T>(ref T enumerator, int _timeout = 0) where T : ISveltoTask
-    {
-        var quickIterations = 0;
-
-        if (_timeout < 0)
-            while (enumerator.MoveNext());
-        else 
-        if (_timeout == 0)
-            while (enumerator.MoveNext())
-                ThreadUtility.Wait(ref quickIterations);
-        else
-        {
-            var then  = DateTime.Now.AddMilliseconds(_timeout);
-            var valid = true;
-
-            while (enumerator.MoveNext() &&
-                   (valid = DateTime.Now < then)) ThreadUtility.Wait(ref quickIterations);
-
-            if (valid == false)
-                throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
-        }
-    }
-
-        /// <summary>
-        /// Keeping this until I prove I can actually work without RunImmediate. The last parameter is false,
-        /// instead of true, because I don't want to have the side effects of the run immediate atm
-        /// </summary>
-        /// <param name="enumerator"></param>
-        /// <param name="runner"></param>
-        /// <typeparam name="TTask"></typeparam>
-        /// <typeparam name="TRunner"></typeparam>
-        /// <returns></returns>
-    internal static ContinuationEnumerator RunImmediate<TTask, TRunner>(this TTask enumerator, TRunner runner)
-        where TTask : IEnumerator<TaskContract> where TRunner : class, IRunner<Svelto.Tasks.Lean.LeanSveltoTask<TTask>>
-    {
-        return new Svelto.Tasks.Lean.LeanSveltoTask<TTask>().Run(runner, ref enumerator/*, false*/);
     }
 }
 

@@ -1,14 +1,14 @@
 using System.Diagnostics;
 using Svelto.Tasks.Internal;
 
-namespace Svelto.Tasks
+namespace Svelto.Tasks.FlowModifiers
 {
     /// <summary>
     ///TimeBoundRunningInfo ensures that the tasks running won't take more than maxMilliseconds per iteration.
     ///Several tasks must run on the runner to make sense. TaskCollections are considered
     ///single tasks, so they don't count (may change in future)
     /// </summary>
-    public struct TimeBoundRunningInfo : IRunningTasksInfo
+    public struct TimeBoundRunningInfo : IFlowModifier
     {
         public TimeBoundRunningInfo(float maxMilliseconds) : this()
         {

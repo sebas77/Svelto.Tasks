@@ -1,6 +1,7 @@
 #if UNITY_5 || UNITY_5_3_OR_NEWER
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Internal;
 using Svelto.Tasks.Unity.Internal;
 
@@ -62,26 +63,24 @@ namespace Svelto.Tasks
 
     namespace Unity
     {
-        public class CoroutineMonoRunner<T> : CoroutineMonoRunner<T, StandardRunningTasksInfo> where T : ISveltoTask
+        public class CoroutineMonoRunner<T> : CoroutineMonoRunner<T, StandardRunningInfo> where T : ISveltoTask
         {
-            public CoroutineMonoRunner(string name) : base(name, 0, new StandardRunningTasksInfo())
+            public CoroutineMonoRunner(string name) : base(name, 0, new StandardRunningInfo())
             {
             }
-            public CoroutineMonoRunner(string name, uint runningOrder) : base(name, runningOrder, new StandardRunningTasksInfo())
+            public CoroutineMonoRunner(string name, uint runningOrder) : base(name, runningOrder, new StandardRunningInfo())
             {
             }
         }
 
         public class CoroutineMonoRunner<T, TFlowModifier> : BaseRunner<T> where T : ISveltoTask
-                                                                           where TFlowModifier : IRunningTasksInfo
+                                                                           where TFlowModifier : IFlowModifier
         {
             public CoroutineMonoRunner(string name, uint runningOrder, TFlowModifier modifier) : base(name)
             {
                 modifier.runnerName = name;
 
-                _processEnumerator =
-                    new CoroutineRunner<T>.Process<TFlowModifier>
-                        (_newTaskRoutines, _coroutines, _flushingOperation, modifier);
+                var _processEnumerator = InitializeRunner(modifier);
 
                 UnityCoroutineRunner.StartCoroutine(_processEnumerator, runningOrder);
             }

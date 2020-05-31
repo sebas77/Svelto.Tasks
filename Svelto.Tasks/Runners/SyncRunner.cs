@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 
 namespace Svelto.Tasks
@@ -9,60 +8,75 @@ namespace Svelto.Tasks
     /// </summary>
     namespace Lean
     {
-        public class SyncRunner : SyncRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
+        public class SyncRunner : SyncRunner<IEnumerator<TaskContract>>
         {
-            public SyncRunner(int timeout = 1000) : base(timeout) { }
+            public SyncRunner(int timeout = 1000) : base(timeout)
+            {
+                _taskCollection = new SerialTaskCollection<IEnumerator<TaskContract>>();
+            }
+            
+            public new void StartCoroutine(in IEnumerator<TaskContract> leanSveltoTask)
+            {
+                _taskCollection.Clear();
+                _taskCollection.Add(leanSveltoTask);
+                base.StartCoroutine(_taskCollection);
+            }
+            
+            readonly SerialTaskCollection<IEnumerator<TaskContract>> _taskCollection;
         }
-    }
-
-    namespace ExtraLean
-    {
-        public class SyncRunner : SyncRunner<ExtraLeanSveltoTask<IEnumerator>>
+        
+        public class SyncRunner<T> : IRunner where T: IEnumerator<TaskContract>
         {
-            public SyncRunner(int timeout = 1000) : base(timeout) { }
+            public bool isStopping { private set; get; }
+            public bool isKilled   => false;
+
+            protected SyncRunner(int timeout = 1000)
+            {
+                _timeout = timeout;
+            }
+
+            /// <summary>
+            /// todo, this could make sense in a multi-threaded scenario
+            /// </summary>
+            /// <exception cref="NotImplementedException"></exception>
+            public void Pause()
+            {
+                throw new System.NotImplementedException();
+            }
+
+            /// <summary>
+            /// todo, this could make sense in a multi-threaded scenario
+            /// </summary>
+            /// <exception cref="NotImplementedException"></exception>
+            public void Resume()
+            {
+                throw new System.NotImplementedException();
+            }
+
+            protected void StartCoroutine(in T task)
+            {
+                task.Complete(_timeout);
+            }
+
+            /// <summary>
+            /// todo, this could make sense in a multi-threaded scenario
+            /// </summary>
+            /// <exception cref="NotImplementedException"></exception>
+            public void Stop()
+            {
+                throw new System.NotImplementedException();
+            }
+
+            public void Flush()
+            {}
+        
+            public void Dispose() {}
+
+            public uint numberOfRunningTasks    => 0;
+            public uint numberOfQueuedTasks     => 0;
+            public uint numberOfProcessingTasks => 0;
+        
+            readonly int _timeout;
         }
-    }
-
-    public class SyncRunner<T> : IRunner, IRunner<T> where T: ISveltoTask
-    {
-        public bool isStopping { private set; get; }
-        public bool isKilled => false;
-
-        public void Pause()
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public void Resume()
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public SyncRunner(int timeout = 1000)
-        {
-            _timeout = timeout;
-        }
-
-        public void StartCoroutine(ref T task/*, bool immediate*/)
-        {
-            TaskRunnerExtensions.CompleteTask(ref task, _timeout);
-        }
-
-        /// <summary>
-        /// TaskRunner doesn't stop executing tasks between scenes it's the final user responsibility to stop the
-        /// tasks if needed
-        /// </summary>
-        public void Stop()
-        {}
-
-        public void Flush()
-        {}
-
-        public uint numberOfRunningTasks => 0;
-        public uint numberOfQueuedTasks => 0;
-        public uint numberOfProcessingTasks => 0;
-        public void Dispose() {}
-
-        readonly int _timeout;
     }
 }

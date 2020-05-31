@@ -1,6 +1,5 @@
 #if TASKS_PROFILER_ENABLED
 using System;
-using System.Collections.Generic;
 
 //This profiler is based on the Entitas Visual Debugging tool 
 //https://github.com/sschmid/Entitas-CSharp
@@ -9,70 +8,68 @@ namespace Svelto.Tasks.Profiler
 {
     public struct TaskInfo
     {
-        const int NUM_FRAMES_TO_AVERAGE = 100;
-
-        public string taskName => _threadInfo.FastConcat(_taskName);
-        public double lastUpdateDuration => _lastUpdateDuration;
+        public string taskName => _taskName;
         public double minUpdateDuration => _minUpdateDuration;
         public double maxUpdateDuration => _maxUpdateDuration;
-        public double currentUpdateDuration => _updateFrameTimes.Count == 0 ? 0 : _currentUpdateDuration / _updateFrameTimes.Count;
-        public double averageUpdateDuration => _averageUpdateDuration / _totaleFrames;
-
-        public TaskInfo(string name) : this()
+        public float currentUpdateDuration => times[_frame];
+        public float averageUpdateDuration
         {
-            _taskName = " ".FastConcat(name);
+            get
+            {
+                float sum = 0;
+                var length = ITERATIONS >> 2;
+                for (int i = 0; i < length; i++)
+                {
+                    var index = i << 2;
+                    
+                    sum += times[index];
+                    sum += times[index + 1];
+                    sum += times[index + 2];
+                    sum += times[index + 3];
+                }
 
-            _updateFrameTimes = new Queue<double>();
-
-            _currentUpdateDuration = 0;
-            _averageUpdateDuration = 0;
-            _minUpdateDuration     = 0;
-            _maxUpdateDuration     = 0;
-            _totaleFrames          = 0;
-            _updateFrameTimes.Clear();
+                return sum / ITERATIONS;
+            }
+        }
+        public uint deltaCalls => _deltaCalls;
+        
+        public TaskInfo(string name, string runnerName) : this()
+        {
+            _taskName = " ".FastConcat(name, ":", runnerName);
+            times = new float[ITERATIONS];
         }
 
-        public void AddUpdateDuration(double updateDuration)
+        public void AddUpdateDuration(float updateDuration)
         {
-            AddUpdateDurationForType(updateDuration);
-        }
-
-        public void AddThreadInfo(string threadInfo)
-        {
-            _threadInfo = threadInfo;
-        }
-
-        void AddUpdateDurationForType(double updateDuration)
-        {
-            if ((updateDuration < _minUpdateDuration) || (Math.Abs(_minUpdateDuration) < double.Epsilon))
-                _minUpdateDuration = updateDuration;
-            if (updateDuration > _maxUpdateDuration)
-                _maxUpdateDuration = updateDuration;
-
-            if (_updateFrameTimes.Count == NUM_FRAMES_TO_AVERAGE)
-                _currentUpdateDuration -= _updateFrameTimes.Dequeue();
-
             _currentUpdateDuration += updateDuration;
-            _averageUpdateDuration += updateDuration;
-            _updateFrameTimes.Enqueue(updateDuration);
-            _lastUpdateDuration = updateDuration;
-            _totaleFrames++;
+
+            _deltaCalls++;
         }
 
-        double _currentUpdateDuration;
-        double _averageUpdateDuration;
-        double _lastUpdateDuration;
-        double _maxUpdateDuration;
-        double _minUpdateDuration;
+        public void MarkNextFrame()
+        {
+            if (_frame == 0)
+            {
+                _minUpdateDuration = float.MaxValue;
+                _maxUpdateDuration = float.MinValue;
+            }
+            
+            if (_currentUpdateDuration < _minUpdateDuration) _minUpdateDuration = _currentUpdateDuration;
+            if (_currentUpdateDuration > _maxUpdateDuration) _maxUpdateDuration = _currentUpdateDuration;
+            
+            times[_frame] = _currentUpdateDuration;
+            _frame = (_frame + 1) & (ITERATIONS - 1);
+            
+            _deltaCalls = 0;
+            _currentUpdateDuration = 0;
+        }
 
-        double _totaleFrames;
-
+        float _currentUpdateDuration; float _maxUpdateDuration; float _minUpdateDuration;
+        uint _deltaCalls; uint _frame;
         readonly string _taskName;
+        readonly float[] times;
 
-        string _threadInfo;
-
-        //use a queue to averave out the last 30 frames
-        readonly Queue<double> _updateFrameTimes;
+        const int ITERATIONS = 32;
     }
 }
 #endif

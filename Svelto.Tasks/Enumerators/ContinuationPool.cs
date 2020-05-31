@@ -1,5 +1,5 @@
 using System;
-using Svelto.DataStructures;
+using Svelto.Tasks.DataStructures;
 using Svelto.Tasks.Enumerators;
 
 namespace Svelto.Tasks.Internal

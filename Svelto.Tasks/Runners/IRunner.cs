@@ -19,6 +19,6 @@ namespace Svelto.Tasks
 
     public interface IRunner<T> where T:ISveltoTask
     {
-        void StartCoroutine(ref T task/*, bool immediate*/);
+        void StartCoroutine(in T task);
     }
 }
