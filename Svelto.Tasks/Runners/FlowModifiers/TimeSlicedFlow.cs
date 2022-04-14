@@ -3,19 +3,19 @@ using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.FlowModifiers
 {
-    public struct TimeSlicedRunningInfo : IFlowModifier
+    public struct TimeSlicedFlow : IFlowModifier
     {
-        public TimeSlicedRunningInfo(float maxMilliseconds)
+        public TimeSlicedFlow(float maxMilliseconds)
         {
-            maxTicks = (long) (maxMilliseconds * 10000);
+            _maxTicks = (long) (maxMilliseconds * 10000);
             _stopWatch = new Stopwatch();
             runnerName = null;
         }
 
-        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutineCount)
+        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutineCount, bool result) where T:ISveltoTask
         {
             //never stops until maxMilliseconds is elapsed or Break.AndResumeNextIteration is returned
-            if (_stopWatch.ElapsedTicks > maxTicks)
+            if (_stopWatch.ElapsedTicks > _maxTicks)
             {
                 _stopWatch.Reset();
                 _stopWatch.Start();
@@ -44,6 +44,6 @@ namespace Svelto.Tasks.FlowModifiers
         public string runnerName { get; set; }
 
         readonly Stopwatch _stopWatch;
-        readonly long      maxTicks;
+        readonly long      _maxTicks;
     }
 }

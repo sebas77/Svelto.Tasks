@@ -13,7 +13,7 @@ namespace Svelto.Tasks.Enumerators
     /// </typeparam>
     public class SmartFunctionEnumerator<TVal>: IEnumerator<TaskContract>
     {
-        public SmartFunctionEnumerator(FuncRef<TVal, bool> func, TVal value = default)
+        public SmartFunctionEnumerator(FuncRef<TVal, bool> func, TVal value)
         {
             _func  = func;
             _value = value;

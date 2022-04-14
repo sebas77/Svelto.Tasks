@@ -8,15 +8,15 @@ namespace Svelto.Tasks.FlowModifiers
     ///Several tasks must run on the runner to make sense. TaskCollections are considered
     ///single tasks, so they don't count (may change in future)
     /// </summary>
-    public struct TimeBoundRunningInfo : IFlowModifier
+    public struct TimeBoundFlow : IFlowModifier
     {
-        public TimeBoundRunningInfo(float maxMilliseconds) : this()
+        public TimeBoundFlow(float maxMilliseconds) : this()
         {
             _maxMilliseconds = (long) (maxMilliseconds * 10000);
             _stopWatch       = new Stopwatch();
         }
 
-        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount)
+        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount, bool result) where T:ISveltoTask
         {
             if (_stopWatch.ElapsedTicks > _maxMilliseconds)
                 return false;

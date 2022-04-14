@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using Svelto.Utilities;
+using System.Threading;
 
 namespace Svelto.Tasks.Enumerators
 {
@@ -65,7 +65,7 @@ namespace Svelto.Tasks.Enumerators
                 }
 
                 var timedOut = DateTime.Now > _then;
-                _isDone = ThreadUtility.VolatileRead(ref _signal) || timedOut;
+                _isDone = Volatile.Read(ref _signal) || timedOut;
             
                 if (_isDone == true)
                 {
@@ -83,7 +83,7 @@ namespace Svelto.Tasks.Enumerators
             
             internal void Signal()
             {
-                ThreadUtility.VolatileWrite(ref _signal, true);
+                Volatile.Write(ref _signal, true);
             }
             
             public bool isDone()
@@ -99,7 +99,7 @@ namespace Svelto.Tasks.Enumerators
                 _signal  = false;
                 _started = false;
             
-                ThreadUtility.MemoryBarrier();
+                Interlocked.MemoryBarrier();
             }
 
             public object Current { get; }

@@ -97,10 +97,8 @@ namespace Svelto.Tasks
             if (index == lastIndex) //is this the last index available, then don't swap 
                 return index;
 
-            var item = buffer[lastIndex];
-            buffer[lastIndex] = buffer[index];
-            buffer[index]     = item;
-                
+            (buffer[lastIndex], buffer[index]) = (buffer[index], buffer[lastIndex]);
+
             return --index;
         }
 

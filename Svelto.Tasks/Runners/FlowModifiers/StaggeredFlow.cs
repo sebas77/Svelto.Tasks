@@ -7,16 +7,16 @@ namespace Svelto.Tasks.FlowModifiers
     /// Several tasks must run on this runner to make sense. TaskCollections are considered
     /// single tasks, so they don't count (may change in future)
     /// </summary>
-    public struct StaggeredRunningInfo : IFlowModifier
+    public struct StaggeredFlow : IFlowModifier
     {
-        public StaggeredRunningInfo(int maxTasksPerIteration)
+        public StaggeredFlow(int maxTasksPerIteration)
         {
             _maxTasksPerIteration = maxTasksPerIteration;
             _iterations           = 0;
             runnerName            = null;
         }
 
-        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount)
+        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount, bool result) where T:ISveltoTask
         {
             if (_iterations >= _maxTasksPerIteration - 1)
             {

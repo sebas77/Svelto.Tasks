@@ -18,8 +18,8 @@ namespace Svelto.Tasks.Profiler
         
         static readonly object LockObject = new object();
 
-        static readonly FasterDictionary<string, FasterDictionary<string, TaskInfo>> taskInfos =
-            new FasterDictionary<string, FasterDictionary<string, TaskInfo>>();
+        static readonly FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>> taskInfos =
+            new FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>>();
 
         public static bool MonitorUpdateDuration<T>(ref T sveltoTask, string runnerName) where T : ISveltoTask
         {
@@ -35,7 +35,7 @@ namespace Svelto.Tasks.Profiler
 #endif
             lock (LockObject)
             {
-                ref var infosPerRunnner = ref taskInfos.GetOrCreate(runnerName, () => new FasterDictionary<string, TaskInfo>());
+                ref var infosPerRunnner = ref taskInfos.GetOrAdd(runnerName, () => new FasterDictionary<RefWrapper<string>, TaskInfo>());
                 if (infosPerRunnner.TryGetValue(taskName, out var info) == false)
                 {
                     info = new TaskInfo(taskName, runnerName);
@@ -60,7 +60,7 @@ namespace Svelto.Tasks.Profiler
             {
                 if (taskInfos.TryGetValue(runnerName, out var info) == true)
                 {
-                    TaskInfo[] taskInfosValuesArray = info.GetValuesArray(out var count);
+                    TaskInfo[] taskInfosValuesArray = info.GetValues(out var count).ToManagedArray();
                     for (var index = 0; index < count; index++)
                     {
                         taskInfosValuesArray[index].MarkNextFrame();
@@ -81,9 +81,11 @@ namespace Svelto.Tasks.Profiler
         {
             lock (LockObject)
             {
-                uint count = 0;
+                int count = 0;
 
-                foreach (var runner in taskInfos) count += runner.Value.count;
+                foreach (KeyValuePairFast<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>,
+                    ManagedStrategy<FasterDictionary<RefWrapper<string>, TaskInfo>>> runner in taskInfos)
+                    count += runner.value.count;
 
                 if (infos == null || infos.Length != count)
                     infos = new TaskInfo[count];
@@ -92,8 +94,8 @@ namespace Svelto.Tasks.Profiler
 
                 foreach (var runner in taskInfos)
                 {
-                    runner.Value.CopyValuesTo(infos, count);
-                    count += runner.Value.count;
+                    runner.value.CopyValuesTo(infos, (uint) count);
+                    count += runner.value.count;
                 }
             }
         }

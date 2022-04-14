@@ -1,33 +1,51 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Tasks.FlowModifiers;
-using Svelto.Tasks.Lean;
 
 namespace Svelto.Tasks
 {
     namespace Lean
     {
-        public class SteppableRunner : BaseRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
+        public class SteppableRunner : SteppableRunner<LeanSveltoTask<IEnumerator<TaskContract>>>,
+            IEnumerator<TaskContract>
         {
             public SteppableRunner(string name) : base(name)
             {
-                var modifier = new StandardRunningInfo {runnerName = name};
-
-                InitializeRunner(modifier);
             }
+
+            public bool MoveNext()
+            {
+                return Step();
+            }
+
+            public void Reset()
+            {
+            }
+
+            public TaskContract Current => Yield.It;
+
+            object IEnumerator.Current => throw new NotImplementedException();
         }
     }
 
     namespace ExtraLean
     {
-        public class SteppableRunner : BaseRunner<ExtraLeanSveltoTask<IEnumerator>>
+        public class SteppableRunner : SteppableRunner<ExtraLeanSveltoTask<IEnumerator>>, IEnumerator
         {
             public SteppableRunner(string name) : base(name)
             {
-                var modifier = new StandardRunningInfo {runnerName = name};
-
-                InitializeRunner(modifier);
             }
+
+            public bool MoveNext()
+            {
+                return Step();
+            }
+
+            public void Reset()
+            {
+            }
+
+            public object Current => Yield.It;
         }
     }
 }

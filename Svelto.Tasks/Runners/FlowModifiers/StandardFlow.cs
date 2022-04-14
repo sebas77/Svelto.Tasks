@@ -2,9 +2,9 @@ using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.FlowModifiers
 {
-    public struct StandardRunningInfo:IFlowModifier
+    public struct StandardFlow:IFlowModifier
     {
-        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount)
+        public bool CanMoveNext<T>(ref int nextIndex, ref T currentResult, int coroutinesCount, bool result) where T:ISveltoTask
         {
             return true;
         }

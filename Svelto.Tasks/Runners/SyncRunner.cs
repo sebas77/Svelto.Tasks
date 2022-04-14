@@ -1,82 +1,78 @@
+using System;
 using System.Collections.Generic;
+using System.Threading;
+using Svelto.Tasks.Lean;
+using Svelto.Utilities;
 
 namespace Svelto.Tasks
 {
-    /// <summary>
-    /// Be sure you know what you are doing when you are using the Sync runner, it will stall the current thread!
-    /// Depending by the case, it may be better to use the ManualResetEventEx synchronization instead.
-    /// </summary>
+    static internal class SharedCode
+    {
+        public static void Complete(ISteppableRunner syncRunner, int timeout)
+        {
+            var quickIterations = 0;
+
+            if (timeout > 0)
+            {
+                var then  = DateTime.Now.AddMilliseconds(timeout);
+                var valid = true;
+
+                syncRunner.Step();
+
+                while (syncRunner.hasTasks && (valid = DateTime.Now < then))
+                {
+                    ThreadUtility.Wait(ref quickIterations);
+                    syncRunner.Step();
+                }
+
+                if (valid == false)
+                    throw new Exception("synchronous task timed out, increase time out or check if it got stuck");
+            }
+            else
+            {
+                if (timeout == 0)
+                    while (syncRunner.hasTasks)
+                    {
+                        syncRunner.Step();
+                        ThreadUtility.Wait(ref quickIterations);
+                    }
+                else
+                    while (syncRunner.hasTasks)
+                    {
+                        syncRunner.Step();
+                    }
+            }
+        }
+    }
+
+    namespace ExtraLean
+    {
+        public class SyncRunner : SteppableRunner
+        {
+            public SyncRunner(string name) : base(name) { }
+            
+            public void ForceComplete(int timeout)
+            {
+                SharedCode.Complete(this, timeout);
+            }
+        }
+    }
+
     namespace Lean
     {
-        public class SyncRunner : SyncRunner<IEnumerator<TaskContract>>
+        public class SyncRunner : SteppableRunner
         {
-            public SyncRunner(int timeout = 1000) : base(timeout)
-            {
-                _taskCollection = new SerialTaskCollection<IEnumerator<TaskContract>>();
-            }
+            public SyncRunner(string name) : base(name)   { }
             
-            public new void StartCoroutine(in IEnumerator<TaskContract> leanSveltoTask)
+            public void ForceComplete(int timeout)
             {
-                _taskCollection.Clear();
-                _taskCollection.Add(leanSveltoTask);
-                base.StartCoroutine(_taskCollection);
+                SharedCode.Complete(this, timeout);
             }
-            
-            readonly SerialTaskCollection<IEnumerator<TaskContract>> _taskCollection;
         }
-        
-        public class SyncRunner<T> : IRunner where T: IEnumerator<TaskContract>
-        {
-            public bool isStopping { private set; get; }
-            public bool isKilled   => false;
+    }
 
-            protected SyncRunner(int timeout = 1000)
-            {
-                _timeout = timeout;
-            }
-
-            /// <summary>
-            /// todo, this could make sense in a multi-threaded scenario
-            /// </summary>
-            /// <exception cref="NotImplementedException"></exception>
-            public void Pause()
-            {
-                throw new System.NotImplementedException();
-            }
-
-            /// <summary>
-            /// todo, this could make sense in a multi-threaded scenario
-            /// </summary>
-            /// <exception cref="NotImplementedException"></exception>
-            public void Resume()
-            {
-                throw new System.NotImplementedException();
-            }
-
-            protected void StartCoroutine(in T task)
-            {
-                task.Complete(_timeout);
-            }
-
-            /// <summary>
-            /// todo, this could make sense in a multi-threaded scenario
-            /// </summary>
-            /// <exception cref="NotImplementedException"></exception>
-            public void Stop()
-            {
-                throw new System.NotImplementedException();
-            }
-
-            public void Flush()
-            {}
-        
-            public void Dispose() {}
-
-            public uint numberOfRunningTasks    => 0;
-            public uint numberOfQueuedTasks     => 0;
-            public uint numberOfProcessingTasks => 0;
-        
-            readonly int _timeout;
-        }
+    public static class LocalSyncRunners<T> where T : IEnumerator<TaskContract>
+    {
+        public static readonly ThreadLocal<SyncRunner> syncRunner = new ThreadLocal<SyncRunner>(() => new SyncRunner(ThreadUtility.name));
     }
 }

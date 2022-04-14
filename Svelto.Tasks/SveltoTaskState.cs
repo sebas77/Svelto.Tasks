@@ -1,5 +1,3 @@
-using Svelto.Utilities;
-
 namespace Svelto.Tasks
 {
         internal struct SveltoTaskState
@@ -87,17 +85,17 @@ namespace Svelto.Tasks
 
             void SETBIT(byte bitmask)
             {
-                ThreadUtility.VolatileWrite(ref _value, (byte) (_value | bitmask));
+                System.Threading.Volatile.Write(ref _value, (byte) (_value | bitmask));
             }
 
             void UNSETBIT(int bitmask)
             {
-                ThreadUtility.VolatileWrite(ref _value, (byte) (_value & ~bitmask));
+                System.Threading.Volatile.Write(ref _value, (byte) (_value & ~bitmask));
             }
 
             bool BIT(byte bitmask)
             {
-                return (ThreadUtility.VolatileRead(ref _value) & bitmask) == bitmask;
+                return (System.Threading.Volatile.Read(ref _value) & bitmask) == bitmask;
             }
 
             public bool isRunning
@@ -107,7 +105,7 @@ namespace Svelto.Tasks
                     byte completedAndStarted = STARTED_BIT | COMPLETED_BIT;
 
                     //started but not completed
-                    return (ThreadUtility.VolatileRead(ref _value) & completedAndStarted) == STARTED_BIT;
+                    return (System.Threading.Volatile.Read(ref _value) & completedAndStarted) == STARTED_BIT;
                 }
             }
 
@@ -117,7 +115,7 @@ namespace Svelto.Tasks
                 {
                     byte completedAndStarted = COMPLETED_BIT | STARTED_BIT;
 
-                    return (ThreadUtility.VolatileRead(ref _value) & completedAndStarted) == COMPLETED_BIT;
+                    return (System.Threading.Volatile.Read(ref _value) & completedAndStarted) == COMPLETED_BIT;
                 }
             }
 
@@ -127,7 +125,7 @@ namespace Svelto.Tasks
                 {
                     byte completedAndPaused = COMPLETED_BIT | PAUSED_BIT;
 
-                    return (ThreadUtility.VolatileRead(ref _value) & completedAndPaused) == 0x0;
+                    return (System.Threading.Volatile.Read(ref _value) & completedAndPaused) == 0x0;
                 }
             }
             
@@ -137,7 +135,7 @@ namespace Svelto.Tasks
                 {
                     byte completedAndPaused = COMPLETED_BIT | PAUSED_BIT;
 
-                    return (ThreadUtility.VolatileRead(ref _value) & completedAndPaused) == COMPLETED_BIT;
+                    return (System.Threading.Volatile.Read(ref _value) & completedAndPaused) == COMPLETED_BIT;
                 }
             }
         }

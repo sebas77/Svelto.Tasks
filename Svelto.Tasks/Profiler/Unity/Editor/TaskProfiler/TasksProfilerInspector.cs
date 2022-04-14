@@ -45,7 +45,7 @@ namespace Svelto.Tasks.Profiler
             var taskProfilerBehaviour = (TasksProfilerBehaviour) target;
 
             taskProfilerBehaviour.CopyAndUpdate(ref tasks);
-
+            
             DrawTasksMonitor(tasks);
             DrawTaskList(taskProfilerBehaviour, tasks);
 
@@ -167,6 +167,8 @@ namespace Svelto.Tasks.Profiler
             {
                 ref TaskInfo taskInfo = ref tasks[i];
 
+                if (Mathf.Approximately(taskInfo.currentUpdateDuration, 0)) continue;
+                
                 if (taskInfo.taskName.ToLower().Contains(_systemNameSearchTerm.ToLower()))
                 {
                     ProfilerEditorLayout.BeginHorizontal();

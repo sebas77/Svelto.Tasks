@@ -4,34 +4,32 @@ namespace Svelto.Tasks
 {
     public class SerialTaskCollection : SerialTaskCollection<IEnumerator<TaskContract>>
     {
-        public SerialTaskCollection() : base()
-        {}
+        public SerialTaskCollection() {}
         
-        public SerialTaskCollection(int initialSize) : base(initialSize)
-        {}
+        public SerialTaskCollection(int initialSize) : base(initialSize) {}
         
-        public SerialTaskCollection(string name): base(name)
-        {}
+        public SerialTaskCollection(string name): base(name) {}
 
-        public SerialTaskCollection(string name, int initialSize) : base(name, initialSize)
-        {}
+        public SerialTaskCollection(string name, int initialSize) : base(name, initialSize) {}
     }
 
-    public class SerialTaskCollection<T> : TaskCollection<T> where T : class, IEnumerator<TaskContract>
+    
+    /// <summary>
+    /// TaskCollections are still not tested with the new logic. Returning a .Complete may not work, must be
+    /// unit tested properly
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public class SerialTaskCollection<T> : TaskCollection<T> where T : IEnumerator<TaskContract>
     {
         const int _INITIAL_STACK_COUNT = 1;
 
-        public SerialTaskCollection() : base(_INITIAL_STACK_COUNT)
-        {}
+        public SerialTaskCollection() : base(_INITIAL_STACK_COUNT) {}
         
-        public SerialTaskCollection(int initialSize) : base(initialSize)
-        {}
+        public SerialTaskCollection(int initialSize) : base(initialSize) {}
 
-        public SerialTaskCollection(string name) : base(name, _INITIAL_STACK_COUNT)
-        {}
+        public SerialTaskCollection(string name) : base(name, _INITIAL_STACK_COUNT) {}
 
-        public SerialTaskCollection(string name, int initialSize) : base(name, initialSize)
-        {}
+        public SerialTaskCollection(string name, int initialSize) : base(name, initialSize) {}
 
         protected override bool RunTasksAndCheckIfDone()
         {

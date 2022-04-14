@@ -16,14 +16,14 @@ namespace Svelto.Tasks.ExtraLean
             _runningTask  = task;
             
 #if DEBUG && !PROFILE_SVELTO
-            DBC.Tasks.Check.Require(IS_TASK_STRUCT == true || task != null, 
+            Check.Require(IS_TASK_STRUCT == true || task != null, 
                 "A valid enumerator is required to enable an ExtraLeanSveltTask ".FastConcat(ToString()));
             Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
 #endif
             
             _threadSafeSveltoTaskStates.started = true;
 
-            runner.StartCoroutine(this);
+            runner.StartTask(this);
         }
 
         public override string ToString()
@@ -38,10 +38,14 @@ namespace Svelto.Tasks.ExtraLean
 #endif
         }
 
+        public void Dispose() {  }
+
         public void Stop()
         {
             _threadSafeSveltoTaskStates.explicitlyStopped = true;
         }
+
+        public bool isCompleted => _threadSafeSveltoTaskStates.completed;
 
         public string name => ToString();
 
@@ -87,7 +91,7 @@ namespace Svelto.Tasks.ExtraLean
         string _name;
 #endif
 #if DEBUG && !PROFILE_SVELTO
-        static readonly bool IS_TASK_STRUCT = typeof(TTask).IsValueType;
+        static readonly bool IS_TASK_STRUCT = typeof(TTask).IsValueTypeEx();
 #endif
     }
 }
