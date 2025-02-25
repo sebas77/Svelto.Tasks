@@ -1,0 +1,15 @@
+{
+  "displayName": "Svelto Tasks",
+  "category": "Svelto",
+  "description": "Asynchronous Tasks handling and execution",
+  "dependencies": {
+    "com.sebaslab.svelto.common": "3.0.0"
+  },
+  "keywords": [
+    "svelto"
+  ],
+  "name": "com.sebaslab.svelto.tasks",
+  "unity": "2019.2",
+  "version": "2.0.0-preview.2",
+  "type": "library"
+}
