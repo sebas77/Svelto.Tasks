@@ -1,0 +1,65 @@
+name: Svelto.Common Nuget Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Reason'
+        default: 'Manual workflow triggering'
+  push:
+    branches:
+      - master
+    paths:
+      - version.json
+
+jobs:
+  build:
+    env:
+      PKG_NAME: Svelto.Common
+      VERSION_JSON: version.json
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: make temp dirs
+      run: mkdir temp temp/bin temp/bin/debug temp/bin/release
+
+    - name: get preparation tools
+      run: git clone https://github.com/Ujinjinjin/upm-preparator.git --branch v1.0.12 --single-branch
+
+    - name: get package version
+      run: python3 upm-preparator/version.py --version-file "version.json" --env-file "${GITHUB_ENV}"
+
+    # Build for debug
+    - name: create package for Debug configuration
+      run: dotnet pack /p:PackageVersion=${{ env.PKG_VERSION }} -o temp/bin/debug Svelto.Common.csproj -c Debug
+
+    - name: unzip debug nuget package
+      run: unzip temp/bin/debug/Svelto.Common.${{ env.PKG_VERSION }}.nupkg -d temp/bin/debug
+
+    - name: copy debug DLL to temp folder
+      run: sudo cp temp/bin/debug/lib/netstandard2.1/Svelto.Common.dll temp/bin/debug
+
+    # Build for release
+    - name: create package for Release configuration
+      run: dotnet pack /p:PackageVersion=${{ env.PKG_VERSION }} -o temp/bin/release Svelto.Common.csproj -c Release
+
+    - name: unzip release nuget package
+      run: unzip temp/bin/release/Svelto.Common.${{ env.PKG_VERSION }}.nupkg -d temp/bin/release
+
+    - name: copy release DLL to temp folder
+      run: sudo cp temp/bin/release/lib/netstandard2.1/Svelto.Common.dll temp/bin/release
+
+    # Compile into nuget package
+    - name: build nuget package
+      run: sudo dotnet pack /p:PackageVersion=${PKG_VERSION} -o . Svelto.Common.csproj -c NugetPack
+
+    - uses: actions/upload-artifact@v5
+      with:
+        name: ${{ env.PKG_NAME }}.${{ env.PKG_VERSION }}.nupkg
+        path: ${{ env.PKG_NAME }}.${{ env.PKG_VERSION }}.nupkg
+
+    - name: publish nuget package
+      run: dotnet nuget push ${{ env.PKG_NAME }}.${{ env.PKG_VERSION }}.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json

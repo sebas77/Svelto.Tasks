@@ -1,3 +1,14 @@
+# Unity meta files
 *.meta
-netstandard2.0
-obj
+
+UserSettings/
+.idea/
+Svelto.Tasks.Tests.sln.DotSettings.user
+test_results.txt
+Packages/unity-mcp/
+
+# Build output folders (never bin/ or obj/, always bin~/ and obj~/)
+**/bin/
+**/obj/
+**/bin~/
+**/obj~/

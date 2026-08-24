@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
+        <BaseOutputPath>bin~\</BaseOutputPath>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <LangVersion>10</LangVersion>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\com.sebaslab.svelto.common\Svelto.Common\Svelto.Common.csproj" />
+    </ItemGroup>
+
+</Project>

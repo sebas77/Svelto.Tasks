@@ -1,6 +1,8 @@
 # Svelto.Tasks
 ======================
 
+> **AI coding agents:** start with [`AGENTS.md`](AGENTS.md) — it explains when and how to use Svelto.Tasks, plus build/test commands. Deep API references: [`AI_GUIDE_Svelto.Tasks.md`](Packages/com.sebaslab.svelto.tasks/.aiguides/AI_GUIDE_Svelto.Tasks.md), [`AI_GUIDE_Svelto.Common.md`](Packages/com.sebaslab.svelto.common/.aiguides/AI_GUIDE_Svelto.Common.md).
+
 Run Parallel and Serial Promises compliant tasks, even on other threads! Svelto.Tasks is platform agnostic and it runs on every c# platform. However several Unity dedicated schedulers have been written. 
 
 I would love to write some schedulers for other platforms, like MonoGame, but since I won't have the time to do so, I will need our help. If you can't figure out how to write a scheduler, I will need at least a working project that I can compile and run on Windows. Once new schedulers will be written, I will add them in the official repository.

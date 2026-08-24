@@ -1,0 +1,58 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
+        <BaseOutputPath>bin~\</BaseOutputPath>
+        <AssemblyName>Svelto.Common</AssemblyName>
+        <LangVersion>10</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <PackageVersion></PackageVersion>
+        <AssemblyVersion>3.4</AssemblyVersion>
+        <Company>Svelto</Company>
+        <IsPackable>true</IsPackable>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+        <Configurations>Debug;Release;SlowSubmissionRelease;SlowSubmissionDebug</Configurations>
+        <Platforms>AnyCPU</Platforms>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <PackageId>Svelto.Common</PackageId>
+        <Authors>Sebastiano Mandala</Authors>
+        <RepositoryUrl>https://github.com/sebas77/Svelto.Common</RepositoryUrl>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <PlatformTarget>AnyCPU</PlatformTarget>
+        <UseSharedCompilation>false</UseSharedCompilation>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <PlatformTarget>AnyCPU</PlatformTarget>
+        <UseSharedCompilation>false</UseSharedCompilation>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'NugetPack' "> <!-- Do not delete. Used for nuget packing -->
+        <NuspecFile>Svelto.Common.nuspec</NuspecFile>
+        <NuspecProperties>version=$(PackageVersion)</NuspecProperties>
+        <PlatformTarget>AnyCPU</PlatformTarget>
+        <UseSharedCompilation>false</UseSharedCompilation>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'SlowSubmissionRelease' ">
+      <DefineConstants>TRACE;SLOW_SVELTO_SUBMISSION;RELEASE</DefineConstants>
+      <Optimize>true</Optimize>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'SlowSubmissionDebug' ">
+      <DefineConstants>TRACE;SLOW_SVELTO_SUBMISSION;DEBUG</DefineConstants>
+      <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Remove="**\*.meta" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
+    </ItemGroup>
+  </Project>

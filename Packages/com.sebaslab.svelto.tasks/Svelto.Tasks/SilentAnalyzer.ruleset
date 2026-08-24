@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RuleSet Name="Silence CoreLoop" ToolsVersion="16.0">
+    <Rules AnalyzerId="CoreLoop.Analyzers" RuleNamespace="*">
+        <!-- “*” = all rules from this analyzer -->
+        <Rule Id="CLG001" Action="None"/>
+        <Rule Id="CLG002" Action="None"/>
+        <Rule Id="CLG005" Action="None"/>
+    </Rules>
+</RuleSet>

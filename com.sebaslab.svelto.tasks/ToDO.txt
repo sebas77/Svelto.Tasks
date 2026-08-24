@@ -1,3 +1,0 @@
-﻿Waiting tasks must not be polled (use special tombstone array?)
-Would it make sense to use a runner as container of contextualised tasks?
-i.e.: a parent runner is used to run child runners linked to a context (i.e.: instructions of a recipe)

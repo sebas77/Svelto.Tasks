@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin~\</BaseOutputPath>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <LangVersion>10</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Packages\com.sebaslab.svelto.tasks\Svelto.Tasks\Svelto.Tasks.csproj" />
+  </ItemGroup>
+</Project>

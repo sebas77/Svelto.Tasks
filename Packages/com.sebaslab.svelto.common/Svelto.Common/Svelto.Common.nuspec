@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>Svelto.Common</id>
+        <authors>Sebastiano Mandala</authors>
+        <version>$version$</version>
+        <description>Shared code between the Svelto repositories</description>
+        <projectUrl>https://github.com/sebas77/Svelto.Common</projectUrl>
+        <licenseUrl>https://raw.githubusercontent.com/sebas77/Svelto.Common/master/LICENSE</licenseUrl>
+        <repository type="git" url="https://github.com/sebas77/Svelto.Common.git" />
+        <dependencies>
+            <group targetFramework="netstandard2.0" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="Svelto.Common.targets" target="build/" />
+        <file src="temp/bin/debug/Svelto.Common.dll" target="lib/Debug/netstandard2.0/" />
+        <file src="temp/bin/release/Svelto.Common.dll" target="lib/Release/netstandard2.0/" />
+    </files>
+</package>

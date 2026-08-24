@@ -1,0 +1,12 @@
+{
+  "displayName": "Svelto Common",
+  "category": "Svelto",
+  "description": "Svelto common utilities and datastructures",
+  "keywords": [
+    "svelto"
+  ],
+  "name": "com.sebaslab.svelto.common",
+  "version": "3.6.0",
+  "type": "library",
+  "unity": "2021.3"
+}
