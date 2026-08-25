@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "Svelto.Common",
-        "Unity.Burst"
+        "Unity.Burst",
+        "Unity.Profiling.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -2,6 +2,7 @@ using System;
 using Svelto.Tasks;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Svelto.Tasks.Enumerators;
 using Svelto.Utilities;
@@ -10,12 +11,14 @@ namespace Svelto.Tasks.ExtraLean
 {
     public static class TaskRunnerExtensions
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void RunOn<TTask, TRunner>(this TTask enumerator, TRunner runner)
                 where TTask : struct, IEnumerator where TRunner : class, IRunner<Struct.ExtraLeanSveltoTask<TTask>>
         {
             new Struct.ExtraLeanSveltoTask<TTask>().Run(runner, ref enumerator);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void RunOn<TRunner>(this IEnumerator enumerator, TRunner runner)
                 where TRunner : class, IRunner<ExtraLeanSveltoTask<IEnumerator>>
         {
@@ -25,6 +28,7 @@ namespace Svelto.Tasks.ExtraLean
 
     public static class TaskRunnerExtensionsRef
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void RunOn<TTask, TRunner>(this TTask enumerator, TRunner runner)
                 where TTask : class, IEnumerator where TRunner : class, IRunner<ExtraLeanSveltoTask<TTask>>
         {
@@ -37,12 +41,14 @@ namespace Svelto.Tasks.Lean
 {
     public static class TaskRunnerExtensions
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Continuation RunOn<TTask, TRunner>(this TTask enumerator, TRunner runner)
                 where TTask : struct, IEnumerator<TaskContract> where TRunner : class, IRunner<LeanSveltoTask<TTask>>
         {
             return new LeanSveltoTask<TTask>().Run(runner, enumerator);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Continuation RunOn<TRunner>(this IEnumerator<TaskContract> enumerator, TRunner runner)
                 where TRunner : class, IRunner<LeanSveltoTask<IEnumerator<TaskContract>>>
         {
@@ -66,6 +72,7 @@ namespace Svelto.Tasks.Lean
 
 public static class TaskRunnerExtensions
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TaskContract Continue<T>(this T enumerator)
             where T : class, IEnumerator //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing 
     {
@@ -78,6 +85,7 @@ public static class TaskRunnerExtensions
     //if task is continued with forget, the task will be executed, but the caller will not wait for it to complete
     //this method is used when you want to run, but not wait, a task on the same runner of the parent without knowing what it was
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TaskContract Forget<T>(this T task)
             where T : class, IEnumerator<TaskContract> //TaskContract cannot hold a generic type so this constraint is to avoid risking a runtime boxing 
     {

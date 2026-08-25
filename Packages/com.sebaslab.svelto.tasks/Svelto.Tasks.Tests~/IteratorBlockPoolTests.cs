@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Svelto.Tasks.Lean;
 
 namespace Svelto.Tasks.Tests
@@ -95,6 +96,47 @@ namespace Svelto.Tasks.Tests
             data2.value = 0;
             block2.MoveNext();
             Assert.That(data2.value, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Lean_IteratorBlockPool_AllowsConcurrentBorrowAndReturn()
+        {
+            IEnumerator<TaskContract> MyIterator(PoolData data)
+            {
+                while (true)
+                    yield return TaskContract.Break.It;
+            }
+
+            var pool = new IteratorBlockPool<PoolData>(MyIterator, "ConcurrentLeanPool");
+
+            Parallel.For(0, 10_000, _ =>
+            {
+                var (_, block) = pool.Get();
+                block.MoveNext();
+            });
+
+            Assert.That(pool.count, Is.GreaterThan(0));
+            pool.Dispose();
+        }
+
+        [Test]
+        public void ExtraLean_IteratorBlockPool_AllowsConcurrentBorrowAndReturn()
+        {
+            System.Collections.IEnumerator MyIterator(PoolData data)
+            {
+                while (true)
+                    yield return TaskContract.Break.It;
+            }
+
+            var pool = new Svelto.Tasks.ExtraLean.IteratorBlockPool<PoolData>(MyIterator, "ConcurrentExtraLeanPool");
+
+            Parallel.For(0, 10_000, _ =>
+            {
+                var (_, block) = pool.Get();
+                block.MoveNext();
+            });
+
+            pool.Dispose();
         }
     }
 }

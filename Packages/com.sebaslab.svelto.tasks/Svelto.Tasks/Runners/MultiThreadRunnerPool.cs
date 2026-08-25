@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Svelto.DataStructures;
 
@@ -20,6 +21,19 @@ namespace Svelto.Tasks.ExtraLean
     {
         public int numberOfRunners => _runners.Length;
         public bool isDisposed => Volatile.Read(ref _disposed) == 1;
+        public bool isStarted
+        {
+            get
+            {
+                for (int i = 0; i < _runners.Length; i++)
+                {
+                    if (_runners[i].isStarted == false)
+                        return false;
+                }
+
+                return true;
+            }
+        }
 
         public MultiThreadRunnerPool(string name, int threadCount)
         {
@@ -39,6 +53,7 @@ namespace Svelto.Tasks.ExtraLean
         {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddTask(in ExtraLeanSveltoTask<IEnumerator> task,
             (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
         {
@@ -110,6 +125,7 @@ namespace Svelto.Tasks.ExtraLean
         {
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddTask(in Struct.ExtraLeanSveltoTask<TTask> task,
             (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) index)
         {

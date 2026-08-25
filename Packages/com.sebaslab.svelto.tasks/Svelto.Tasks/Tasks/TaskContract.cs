@@ -313,7 +313,10 @@ namespace Svelto.Tasks
             /// </summary>
             public static readonly Break AndStop = new Break();
             
-            //TODO URGENT: IS THERE ANY DIFFERENCE ANYMORE BETWEEN BREAK.IT AND BREAK.ANDSTOP? 
+            //Break.It completes only the yielding task: a Continue()-caller resumes normally.
+            //Break.AndStop ALSO completes the direct caller (one level only - a killed task cannot forward
+            //its own break, callers must re-yield AndStop to cascade further up).
+            //Semantics pinned by TaskBreakTests and ExtraLeanEnumeratorTests.
             public bool AnyBreak => this == It || this == AndStop;
         }
     }

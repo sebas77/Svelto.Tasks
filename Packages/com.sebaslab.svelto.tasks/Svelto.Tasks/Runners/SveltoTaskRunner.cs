@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Svelto.Common;
 using Svelto.DataStructures;
@@ -91,6 +92,9 @@ namespace Svelto.Tasks.Internal
 
 #if TASKS_PROFILER_ENABLED
                 Profiler.TaskProfiler.ResetDurations(_runnerName);
+                var profilerDriver = Profiler.TaskProfiler.BeginRunner(_runnerName);
+                try
+                {
 #endif
                 _info.Reset();
 
@@ -135,9 +139,8 @@ namespace Svelto.Tasks.Internal
                         }
                         catch (Exception e)
                         {
-                            Console.LogException(e, $"catching exception for root task {currentSpawnedTaskToRun.name}");
-
                             result = StepState.Faulted;
+                            TaskExceptionStrategy.HandleException(e);
                         }
 
                         if (result != StepState.Faulted && _runningCoroutines[(int)index] != currentSpawnedTaskToRunIndex)
@@ -196,6 +199,13 @@ namespace Svelto.Tasks.Internal
                 }
 
                 return true;
+#if TASKS_PROFILER_ENABLED
+                }
+                finally
+                {
+                    Profiler.TaskProfiler.EndRunner(profilerDriver, _runnerName);
+                }
+#endif
             }
 
             /// <summary>
@@ -209,6 +219,7 @@ namespace Svelto.Tasks.Internal
             /// <param name="task"></param>
             /// <param name="parentTaskIndex"></param>
             /// <param name="index"></param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void AddTask(  in TSveltoTask task, (int runningTaskIndexToReplace, TombstoneHandle parentSpawnedTaskIndex) parentTaskIndex)
             {
                 DBC.Tasks.Check.Require(_flushingOperation.kill == false,

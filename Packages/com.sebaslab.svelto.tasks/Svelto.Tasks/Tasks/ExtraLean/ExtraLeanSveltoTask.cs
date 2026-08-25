@@ -72,13 +72,14 @@ namespace Svelto.Tasks.ExtraLean
         public struct ExtraLeanSveltoTask<TTask> : ISveltoTask where TTask : struct, IEnumerator
         {
             //Note I wonder if I should return an handle from this, to be able to stop the task externally
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal void Run<TRunner>(TRunner runner, ref TTask task)
                     where TRunner : class, IRunner<ExtraLeanSveltoTask<TTask>>
             {
                 _runningTask  = task;
 
 #if DEBUG && !PROFILE_SVELTO
-           Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
+                 Check.Require(runner != null, "The runner cannot be null ".FastConcat(ToString()));
 #endif
                 runner.AddTask(this, (-1, TombstoneHandle.Invalid));
             }
@@ -161,6 +162,7 @@ namespace Svelto.Tasks.ExtraLean
     public struct ExtraLeanSveltoTask<TTask> : ISveltoTask where TTask : class, IEnumerator
     {
         //Note I wonder if I should return an handle from this, to be able to stop the task externally
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void Run<TRunner>(TRunner runner, ref TTask task)
             where TRunner : class, IRunner<ExtraLeanSveltoTask<TTask>>
         {

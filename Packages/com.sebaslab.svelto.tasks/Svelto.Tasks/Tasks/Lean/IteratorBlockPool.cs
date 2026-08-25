@@ -1,6 +1,6 @@
-﻿using System;
-using System.Collections.Concurrent;
+using System;
 using System.Collections.Generic;
+using Svelto.DataStructures;
 
 namespace Svelto.Tasks.Lean
 {
@@ -14,7 +14,7 @@ namespace Svelto.Tasks.Lean
         IteratorBlockPool<T> pool;
 
         public PooledIteratorBlock(IEnumerator<TaskContract> iEnumerator, T data, IteratorBlockPool<T> pool)
-        { 
+        {
             iteratorBlock = iEnumerator;
             this.pool = pool;
             this.data = data;
@@ -32,7 +32,7 @@ namespace Svelto.Tasks.Lean
 
             return true;
         }
-        
+
         public override string ToString() => pool.name;
 
         public void Dispose() => iteratorBlock?.Dispose();
@@ -42,16 +42,22 @@ namespace Svelto.Tasks.Lean
 
         TaskContract IEnumerator<TaskContract>.Current => iteratorBlock.Current;
     }
-    
-    // The idea behind this class is to pool the iterator blocks, so that we can reuse them without having to allocate new ones every time.
-    // Iterators can be pooled thanks to the use of the following patter:
-    //  while (true) infinite loop, the state machine never ends.
-//      {
-    //    yield return TaskContract.Break.It; special yield that signals the end of the iteration, but the state machine is not ended, so it can be reused.
-  //    }
+
+    /// <summary>
+    /// The idea behind this class is to pool the iterator blocks, so that we can reuse them without having
+    /// to allocate new ones every time. Iterators can be pooled thanks to the use of the following pattern:
+    ///   while(true) infinite loop, the state machine never ends.
+    ///   {
+    ///       yield return TaskContract.Break.It; //signals the end of the iteration, but the state machine
+    ///                                           //is not ended, so it can be reused
+    ///   }
+    ///
+    /// Get and Return are thread safe. A block and its data remain exclusively owned by the caller from Get
+    /// until they are returned, so callers must not use the same borrowed block concurrently.
+    /// </summary>
     public class IteratorBlockPool<P> where P : class, new()
     {
-        readonly ConcurrentStack<(P data, PooledIteratorBlock<P> pooledIteratorBlock)> _pool = new ConcurrentStack<(P data, PooledIteratorBlock<P> pooledIteratorBlock)>();
+        readonly ThreadSafeStack<(P data, PooledIteratorBlock<P> pooledIteratorBlock)> _pool = new ThreadSafeStack<(P data, PooledIteratorBlock<P> pooledIteratorBlock)>();
         readonly Func<P, IEnumerator<TaskContract> > _iteratorBlock;
         internal readonly string name;
 
@@ -64,18 +70,15 @@ namespace Svelto.Tasks.Lean
         /// <summary>
         /// Number of iterator blocks currently sitting idle in the pool.
         /// </summary>
-        public int count => _pool.Count;
+        public int count => (int)_pool.count;
 
         public (P data, PooledIteratorBlock<P> pooledIteratorBlock) Get()
         {
-            if (_pool.Count == 0)
-            {
-                var data = new P();
+            if (_pool.TryPop(out var item))
+                return item;
 
-                Return(data, new PooledIteratorBlock<P>(_iteratorBlock(data), data, this));
-            }
-
-            return _pool.TryPop(out var result) ? result : default;
+            var data = new P();
+            return (data, new PooledIteratorBlock<P>(_iteratorBlock(data), data, this));
         }
 
         public void Return(P data, PooledIteratorBlock<P> pooledIteratorBlock)
@@ -85,10 +88,9 @@ namespace Svelto.Tasks.Lean
 
         public void Dispose()
         {
-            while (_pool.Count > 0)
+            while (_pool.TryPop(out var item))
             {
-                 _pool.TryPop(out var result);
-                result.pooledIteratorBlock.Dispose();
+                item.pooledIteratorBlock.Dispose();
             }
         }
     }

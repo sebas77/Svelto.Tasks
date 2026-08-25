@@ -16,34 +16,73 @@ namespace Svelto.Tasks.Profiler
 
         static readonly object LockObject = new object();
 
-        static readonly Regex _iteratorNameRegex = new Regex(@"^.*\.(\w+)\s+<(\w+)>d__\d+$");
+        static readonly Regex _iteratorNameRegex = new Regex(@"^.*\.(\w+)\+<(\w+)>d__\d+$");
+
+        //nested generic wrapper enumerators report the wrapped task type, e.g.
+        //Ns.Outer`1+WrapEnumerator[[Ns.Inner.Type, Assembly-CSharp]] renders as Ns.Inner.Type
+        static readonly Regex _wrapperNameRegex =
+            new Regex(@"^.*\.(\w+)`\d+\+(\w+)\[\[(\w+(\.\w+)*), .*$");
+
+        //unknown task shapes still must not leak assembly qualifiers
+        static readonly Regex _assemblyQualifierRegex =
+            new Regex(@",\s*\w[\w.-]*,\s*Version=[^,\]]*,\s*Culture=[^,\]]*,\s*PublicKeyToken=[^\],]*");
 
         static readonly FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>> taskInfos =
             new FasterDictionary<RefWrapper<string>, FasterDictionary<RefWrapper<string>, TaskInfo>>();
 
+        static ITaskProfilerDriver _driver;
+
         /// <summary>
-        /// Optional plugin used to instrument each task step with an external profiling API (e.g. PIX).
-        /// When null, only the built-in stopwatch instrumentation runs.
+        /// Optional backend used to instrument runner and task scopes with an external profiling API.
+        /// When null, only the built-in task timing data is collected.
         /// </summary>
-        public static ITaskProfilerPlugin Plugin { get; set; }
+        public static ITaskProfilerDriver Driver
+        {
+            get => Volatile.Read(ref _driver);
+            set => Volatile.Write(ref _driver, value);
+        }
+
+        internal static ITaskProfilerDriver BeginRunner(string runnerName)
+        {
+            var driver = Driver;
+            driver?.BeginRunner(runnerName);
+
+            return driver;
+        }
+
+        internal static void EndRunner(ITaskProfilerDriver driver, string runnerName)
+        {
+            driver?.EndRunner(runnerName);
+        }
 
         public static StepState MonitorUpdateDuration<T>(ref T sveltoTask, string runnerName,
             (int index, TombstoneHandle currentSpawnedTaskToRunIndex) valueTuple) where T : ISveltoTask
         {
             var taskName = sveltoTask.name;
 
-            _stopwatch.Value.Start();
-
             StepState result;
+            float elapsedMilliseconds = 0;
+            var driver = Driver;
+
+            driver?.BeginTask(runnerName, taskName);
             try
             {
-                Plugin?.BeginStep(taskName);
-                result = sveltoTask.Step(valueTuple.index, valueTuple.currentSpawnedTaskToRunIndex);
+                var stopwatch = _stopwatch.Value;
+                stopwatch.Restart();
+                try
+                {
+                    result = sveltoTask.Step(valueTuple.index, valueTuple.currentSpawnedTaskToRunIndex);
+                }
+                finally
+                {
+                    stopwatch.Stop();
+                    elapsedMilliseconds = (float)stopwatch.Elapsed.TotalMilliseconds;
+                    stopwatch.Reset();
+                }
             }
             finally
             {
-                Plugin?.EndStep();
-                _stopwatch.Value.Stop();
+                driver?.EndTask(runnerName, taskName, elapsedMilliseconds);
             }
 
             lock (LockObject)
@@ -53,14 +92,27 @@ namespace Svelto.Tasks.Profiler
 
                 //GetOrAdd only invokes the builder on the first insert, so the regex name is paid once per task
                 ref var info = ref infosPerRunnner.GetOrAdd(taskName,
-                    () => new TaskInfo(_iteratorNameRegex.Replace(taskName, "$1.$2"), runnerName));
+                    () => new TaskInfo(NormalizeTaskName(taskName), runnerName));
 
-                info.AddUpdateDuration((float)_stopwatch.Value.Elapsed.TotalMilliseconds);
+                info.AddUpdateDuration(elapsedMilliseconds);
             }
 
-            _stopwatch.Value.Reset();
-
             return result;
+        }
+
+        internal static string NormalizeTaskName(string taskName)
+        {
+            //compiler-generated iterator state machines: Ns.Outer+<Method>d__N -> Outer.Method
+            taskName = _iteratorNameRegex.Replace(taskName, "$1.$2");
+
+            //nested generic wrapper enumerators report the wrapped task type, e.g.
+            //Ns.Outer`1+WrapEnumerator[[Ns.Inner.Type, Assembly-CSharp]] renders as Ns.Inner.Type
+            if (_wrapperNameRegex.IsMatch(taskName) == true)
+                return _wrapperNameRegex.Match(taskName).Groups[3].Value;
+
+            //task implementations not covered by the patterns above keep their type name,
+            //but never leak assembly qualifiers
+            return _assemblyQualifierRegex.Replace(taskName, string.Empty);
         }
 
         public static void ResetDurations(string runnerName)

@@ -172,6 +172,23 @@ Base class for steppable runners. Holds a `FlushingOperation` (pause/stop/kill/r
 
 **Warning from source:** "unless you are using the StandardSchedulers, nothing holds your runners. Be careful that if you don't hold a reference, they will be garbage collected even if tasks are still running."
 
+### Task exception strategy
+When a task throws, the runner marks it `Faulted`, invokes `TaskExceptionStrategy.Current`, disposes and removes the
+faulted task, then continues ticking the remaining tasks. The strategy is a mandatory process-wide
+`ITaskExceptionStrategy`; implementations must be thread-safe because multiple multithreaded runners may report
+exceptions concurrently.
+
+The built-in `LogTaskExceptionStrategy` preserves the standard behavior by forwarding exceptions to
+`Console.LogException`. Assign a custom strategy to report faulted tasks to an external service such as Sentry:
+
+```csharp
+TaskExceptionStrategy.Current = new MyTaskExceptionStrategy();
+```
+
+`HandleException` is a notification hook and does not alter `StepState` or runner control flow.
+Exceptions escaping a custom strategy are ignored so a reporting failure cannot interrupt faulted-task cleanup or
+stop the runner.
+
 ---
 
 ## 4. Flow Modifiers
@@ -405,6 +422,11 @@ Same concept but for plain `IEnumerator`.
 
 **When to use:** When you run the same task repeatedly and want to avoid allocating a new iterator each time. Use the `while(true) { yield return Break.It; }` pattern.
 
+**Threading & disposal contract (both Lean and ExtraLean):**
+- `Get()` and `Return()` are thread safe: both pool variants use `ThreadSafeStack`, so a block may be acquired and returned by different runner threads.
+- A borrowed block and its data object remain exclusively owned from `Get()` until `Return()`. Do not concurrently advance, mutate, or return the same borrowed block from multiple threads.
+- `Dispose()` drains idle blocks only. Stop the runners and wait for every borrowed block to return before disposing the pool; concurrent disposal and use is unsupported.
+
 ---
 
 ## 11. Service Tasks
@@ -440,11 +462,33 @@ Custom awaiters that post the `async` continuation back onto the Svelto runner v
 ### `TaskInfo`
 Struct holding profiling info about a task: `name`, `frameCount`, `duration`, `type`.
 
-### `TaskProfiler` (Unity, editor only)
-Records per-task timing data. Displays in a custom editor window (`TasksProfilerInspector`, `TasksMonitor`).
+### `TaskProfiler` and `ITaskProfilerDriver` (optional)
+Enabled by the `TASKS_PROFILER_ENABLED` define. `TaskProfiler` measures every task `Step` duration and runner processing scope without requiring a platform-specific dependency. It keeps the existing `TaskInfo` data and forwards balanced scopes to the optional `TaskProfiler.Driver`.
 
-### `PIXWrapper`
-XBOX PIX profiler integration (conditional).
+`ITaskProfilerDriver` is the platform-agnostic extension point:
+- `BeginRunner` / `EndRunner` wrap a runner processing pass.
+- `BeginTask` / `EndTask` wrap an individual task step; `EndTask` receives its elapsed milliseconds.
+
+### `UnityTaskProfilerDriver` (Unity)
+Installs itself as the profiler driver through `RuntimeInitializeOnLoadMethod` whenever `TASKS_PROFILER_ENABLED` is compiled in; manual assignment overrides it:
+
+```csharp
+TaskProfiler.Driver = new UnityTaskProfilerDriver();
+```
+
+It uses the `Svelto.Tasks` Unity Profiler category and emits:
+- dynamic `ProfilerMarker` samples for runners and normalized task names, including background runners;
+- `Task Time` (nanoseconds) and `Task Steps` per-frame counters, for the native Profiler chart.
+
+`com.unity.profiling.core` is the Unity package dependency that provides the counter API. Counter updates are synchronized because Svelto runners can execute on multiple threads.
+
+### `SveltoTasksProfilerModule` (Unity Editor)
+Unity automatically discovers this module. It enables the `Svelto.Tasks` category, charts the two aggregate counters, and provides a CPU-module-style details view:
+- a runner picker listing one entry per runner scope that ran (identified by the `Runner/` marker prefix; busiest first). Threads without runner scopes fall back to a thread entry. The picker resolves each runner to its thread internally, so threads are never exposed;
+- a filter box: case-insensitive substring on normalized scope names; when set it spans every active runner/thread and disables the picker;
+- an expandable Object / Total / Self / Calls / GC Alloc tree built from the merged call hierarchy (`HierarchyFrameDataView`), pruned so only Svelto subtrees are shown — non-Svelto branches never reach the view;
+- Total cells show their share of visible time; dominant branches (>50%) are red-tinted.
+Task names are normalized (`Type.Method` for iterators; wrapper enumerators resolve to the full path of the wrapped task type).
 
 ---
 
@@ -778,6 +822,7 @@ Assert.That(block2, Is.SameAs(block1)); // recycled iterator block
 - `Break.It` signals the task is done for now, but the state machine stays alive. The pool reclaims the block.
 - The data class (`PoolData`) is a **class** (not struct) so its value can change without changing the reference.
 - ExtraLean variant: `Svelto.Tasks.ExtraLean.IteratorBlockPool<T>`.
+- Both Lean and ExtraLean pools support **concurrent `Get()`/`Return()`** and may be shared across worker runners. `Dispose()` must be called **exactly once**, only after all borrowed blocks have returned and worker activity is quiescent — **concurrent disposal is unsupported**.
 
 ### Awaiter / async interop
 ```csharp
@@ -794,7 +839,8 @@ async Task SomeAsyncOperation(SteppableRunner runner) {
 ### ExtraLean task restrictions
 - ExtraLean tasks can yield only: `null`, `Yield.It`, `Break.It`, `Break.AndStop`, or `yield break`.
 - Yielding anything else throws `SveltoTaskException` with message: "ExtraLean enumerator can return only null, Yield.It, Break.It, Break.AndStop and yield break".
-- The exception is caught and logged via `Console.onException` — subscribe to detect invalid yields.
+- The exception faults the task and is reported through `TaskExceptionStrategy.Current`. The built-in strategy logs
+  it through `Console.LogException`, which also raises `Console.onException`.
 
 ### Compiler-generated iterators and Reset()
 - Compiler-generated iterators (from `yield return` methods) do NOT support `Reset()`. Calling `Reset()` throws or does nothing.
