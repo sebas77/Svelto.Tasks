@@ -1,0 +1,73 @@
+name: Svelto UPM Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Which packages to publish'
+        type: choice
+        options: [both, tasks, common]
+        default: both
+
+env:
+  UPM_TASKS_BRANCH: UPM-TASKS
+  UPM_COMMON_BRANCH: UPM-COMMON
+
+jobs:
+  common:
+    if: ${{ github.event.inputs.packages != 'tasks' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: assemble package
+        run: |
+          mkdir temp
+          rsync -r --exclude 'Tests~' --exclude '.aiguides' --exclude '.github' \
+            Packages/com.sebaslab.svelto.common/ temp/
+      - name: publish
+        run: |
+          VERSION=$(python3 -c "import json;print(json.load(open('Packages/com.sebaslab.svelto.common/package.json'))['version'])")
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
+          git checkout -B ${{ env.UPM_COMMON_BRANCH }} origin/${{ env.UPM_COMMON_BRANCH }} 2>/dev/null || git checkout --orphan ${{ env.UPM_COMMON_BRANCH }}
+          git rm -rf --ignore-unmatch .
+          rsync -r --exclude 'temp' --exclude '.git' temp/ .
+          git config user.email "noreply@github.com"
+          git config user.name "GitHub Actions"
+          git add -A
+          git commit -m "UPM package version ${VERSION}"
+          git tag "v${VERSION}"
+          git push origin ${{ env.UPM_COMMON_BRANCH }} --force
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" --title "Svelto.Common ${VERSION}" --notes "-" --verify-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  tasks:
+    needs: common
+    if: ${{ github.event.inputs.packages != 'common' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: assemble package
+        run: |
+          mkdir temp
+          rsync -r --exclude 'Tests~' --exclude 'Tests' --exclude '.aiguides' --exclude '.github' \
+            --exclude 'PROPOSALS' --exclude 'AGENTS.md' \
+            Packages/com.sebaslab.svelto.tasks/ temp/
+      - name: publish
+        run: |
+          VERSION=$(python3 -c "import json;print(json.load(open('Packages/com.sebaslab.svelto.tasks/package.json'))['version'])")
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
+          git checkout -B ${{ env.UPM_TASKS_BRANCH }} origin/${{ env.UPM_TASKS_BRANCH }} 2>/dev/null || git checkout -B ${{ env.UPM_TASKS_BRANCH }}
+          git rm -rf --ignore-unmatch .
+          rsync -r --exclude 'temp' --exclude '.git' temp/ .
+          git config user.email "noreply@github.com"
+          git config user.name "GitHub Actions"
+          git add -A
+          git commit -m "UPM package version ${VERSION}"
+          git tag "v${VERSION}"
+          git push origin ${{ env.UPM_TASKS_BRANCH }} --force
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" --title "Svelto.Tasks ${VERSION}" --notes "-" --verify-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

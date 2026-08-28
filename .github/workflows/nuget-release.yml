@@ -1,0 +1,35 @@
+name: Svelto NuGet Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Which packages to publish'
+        type: choice
+        options: [both, tasks, common]
+        default: both
+
+jobs:
+  common:
+    if: ${{ github.event.inputs.packages != 'tasks' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: read version
+        run: echo "VERSION=$(python3 -c "import json;print(json.load(open('Packages/com.sebaslab.svelto.common/package.json'))['version'])")" >> "$GITHUB_ENV"
+      - name: pack
+        run: dotnet pack Packages/com.sebaslab.svelto.common/Svelto.Common/Svelto.Common.csproj -c Release -p:PackageVersion=${{ env.VERSION }} -o temp
+      - name: push
+        run: dotnet nuget push temp/Svelto.Common.${{ env.VERSION }}.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+  tasks:
+    if: ${{ github.event.inputs.packages != 'common' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: read version
+        run: echo "VERSION=$(python3 -c "import json;print(json.load(open('Packages/com.sebaslab.svelto.tasks/package.json'))['version'])")" >> "$GITHUB_ENV"
+      - name: pack
+        run: dotnet pack Packages/com.sebaslab.svelto.tasks/Svelto.Tasks/Svelto.Tasks.csproj -c Release -p:PackageVersion=${{ env.VERSION }} -o temp
+      - name: push
+        run: dotnet nuget push temp/Svelto.Tasks.${{ env.VERSION }}.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
