@@ -13,6 +13,7 @@ namespace Svelto.Tasks
     public class GenericSteppableRunner<TTask> : ISteppableRunner, IRunner<TTask> where TTask : ISveltoTask
     {
         public bool isStopping => _flushingOperation.stopping;
+        public bool isValid => _processor != null && _flushingOperation.kill == false;
         public bool hasTasks => numberOfTasks != 0;
 
         public uint   numberOfRunningTasks  => _processor.numberOfRunningTasks;
@@ -20,10 +21,16 @@ namespace Svelto.Tasks
         public uint   numberOfTasks         => _processor.numberOfTasks;
         public string name                  => _name;
 
-        public GenericSteppableRunner(string name)
+        /// <param name="name">runner name used for logging and profiling</param>
+        /// <param name="initialNumberOfTasks">
+        /// initial capacity of the runner internal task containers. Size it to the expected
+        /// number of concurrent tasks to avoid buffer growth allocations at runtime.
+        /// </param>
+        public GenericSteppableRunner(string name, uint initialNumberOfTasks = NUMBER_OF_INITIAL_COROUTINE)
         {
-            _name              = name;
-            _flushingOperation = new SveltoTaskRunner<TTask>.FlushingOperation();
+            _name                 = name;
+            _initialNumberOfTasks = initialNumberOfTasks;
+            _flushingOperation    = new SveltoTaskRunner<TTask>.FlushingOperation();
         }
 
         ~GenericSteppableRunner()
@@ -109,7 +116,7 @@ namespace Svelto.Tasks
 
         public void UseFlowModifier<TFlowModifier>(TFlowModifier modifier) where TFlowModifier : IFlowModifier
         {
-            _processor = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(_flushingOperation, modifier, NUMBER_OF_INITIAL_COROUTINE, _name);
+            _processor = new SveltoTaskRunner<TTask>.Process<TFlowModifier>(_flushingOperation, modifier, _initialNumberOfTasks, _name);
         }
 
         readonly SveltoTaskRunner<TTask>.FlushingOperation      _flushingOperation;
@@ -117,7 +124,8 @@ namespace Svelto.Tasks
 
         readonly string           _name;
         readonly PlatformProfiler _platformProfiler;
+        readonly uint             _initialNumberOfTasks;
 
-        const int NUMBER_OF_INITIAL_COROUTINE = 3;
+        protected const uint NUMBER_OF_INITIAL_COROUTINE = 3;
     }
 }

@@ -11,7 +11,7 @@ namespace Svelto.Tasks
         public class SteppableRunner : GenericSteppableRunner<LeanSveltoTask<IEnumerator<TaskContract>>>,
                 IEnumerator<TaskContract>, IGenericLeanRunner
         {
-            public SteppableRunner(string name) : base(name)
+            public SteppableRunner(string name, uint initialNumberOfTasks = NUMBER_OF_INITIAL_COROUTINE) : base(name, initialNumberOfTasks)
             {
                 UseFlowModifier(new StandardFlow());
             }
@@ -23,6 +23,7 @@ namespace Svelto.Tasks
 
             public void Reset()
             {
+                Flush();
             }
 
             public TaskContract Current => TaskContract.Yield.It;
@@ -33,7 +34,7 @@ namespace Svelto.Tasks
         public class SteppableRunner<T> : GenericSteppableRunner<LeanSveltoTask<T>>, IEnumerator<TaskContract>, IGenericLeanRunner<T>
             where T : IEnumerator<TaskContract>
         {
-            public SteppableRunner(string name) : base(name)
+            public SteppableRunner(string name, uint initialNumberOfTasks = NUMBER_OF_INITIAL_COROUTINE) : base(name, initialNumberOfTasks)
             {
                 UseFlowModifier(new StandardFlow());
             }
@@ -45,6 +46,7 @@ namespace Svelto.Tasks
 
             public void Reset()
             {
+                Flush();
             }
 
             public TaskContract Current => TaskContract.Yield.It;
@@ -57,7 +59,7 @@ namespace Svelto.Tasks
     {
         public class SteppableRunner : GenericSteppableRunner<ExtraLeanSveltoTask<IEnumerator>>, IEnumerator,IGenericExtraLeanRunner
         {
-            public SteppableRunner(string name) : base(name)
+            public SteppableRunner(string name, uint initialNumberOfTasks = NUMBER_OF_INITIAL_COROUTINE) : base(name, initialNumberOfTasks)
             {
                 UseFlowModifier(new StandardFlow());
             }
@@ -68,14 +70,16 @@ namespace Svelto.Tasks
             }
 
             public void Reset()
-            { }
+            {
+                Flush();
+            }
 
             public object Current => TaskContract.Yield.It;
         }
         
         public class SteppableRunner<T> : GenericSteppableRunner<Struct.ExtraLeanSveltoTask<T>>, IEnumerator, Struct.IExtraLeanRunner<T> where T : struct, IEnumerator
         {
-            public SteppableRunner(string name) : base(name)
+            public SteppableRunner(string name, uint initialNumberOfTasks = NUMBER_OF_INITIAL_COROUTINE) : base(name, initialNumberOfTasks)
             {
                 UseFlowModifier(new StandardFlow());
             }
@@ -86,7 +90,9 @@ namespace Svelto.Tasks
             }
 
             public void Reset()
-            { }
+            {
+                Flush();
+            }
 
             public object Current => TaskContract.Yield.It;
         }

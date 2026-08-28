@@ -1,4 +1,4 @@
-# 08 · Cancellable Chain — forwarding a failure with `Break.AndStop`
+# 08 · Cancellable Chain — stopping a chain with `Break.AndStop`
 
 ## Scenario
 
@@ -10,11 +10,8 @@ is skipped *and* `Parent` never reaches its final step.
 
 - **`Break.It`** — stops the failing task only, but lets its caller resume right
   after the `.Continue()`, so the caller can inspect what happened.
-- **`Break.AndStop`** — breaks the current task **and** the immediate parent that
-  continued it via `.Continue()`. It propagates **exactly one level up**: a task
-  killed by a child's break cannot run forwarding code of its own. To cancel N
-  levels at once, each intermediate level must re-yield `Break.AndStop` itself —
-  which is exactly what this example demonstrates.
+- **`Break.AndStop`** — breaks the current task and every waiting ancestor that
+  continued it via `.Continue()`. The whole same-runner parent chain stops.
 
 ## When / Why to use it
 
@@ -26,18 +23,15 @@ is skipped *and* `Parent` never reaches its final step.
 
 1. `Parent` yields `Chain().Continue()` and suspends on a continuation.
 2. `Chain` yields `LoadStep().Continue()`, then `ValidateStep().Continue()`.
-3. `ValidateStep` fails, records `validationFailed = true` and yields `Break.It`.
-4. Because `Break.It` doesn't kill callers, `Chain` resumes right after the
-   continue, sees the flag and re-yields `Break.AndStop`.
-5. The runner's `SveltoTaskWrapper` sees `breakMode == Break.AndStop` on the
-   completing child (`Chain`) and completes `Parent` **without** advancing it.
-6. `ProcessStep` is never reached; `Parent`'s final `yield return 42` is skipped.
+3. `ValidateStep` fails, records `validationFailed = true` and yields `Break.AndStop`.
+4. The runner disposes `ValidateStep`, `Chain`, and `Parent` without advancing
+   either parent again.
+5. `ProcessStep` is never reached; `Parent`'s final `yield return 42` is skipped.
 
 ### Why not just `Break.AndStop` in ValidateStep?
 
-Then only `Chain` would stop. `Parent` would resume normally, because when a task
-is cancelled through its child's break, its own enumerator never runs again — so it
-has no chance to forward anything. One level per `Break.AndStop`, always.
+That is exactly what this example does. `Break.AndStop` follows the complete
+`.Continue()` chain, so `Chain` and `Parent` stop too.
 
 ### Chain diagram
 
@@ -46,11 +40,9 @@ has no chance to forward anything. One level per `Break.AndStop`, always.
 │  LOAD  │───▶│ VALIDATE │───▶│ PROCESS │
 └────────┘    └──────────┘    └─────────┘
                   │ fails,
-                  │ Break.It          (never spawned)
-                  ▼                       ▲
-              Chain resumes, checks flag  │
-                  │                       │
-                  │ Break.AndStop ───► Parent cancelled 💥
+                   │ Break.AndStop     (never spawned)
+                   ▼                       ▲
+              Chain and Parent cancelled 💥
                   ▼
 ```
 
@@ -58,7 +50,7 @@ has no chance to forward anything. One level per `Break.AndStop`, always.
 
 | Type / API | Purpose |
 |---|---|
-| `Break.AndStop` | Break self **and** the immediate parent that did `.Continue()` (one level). |
+| `Break.AndStop` | Break self and all waiting `.Continue()` ancestors. |
 | `Break.It` | Break self only; the caller resumes and can decide what to do next. |
 | `.Continue()` | Schedule child on same runner; parent waits. |
 | `.Complete(ms)` | Run an `IEnumerator<TaskContract>` synchronously to completion (uses a thread-local `SyncRunner`). |
@@ -66,9 +58,8 @@ has no chance to forward anything. One level per `Break.AndStop`, always.
 
 ## Gotchas
 
-- **`Break.AndStop` propagates exactly ONE level up.** Multi-level cancellation
-  requires every intermediate task to check the failure and re-yield
-  `Break.AndStop` itself, as done here.
+- **`Break.AndStop` cascades through `.Continue()` ancestors.** It does not cross
+  into work started with `.RunOn(otherRunner)`.
 - **`Break.It` does not propagate.** It ends the current task and the parent
   resumes normally — which is precisely what makes the forwarding pattern possible.
 - **`yield break` does not propagate either.** The parent continues as if the child

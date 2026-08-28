@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using Svelto.DataStructures;
 
 namespace Svelto.Tasks.ExtraLean
@@ -21,13 +20,17 @@ namespace Svelto.Tasks.ExtraLean
         public bool MoveNext()
         {
             var canMove = iteratorBlock.MoveNext();
-            if (canMove == false || iteratorBlock.Current is TaskContract.Break taskContractBreak && taskContractBreak.AnyBreak)
+            //Only a break yield is a safe reusable boundary, and this plain-IEnumerator wrapper has no
+            //Dispose() to defer the pool return to, so the return must stay here. A machine that ended
+            //naturally (canMove == false / yield break) is dead and must NOT be pooled: it is simply
+            //abandoned and left to the GC, and the next Get() allocates a replacement block.
+            if (canMove && iteratorBlock.Current is TaskContract.Break taskContractBreak && taskContractBreak.AnyBreak)
             {
                 pool.Return(data, this);
                 return false;
             }
 
-            return true;
+            return canMove;
         }
         public override string ToString()
         {
@@ -55,10 +58,16 @@ namespace Svelto.Tasks.ExtraLean
         readonly Func<T, IEnumerator> _iteratorBlock;
         internal readonly string name;
 
-        public IteratorBlockPool(Func<T, IEnumerator> iteratorBlock, string profilingName)
+        public IteratorBlockPool(Func<T, IEnumerator> iteratorBlock, string profilingName, int initialPoolSize = 0)
         {
             _iteratorBlock = iteratorBlock;
             name = profilingName;
+
+            for (int i = 0; i < initialPoolSize; i++)
+            {
+                var data = new T();
+                _pool.Push((data, new PooledIteratorBlock<T>(_iteratorBlock(data), data, this)));
+            }
         }
 
         public (T data, PooledIteratorBlock<T> pooledIteratorBlock) Get()

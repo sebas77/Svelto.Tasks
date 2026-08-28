@@ -286,7 +286,9 @@ namespace Svelto.Utilities
             }
             catch
             {
-                //there is something wrong with  Environment.CurrentManagedThreadId
+                //can only fail if Time.frameCount is read from a non-main thread, which happens
+                //when MAINTHREADID was never set (AddLogger not called yet) or was set from a
+                //non-main thread in OnLoggerAdded. Fails soft: the frame number is simply omitted.
             }
 
             StackTrace stack = null;
@@ -295,7 +297,15 @@ namespace Svelto.Utilities
 
             if (Volatile.Read(ref Console.batchLog) == true)
             {
-                //todo: this may happen on another thread?
+                //todo: YES, Log can be called from any thread (task runners, promise continuations,
+                //exceptions on worker threads). This branch is safe by design: _batchedErrorLogs is a
+                //ThreadSafeDictionary and everything else here is local. Two known remaining inaccuracies,
+                //both acceptable for diagnostics unless exact numbers are needed:
+                //1) hit counts are approximate: TryGetValue + indexer set below is a read-modify-write,
+                //   concurrent logs of the same message can lose count increments. To make counts exact,
+                //   lock around the TryGetValue/update pair.
+                //2) MAINTHREADID assumes OnLoggerAdded ran on the main thread (see catch above).
+                //The REAL thread-unsafety is not here: it's OtherThreadFlushLogger, see the todo there.
                 string stackString = string.Empty;
                 if (stack != null)
                 {
@@ -322,6 +332,13 @@ namespace Svelto.Utilities
                 _notBatchedQueue.Enqueue(new ErrorLogObject(txt, stack, type, e, frame, showLogStack, dataString, 0));
         }
 
+        //todo: this can run concurrently on the low-priority thread (StartQueue loop) AND the main thread
+        //(sceneLoaded, Application.quitting, CompressLogsToZipAndShow flushes); _isPaused only guards the
+        //compress path. _logs is a shared static FasterList and _batchedErrorLogs is drained with
+        //GetValues+Clear, so concurrent runs can corrupt _logs and lose entries (most likely at quitting,
+        //where the main thread flushes while the background thread may be mid-flush).
+        //Fix: wrap the whole body in a lock; it runs at most ~1/sec plus rare event flushes, so contention
+        //is not a concern.
         static void OtherThreadFlushLogger()
         {
             if (_batchedErrorLogs.count + _notBatchedQueue.Count == 0)

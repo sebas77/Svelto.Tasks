@@ -51,10 +51,8 @@ namespace CancellableChain
                 Console.WriteLine("  └─ ❌ VALIDATION FAILED: checksum mismatch!");
                 validationFailed = true;
 
-                //Break.It stops ONLY this task: Chain resumes right after the Continue and
-                //gets the chance to forward the failure. Break.AndStop here instead would
-                //kill this task's caller too... but nothing above it (see the outro)
-                yield return TaskContract.Break.It;
+                //Break.AndStop stops this task and every waiting .Continue() ancestor.
+                yield return TaskContract.Break.AndStop;
             }
 
             IEnumerator<TaskContract> ProcessStep()
@@ -69,13 +67,6 @@ namespace CancellableChain
             {
                 yield return LoadStep().Continue();
                 yield return ValidateStep().Continue();
-
-                //Break.AndStop propagates exactly ONE level up: had ValidateStep yielded it
-                //directly, this task would stop but an outer caller would resume unaware,
-                //because a task killed by a child break cannot run forwarding code of its own.
-                //To cancel several levels at once, each level must re-yield the break itself:
-                if (validationFailed)
-                    yield return TaskContract.Break.AndStop; //stops Chain AND Parent
 
                 yield return ProcessStep().Continue();
             }
@@ -109,13 +100,11 @@ namespace CancellableChain
             Console.WriteLine();
             if (chainSnapped)
             {
-                Console.WriteLine("  💡 ValidateStep failed with Break.It, then Chain forwarded the failure");
-                Console.WriteLine("     with Break.AndStop: PROCESS was skipped AND Parent was cancelled.");
+                Console.WriteLine("  💡 ValidateStep failed with Break.AndStop: PROCESS was skipped AND");
+                Console.WriteLine("     every waiting .Continue() parent, including Parent, was cancelled.");
                 Console.WriteLine();
-                Console.WriteLine("  ⚠  Gotcha: Break.AndStop propagates exactly ONE level up. Had it been");
-                Console.WriteLine("     yielded by ValidateStep directly, Chain would stop but Parent would");
-                Console.WriteLine("     resume — a killed task cannot forward its own break. To cancel N");
-                Console.WriteLine("     levels, each intermediate level must re-yield Break.AndStop.");
+                Console.WriteLine("  ⚠  Gotcha: Break.AndStop only follows .Continue() parents on the same");
+                Console.WriteLine("     runner. Work started with .RunOn(otherRunner) is independent.");
             }
             else
             {
@@ -159,7 +148,7 @@ namespace CancellableChain
             Console.WriteLine("  ║  08 · CANCELLABLE CHAIN  ·  Break.AndStop + .Continue()     ║");
             Console.WriteLine("  ╠══════════════════════════════════════════════════════════════╣");
             Console.WriteLine("  ║  An operation chain: LOAD → VALIDATE → PROCESS.             ║");
-            Console.WriteLine("  ║  Validation fails and the failure is forwarded up so that   ║");
+            Console.WriteLine("  ║  Validation fails and stops the whole parent chain so that  ║");
             Console.WriteLine("  ║  PROCESS is skipped AND Parent is cancelled.                ║");
             Console.WriteLine("  ╚══════════════════════════════════════════════════════════════╝");
             Console.WriteLine();

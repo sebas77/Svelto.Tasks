@@ -101,7 +101,8 @@ class Program
         Console.WriteLine();
         Console.WriteLine("  Example with the reusable struct:");
         Console.WriteLine("    var wait = new ReusableWaitForSecondsEnumerator(2.0f);");
-        Console.WriteLine("    wait.Reset(); // can reuse with a new duration");
+        Console.WriteLine("    wait.Reset();     // reuse with the same duration");
+        Console.WriteLine("    wait.Reset(5.0f); // or reuse with a new duration");
         Console.WriteLine();
 
         try { Console.CursorVisible = true; } catch {}

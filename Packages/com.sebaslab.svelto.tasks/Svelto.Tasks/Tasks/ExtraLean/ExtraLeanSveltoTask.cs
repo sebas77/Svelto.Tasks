@@ -28,6 +28,7 @@ namespace Svelto.Tasks.ExtraLean
             Check.Require(taskState.completed == false, "ExtraLeanSveltoTask impossible state");
 
             bool completed;
+            bool stopParentChain = false;
 
             if (taskState.explicitlyStopped == false)
             {
@@ -40,8 +41,13 @@ namespace Svelto.Tasks.ExtraLean
                     if (current == null)
                         completed = false;
                     else 
-                    if (current == TaskContract.Break.It || current == TaskContract.Break.AndStop)
+                    if (current == TaskContract.Break.It)
                         completed = true;
+                    else if (current == TaskContract.Break.AndStop)
+                    {
+                        completed = true;
+                        stopParentChain = true;
+                    }
                     else
                         throw new SveltoTaskException(
                             "ExtraLean enumerator can return only null, Yield.It, Break.It, Break.AndStop and yield break");
@@ -57,7 +63,7 @@ namespace Svelto.Tasks.ExtraLean
             if (completed)
             {
                 taskState.completed = true;
-                return StepState.Completed;
+                return stopParentChain ? StepState.Completed | StepState.StopParentChain : StepState.Completed;
             }
 
             return StepState.Running;

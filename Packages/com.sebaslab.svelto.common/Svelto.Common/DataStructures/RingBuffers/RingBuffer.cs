@@ -15,7 +15,6 @@ namespace Svelto.DataStructures
     {
         public RingBuffer(int capacity)
         {
-            //todo: probably better to move to prime and fasts mod
             capacity = Utils.NextPowerOfTwo(capacity);
             _entries = new T[capacity];
             _modMask = capacity - 1;

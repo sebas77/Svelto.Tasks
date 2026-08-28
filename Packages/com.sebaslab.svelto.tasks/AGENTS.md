@@ -39,9 +39,9 @@ Use it when you need any of the following; otherwise prefer plain `async`/`await
 | Sequential pipeline (A then B then C) | `SerialTaskCollection` |
 | Several cooperative tasks progressing together per tick | `ParallelTaskCollection` |
 | Limit tasks per tick or bound ms per tick | `StaggeredFlow(n)` / `TimeBoundFlow(ms)` / `TimeSlicedFlow(ms)` |
-| Reusable, allocation-free repeated task | pooled iterator block (`while(true) { yield return Break.It; }`) |
+| Reusable task without a new iterator allocation after pool warm-up | pooled iterator block (`while(true) { yield return Break.It; }`) |
 | Cross-thread handshake | subclass `WaitForSignal<T>` |
-| Interop with existing async code | `await enumerator.ToTask<T>()` or `await enumerator.RunOn(runner)` |
+| Interop with existing async code | `await someDotNetTask.RunOn(runner)` (Task/ValueTask into a runner), `await enumerator.ToTask<T>(runner)` (iterator out to .NET, reference results) |
 
 Do NOT use it for: ordinary I/O-bound async code with no scheduling requirements, code that must return values through standard `Task<T>` pipelines (use `.ToTask<T>()` only at interop boundaries).
 
@@ -65,7 +65,7 @@ IEnumerator<TaskContract> LoadAndProcess()          // Lean task
         yield return Yield.It;                      // REQUIRED inside loops — see gotchas
     }
 
-    yield return 42;                                // return a value to the caller (boxed — see gotchas)
+    yield return 42;                                // int stored inline in TaskContract; read with ToInt()
 }
 ```
 
@@ -96,8 +96,8 @@ yield return cont;
 // block until done (thread-local SyncRunner):
 enumerator.Complete();                                // optional timeout: Complete(timeoutMs)
 
-// await from async code (Lean only):
-int result = await enumerator.ToTask<int>();
+// await from async code (Lean only, reference results):
+string result = await enumerator.ToTask<string>(runner);
 ```
 
 **`.Continue()` vs `.RunOn(runner)` vs `.Forget()`:**
@@ -138,12 +138,14 @@ runner.UseFlowModifier(new TimeSlicedFlow(20f));     // fair round-robin time sl
 2. **Break semantics:**
    - `yield break` — stops this task permanently; parent continues.
    - `yield return Break.It` — stops this task; parent continues; **state machine stays alive (reusable/poolable)**.
-   - `yield return Break.AndStop` — stops this task AND its immediate parent (one level only; a killed task cannot forward its own break — re-yield `Break.AndStop` at each level to cascade).
-3. **Values are boxed.** `yield return 42;` boxes the int — extract via `.ToInt()` / `.ToFloat()` / `.ToBool()` / `.ToRef<T>()`.
+   - `yield return Break.AndStop` — stops this task and every waiting `.Continue()` ancestor in its same-runner parent chain.
+   - A pooled iterator resumes immediately after `Break.It`; it does not restart. Put the break at a complete cycle boundary, reset per-run state at the top of the enclosing infinite loop, and never pool a task stopped at another yield. The Lean pool return happens in `Dispose()` — automatic for runners, manual callers must call it.
+3. **Primitive values use typed extraction.** Supported primitives (`int`, `uint`, `ulong`, `float`, `bool`) are stored inline in `TaskContract` without boxing. Read them with `.ToInt()` / `.ToUInt()` / `.ToUlong()` / `.ToFloat()` / `.ToBool()`; references use `.ToRef<T>()`.
 4. **ExtraLean restrictions:** plain `IEnumerator` tasks may yield ONLY `null`, `Yield.It`, `Break.It`, `Break.AndStop`, or `yield break`. Anything else throws `SveltoTaskException`.
 5. **Hold runner references.** Nothing else keeps runners alive — unreferenced runners get GC'd while tasks run. Always store and later `Dispose()` runners.
 6. **Dispose disposes ALL tasks**, including queued ones that never ran.
 7. **Threading:** `MultiThreadRunner` = one thread per runner instance. All tasks on one runner share that thread.
+8. **MultiThreadRunner shutdown is cooperative.** `Flush()` and `Dispose()` wait up to two seconds for the worker, reject calls from that worker, and cannot abort a task stuck inside `MoveNext()`. `Flush()` keeps the worker reusable; `Dispose()` terminates it.
 
 ## Build and verify
 
@@ -172,6 +174,6 @@ dotnet run --project Examples/01_GameLoop            # run any example
 
 Read these before making non-trivial API changes or when unsure about semantics:
 
-- `com.sebaslab.svelto.tasks/.aiguides/AI_GUIDE_Svelto.Tasks.md` — full Svelto.Tasks API reference (798 lines): every type, every gotcha, patterns distilled from the test suite.
+- `com.sebaslab.svelto.tasks/.aiguides/AI_GUIDE_Svelto.Tasks.md` — full Svelto.Tasks API reference: every type, every gotcha, patterns distilled from the test suite.
 - `com.sebaslab.svelto.common/.aiguides/AI_GUIDE_Svelto.Common.md` — Svelto.Common data structures, logging, pooling.
-- `Examples/README.md` — index mapping all 20 runnable examples to features. Each example folder is a minimal, working reference implementation of one feature.
+- `Examples/README.md` — index mapping all 21 runnable examples to features. Each example folder is a minimal, working reference implementation of one feature.

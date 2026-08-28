@@ -19,7 +19,7 @@ frame") between each step.
 - You do not need to return values from the task or chain it with `.Continue()`.
 - You are porting Unity-style coroutines (`yield return null`) to a non-Unity
   context.
-- You want the smallest possible allocation footprint (no `TaskContract` boxing).
+- You want the smallest task-contract overhead and do not need Lean return values or continuations.
 
 ## How it works
 

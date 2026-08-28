@@ -75,8 +75,9 @@ namespace Example15_EntitySpawnPool
                     }
                     else
                     {
-                        //MoveNext returned false because the block yielded Break.It and
-                        //recycled itself back into the pool
+                        //MoveNext returned false because the block yielded Break.It; Dispose
+                        //(called by runners automatically) hands the block back to the pool
+                        block.Dispose();
                     }
                 }
 
@@ -114,7 +115,7 @@ namespace Example15_EntitySpawnPool
                 yield return TaskContract.Yield.It;
 
                 if (data.Step >= data.TotalSteps)
-                    yield return TaskContract.Break.It; //the pool wrapper recycles the block on Break.It
+                    yield return TaskContract.Break.It; //flags the block; its Dispose returns it to the pool
             }
         }
 

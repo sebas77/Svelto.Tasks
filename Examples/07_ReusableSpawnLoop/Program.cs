@@ -48,7 +48,7 @@ namespace ReusableSpawnLoop
             int hash1 = block1.GetHashCode();
             Console.WriteLine($"  ┌─ pool.Get()   → data.kind = '{data1.kind}'  block hash = {hash1}");
             RunBlock(block1);
-            Console.WriteLine($"  └─ Break.It hit → block RETURNED to pool (state machine kept alive)");
+            Console.WriteLine($"  └─ Break.It hit → Dispose() returned the block to pool (state machine kept alive)");
 
             SpinWait(28, "recycling", "♻");
 
@@ -65,7 +65,7 @@ namespace ReusableSpawnLoop
             Console.WriteLine($"  ┌─ pool.Get()   → data.kind = '{data2.kind}'  block hash = {hash2}");
             Console.WriteLine($"  │  SAME block instance? {(sameBlock ? "✅ YES" : "❌ NO")}   SAME data instance? {(sameData ? "✅ YES" : "❌ NO")}");
             RunBlock(block2);
-            Console.WriteLine($"  └─ Break.It hit → block RETURNED again (block reused, no new state machine)");
+            Console.WriteLine($"  └─ Break.It hit → Dispose() returned it again (block reused, no new state machine)");
 
             Console.WriteLine();
             Console.WriteLine("  ┌────────────────────────────────────────────────┐");
@@ -74,7 +74,7 @@ namespace ReusableSpawnLoop
             Console.WriteLine("  │   pool.Get() ─▶ Spawn ─▶ yield Break.It        │");
             Console.WriteLine("  │       ▲                     │                  │");
             Console.WriteLine("  │       │                     ▼                  │");
-            Console.WriteLine("  │       └───── pool.Return() ◀┘                  │");
+            Console.WriteLine("  │       └── Dispose() → pool.Return() ◀┘         │");
             Console.WriteLine("  │  (state machine stays alive and gets reused)   │");
             Console.WriteLine("  └────────────────────────────────────────────────┘");
             Console.WriteLine();
@@ -89,8 +89,9 @@ namespace ReusableSpawnLoop
             Console.WriteLine($"  │  MoveNext() → {more}   (running, then yields)");
             Thread.Sleep(250);
             more = block.MoveNext();
-            Console.WriteLine($"  │  MoveNext() → {more}   (Break.It → returns to pool)");
+            Console.WriteLine($"  │  MoveNext() → {more}   (Break.It → flagged for release)");
             Thread.Sleep(250);
+            block.Dispose(); //a runner calls Dispose automatically; manually it returns the block to the pool
         }
 
         static int _spawnRow = 11;

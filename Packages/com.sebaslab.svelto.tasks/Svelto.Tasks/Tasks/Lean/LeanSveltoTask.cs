@@ -21,7 +21,16 @@ namespace Svelto.Tasks.Lean
             _continuation = new Continuation(ContinuationPool.RetrieveFromPool());
 #endif
 
-            runner.AddTask(this, (-1, TombstoneHandle.Invalid));
+            try
+            {
+                runner.AddTask(this, (-1, TombstoneHandle.Invalid));
+            }
+            catch
+            {
+                _continuation.ReturnToPool();
+                _continuation = default;
+                throw;
+            }
 
             return _continuation;
         }

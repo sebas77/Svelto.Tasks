@@ -39,15 +39,46 @@ namespace Svelto.Tasks.Internal
 
                 if (_flushingOperation.reset)
                 {
+                    //disposal exceptions must never abort the reset: a throwing user finally would leave
+                    //the runner half-cleaned (stale counters, reset flag stuck) and, on background runners,
+                    //would reach the worker fiber's fail-fast rethrow. Failures go through the reporting
+                    //pipeline like every other post-admission fault, and the reset always runs to completion.
                     foreach (ref var tr in _spawnedCoroutines)
-                        tr.task.Dispose();  
+                    {
+                        try
+                        {
+                            tr.task.Dispose();
+                        }
+                        catch (Exception e)
+                        {
+                            TaskExceptionStrategy.HandleException(
+                                new Exception($"exception while flushing task {tr.task.name}", e));
+                        }
+                    }
 
+                    //tasks flushed here are disposed without ever being registered as running, so their
+                    //queued count must be dropped as they leave the queue, exactly like the admission
+                    //drain does (see the comment above MoveNext for why this count exists)
                     while (_newTaskRoutines.TryDequeue(out TSveltoTask task))
-                        task.Dispose();
+                    {
+                        try
+                        {
+                            task.Dispose();
+                        }
+                        catch (Exception e)
+                        {
+                            TaskExceptionStrategy.HandleException(
+                                new Exception($"exception while flushing task {task.name}", e));
+                        }
+                        finally
+                        {
+                            Interlocked.Decrement(ref _numberOfQueuedTasks);
+                        }
+                    }
 
                     _runningCoroutines.Clear();
+                    Volatile.Write(ref _numberOfRunningTasks, 0);
                     _spawnedCoroutines.Clear();
-                    _newTaskRoutines.Clear();
                     
                     _flushingOperation.Unstop();
                     
@@ -59,15 +90,41 @@ namespace Svelto.Tasks.Internal
                 //_newTaskRoutines cannot be cleared in paused and stopped state.
                 //This is done before the stopping check because all the tasks queued before stop will be stopped
 
-                if (_newTaskRoutines.Count > 0 && _flushingOperation.acceptsNewTasks == true)
+                //WHY _numberOfQueuedTasks INSTEAD OF _newTaskRoutines.Count:
+                //draining dequeue-first reopens a race the old Peek+Dequeue order was covering. Between the
+                //moment the worker dequeues a task and the moment it registers the task in
+                //_runningCoroutines, the task is counted neither as queued nor as running. A thread polling
+                //numberOfTasks/hasTasks in that window (WaitForTasksDone, the MultiThreadRunner spin loops)
+                //would observe zero tasks and return before the task even started, let alone completed and
+                //got disposed. _numberOfQueuedTasks closes that window:
+                //- producers increment it BEFORE enqueueing, so the count never lags behind the queue
+                //- this loop decrements it only AFTER the task is published as running
+                //an in-flight task is therefore always observable as queued or running (both, for an
+                //instant: a transient overcount that can only make waits conservatively longer), never as
+                //neither. Peek+Dequeue achieved the same by keeping the item in the queue until after
+                //registration, but at the cost explained below.
+                //
+                //WHY NOT TryPeek + TryDequeue PAIRS ANYMORE:
+                //TryPeek(out T) permanently marks the queue head segment as "preserved for observation"
+                //(a ConcurrentQueue implementation detail used to guarantee tear-free reads: preserved
+                //segments keep their slots untouched on dequeue). Once a segment is preserved it can never
+                //be recycled: dequeues stop freeing its slots, and when its remaining capacity is exhausted
+                //every Enqueue allocates a brand new segment. Calling TryPeek on every drain, as this loop
+                //used to do, poisons each head segment in turn and turns the admission path into a steady
+                //allocation source (measured ~100 bytes per submitted root task, which is why the
+                //zero-allocation tests fail with TryPeek and pass with TryDequeue). TryDequeue never sets
+                //the preservation flag, so segments keep being recycled and admission stays allocation-free.
+                if (Volatile.Read(ref _numberOfQueuedTasks) > 0 && _flushingOperation.acceptsNewTasks == true)
                 {
-                    while (_newTaskRoutines.TryPeek(out TSveltoTask task))
+                    //publish as running first, then drop from the queued count (see comment above)
+                    while (_newTaskRoutines.TryDequeue(out TSveltoTask task))
                     {
                         //only root tasks are added at this point
                         TombstoneHandle index = _spawnedCoroutines.Add((task, TombstoneHandle.Invalid));
                         _runningCoroutines.Add(index);
-                        _newTaskRoutines.TryDequeue(out _); //Peek + dequeue to avoid race conditions when MT runner is used and the number of tasks is queried
-#if DEBUG_TASKS_FLOW                        
+                        Volatile.Write(ref _numberOfRunningTasks, _runningCoroutines.count);
+                        Interlocked.Decrement(ref _numberOfQueuedTasks);
+#if DEBUG_TASKS_FLOW
                         Svelto.Console.Log($"spawn root task {_spawnedCoroutines[index].task} at location {_runningCoroutines.count - 1}");
 #endif
                     }
@@ -143,7 +200,11 @@ namespace Svelto.Tasks.Internal
                             TaskExceptionStrategy.HandleException(e);
                         }
 
-                        if (result != StepState.Faulted && _runningCoroutines[(int)index] != currentSpawnedTaskToRunIndex)
+                        if ((result & StepState.StopParentChain) != 0)
+                        {
+                            DisposeParentChain(currentSpawnedTaskToRunIndex, index);
+                        }
+                        else if (result != StepState.Faulted && _runningCoroutines[(int)index] != currentSpawnedTaskToRunIndex)
                         {
                             DBC.Tasks.Check.Require(result != StepState.Completed,
                                 "a task cannot be completed and spawn a new task in the same step");
@@ -160,12 +221,17 @@ namespace Svelto.Tasks.Internal
                             }
                             catch (Exception e)
                             {
-                                Console.LogException(e, $"catching exception while disposing task {currentSpawnedTaskToRun.name}");
+                                //disposal failures go through the same reporting pipeline as execution faults
+                                TaskExceptionStrategy.HandleException(
+                                    new Exception($"exception while disposing task {currentSpawnedTaskToRun.name}", e));
                             }
+                            
                             _spawnedCoroutines.RemoveAt(currentSpawnedTaskToRunIndex);
+                            
                             if (spawnedCoroutineParentTaskIndex.IsInvalid)
                             {
                                 _runningCoroutines.UnorderedRemoveAt((uint)index); //the current task was a root task, remove it
+                                Volatile.Write(ref _numberOfRunningTasks, _runningCoroutines.count);
 #if DEBUG_TASKS_FLOW
                                     Svelto.Console.Log($"remove task {_spawnedCoroutines[currentSpawnedTaskToRunIndex].task} killed task in location {index}");
 #endif
@@ -227,6 +293,11 @@ namespace Svelto.Tasks.Internal
 
                 if (parentTaskIndex.parentSpawnedTaskIndex == TombstoneHandle.Invalid)
                 {
+                    //count BEFORE enqueueing: the admission drain decrements only after the task is
+                    //published as running, so together these two rules guarantee an in-flight task is
+                    //always observable as queued or running and numberOfTasks can never falsely read zero
+                    //during the queue-to-running transfer (full rationale in MoveNext)
+                    Interlocked.Increment(ref _numberOfQueuedTasks);
                     _newTaskRoutines.Enqueue(task); //root task
                 }
                 else
@@ -237,6 +308,33 @@ namespace Svelto.Tasks.Internal
                     Svelto.Console.Log($"spawn task {_spawnedCoroutines[index]} in place of task {_spawnedCoroutines[parentTaskIndex.parentSpawnedTaskIndex]} at location {parentTaskIndex.runningTaskIndexToReplace}");
 #endif
                     _runningCoroutines[(int)parentTaskIndex.runningTaskIndexToReplace] = index;
+                }
+            }
+
+            void DisposeParentChain(TombstoneHandle taskIndex, int runningTaskIndex)
+            {
+                //Only the leaf occupies a running slot. Its ancestors are suspended in _spawnedCoroutines.
+                _runningCoroutines.UnorderedRemoveAt((uint)runningTaskIndex);
+                Volatile.Write(ref _numberOfRunningTasks, _runningCoroutines.count);
+
+                while (taskIndex.IsInvalid == false)
+                {
+                    ref var spawnedTask = ref _spawnedCoroutines[taskIndex];
+                    var parentTaskIndex = spawnedTask.parentTaskindex;
+                    var taskName = spawnedTask.task.name;
+
+                    try
+                    {
+                        spawnedTask.task.Dispose();
+                    }
+                    catch (Exception e)
+                    {
+                        TaskExceptionStrategy.HandleException(
+                            new Exception($"exception while disposing task {taskName}", e));
+                    }
+
+                    _spawnedCoroutines.RemoveAt(taskIndex);
+                    taskIndex = parentTaskIndex;
                 }
             }
 
@@ -251,9 +349,18 @@ namespace Svelto.Tasks.Internal
             TFlowModifier _info;
             string _runnerName;
 
-            public uint numberOfRunningTasks => (uint)_runningCoroutines.count;
-            public uint numberOfQueuedTasks => (uint)_newTaskRoutines.Count;
-            public uint numberOfTasks => (uint)_runningCoroutines.count + (uint)_newTaskRoutines.Count;
+            public uint numberOfRunningTasks => (uint)Volatile.Read(ref _numberOfRunningTasks);
+            //NOT _newTaskRoutines.Count: the manual count is bumped before enqueue and dropped only after
+            //the task is registered as running. numberOfTasks can therefore transiently over-count (a task
+            //seen as both queued and running) but can never read zero while a task is being transferred
+            //from the queue to the running list. ConcurrentQueue.Count would miss exactly those tasks and
+            //let WaitForTasksDone return before they run (full rationale in MoveNext)
+            public uint numberOfQueuedTasks => (uint)Volatile.Read(ref _numberOfQueuedTasks);
+            public uint numberOfTasks => (uint)Volatile.Read(ref _numberOfQueuedTasks) +
+                                         (uint)Volatile.Read(ref _numberOfRunningTasks);
+
+            int _numberOfRunningTasks;
+            int _numberOfQueuedTasks;
         }
 
         public class FlushingOperation
@@ -272,55 +379,55 @@ namespace Svelto.Tasks.Internal
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot stop a runner that is killed {name}");
 
-                //maybe I want both flags to be set in a thread safe way This must be bitmask
-                var current = Volatile.Read(ref _state);
-                var next    = (current | (int)StateFlags.Stopped) & ~(int)StateFlags.Paused;
-                Volatile.Write(ref _state, next);
+                UpdateState(StateFlags.Stopped, StateFlags.Paused, true);
             }
 
             public void StopAndReset(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot flush a runner that is killed {name}");
                 
-                var current = Volatile.Read(ref _state);
-                var next    = (current | (int)(StateFlags.Reset | StateFlags.Stopped)) & ~(int)StateFlags.Paused;
-                Volatile.Write(ref _state, next);
+                UpdateState(StateFlags.Reset | StateFlags.Stopped, StateFlags.Paused, true);
             }
 
             public void Kill(string name)
             {
-                if (kill == true)
-                    return;
-
                 //Atomic transition so other threads can never observe kill==true with stopping==false
-                var current = Volatile.Read(ref _state);
-                var next    = (current | (int)(StateFlags.Reset | StateFlags.Stopped | StateFlags.Killed)) & ~(int)StateFlags.Paused;
-                Volatile.Write(ref _state, next);
+                UpdateState(StateFlags.Reset | StateFlags.Stopped | StateFlags.Killed, StateFlags.Paused, false);
             }
 
             public void Pause(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot pause a runner that is killed {name}");
 
-                var current = Volatile.Read(ref _state);
-                var next    = current | (int)StateFlags.Paused;
-                Volatile.Write(ref _state, next);
+                UpdateState(StateFlags.Paused, StateFlags.None, true);
             }
 
             public void Resume(string name)
             {
                 DBC.Tasks.Check.Require(kill == false, $"cannot resume a runner that is killed {name}");
 
-                var current = Volatile.Read(ref _state);
-                var next    = current & ~(int)StateFlags.Paused;
-                Volatile.Write(ref _state, next);
+                UpdateState(StateFlags.None, StateFlags.Paused, true);
             }
 
             internal void Unstop()
             {
-                var current = Volatile.Read(ref _state);
-                var next    = current & ~((int)StateFlags.Reset | (int)StateFlags.Stopped);
-                Volatile.Write(ref _state, next);
+                UpdateState(StateFlags.None, StateFlags.Reset | StateFlags.Stopped, true);
+            }
+
+            void UpdateState(StateFlags flagsToSet, StateFlags flagsToClear, bool skipWhenKilled)
+            {
+                while (true)
+                {
+                    var current = Volatile.Read(ref _state);
+
+                    // Kill is terminal and relies on Reset|Stopped to keep the worker awake for cleanup.
+                    if (skipWhenKilled && (current & (int)StateFlags.Killed) != 0)
+                        return;
+
+                    var next = (current | (int)flagsToSet) & ~(int)flagsToClear;
+                    if (Interlocked.CompareExchange(ref _state, next, current) == current)
+                        return;
+                }
             }
 
             [Flags]

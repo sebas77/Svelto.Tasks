@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks.Lean;
 
@@ -82,28 +83,284 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadRunner_StopThenDispose_DoesNotDeadlock()
         {
-            // What we are testing:
-            // MultiThreadRunner can be stopped and disposed without deadlocking even with running tasks.
+            using var started = new ManualResetEventSlim(false);
+            var runner = new MultiThreadRunner("MultiThreadRunner_StopDispose");
 
-            using (var runner = new MultiThreadRunner("MultiThreadRunner_StopDispose"))
+            IEnumerator<TaskContract> RunningTask()
             {
-                IEnumerator<TaskContract> SpinYield(int iterations)
+                started.Set();
+
+                while (true)
+                    yield return TaskContract.Yield.It;
+            }
+
+            RunningTask().RunOn(runner);
+            Assert.That(started.Wait(2000), Is.True);
+
+            runner.Stop();
+            Assert.That(runner.WaitForTasksDone(2000), Is.True);
+
+            Assert.DoesNotThrow(runner.Dispose);
+        }
+
+        [Test]
+        public void MultiThreadRunner_FlushDisposesTasksAndKeepsWorkerReusable()
+        {
+            using var started = new ManualResetEventSlim(false);
+            using var completed = new ManualResetEventSlim(false);
+            using var runner = new MultiThreadRunner("MultiThreadRunner_FlushReuse");
+            var disposed = false;
+            var workerThreadBeforeFlush = 0;
+            var workerThreadAfterFlush = 0;
+
+            IEnumerator<TaskContract> RunningTask()
+            {
+                workerThreadBeforeFlush = Thread.CurrentThread.ManagedThreadId;
+                started.Set();
+
+                try
                 {
-                    var i = 0;
-                    while (i++ < iterations)
-                    {
+                    while (true)
                         yield return TaskContract.Yield.It;
-                    }
+                }
+                finally
+                {
+                    disposed = true;
+                }
+            }
+
+            IEnumerator<TaskContract> TaskAfterFlush()
+            {
+                workerThreadAfterFlush = Thread.CurrentThread.ManagedThreadId;
+                completed.Set();
+                yield break;
+            }
+
+            RunningTask().RunOn(runner);
+            Assert.That(started.Wait(2000), Is.True);
+
+            runner.Flush();
+
+            Assert.That(disposed, Is.True);
+            Assert.That(runner.hasTasks, Is.False);
+
+            TaskAfterFlush().RunOn(runner);
+
+            Assert.That(completed.Wait(2000), Is.True);
+            Assert.That(workerThreadAfterFlush, Is.EqualTo(workerThreadBeforeFlush));
+        }
+
+        [Test]
+        public void MultiThreadRunner_FlushRejectsTaskSubmissionUntilResetCompletes()
+        {
+            using var enteredTask = new ManualResetEventSlim(false);
+            using var releaseTask = new ManualResetEventSlim(false);
+            using var runner = new MultiThreadRunner("MultiThreadRunner_FlushAdmission");
+            Exception flushException = null;
+
+            IEnumerator<TaskContract> BlockingTask()
+            {
+                enteredTask.Set();
+                releaseTask.Wait();
+                yield return TaskContract.Yield.It;
+            }
+
+            IEnumerator<TaskContract> RejectedTask()
+            {
+                yield break;
+            }
+
+            BlockingTask().RunOn(runner);
+            Assert.That(enteredTask.Wait(2000), Is.True);
+
+            var flushThread = new Thread(() =>
+            {
+                try
+                {
+                    runner.Flush();
+                }
+                catch (Exception exception)
+                {
+                    flushException = exception;
+                }
+            });
+
+            flushThread.Start();
+
+            var then = DateTime.UtcNow.AddMilliseconds(2000);
+            while (runner.isStopping == false && DateTime.UtcNow < then)
+                Thread.Yield();
+
+            try
+            {
+                Assert.That(runner.isStopping, Is.True);
+                Assert.Throws<MultiThreadRunnerException>(() => RejectedTask().RunOn(runner));
+            }
+            finally
+            {
+                releaseTask.Set();
+            }
+
+            Assert.That(flushThread.Join(2000), Is.True);
+            Assert.That(flushException, Is.Null);
+        }
+
+        [Test]
+        public void MultiThreadRunner_DoesNotExposeKill()
+        {
+            Assert.That(typeof(MultiThreadRunner).GetMethod("Kill"), Is.Null);
+        }
+
+        [Test]
+        public void MultiThreadRunner_RejectsTaskSubmissionAfterDispose()
+        {
+            var runner = new MultiThreadRunner("MultiThreadRunner_DisposedAdmission");
+
+            IEnumerator<TaskContract> RejectedTask()
+            {
+                yield break;
+            }
+
+            runner.Dispose();
+
+            Assert.Throws<MultiThreadRunnerException>(() => RejectedTask().RunOn(runner));
+        }
+
+        [Test]
+        public void MultiThreadRunner_DisposeWakesPausedWorkerAndDisposesQueuedTask()
+        {
+            var runner = new MultiThreadRunner("MultiThreadRunner_PausedDispose");
+            var disposableTask = new DisposableEnumerator();
+
+            runner.Pause();
+            disposableTask.RunOn(runner);
+
+            runner.Dispose();
+
+            Assert.That(disposableTask.disposed, Is.True);
+        }
+
+        [Test]
+        public void MultiThreadRunner_RejectsTaskSubmissionWhileDisposeWaitsForWorker()
+        {
+            using var enteredTask = new ManualResetEventSlim(false);
+            using var releaseTask = new ManualResetEventSlim(false);
+            var runner = new MultiThreadRunner("MultiThreadRunner_DisposeAdmission");
+            Exception disposeException = null;
+
+            IEnumerator<TaskContract> BlockingTask()
+            {
+                enteredTask.Set();
+                releaseTask.Wait();
+                yield return TaskContract.Yield.It;
+            }
+
+            IEnumerator<TaskContract> RejectedTask()
+            {
+                yield break;
+            }
+
+            BlockingTask().RunOn(runner);
+            Assert.That(enteredTask.Wait(2000), Is.True);
+
+            var disposeThread = new Thread(() =>
+            {
+                try
+                {
+                    runner.Dispose();
+                }
+                catch (Exception exception)
+                {
+                    disposeException = exception;
+                }
+            });
+
+            disposeThread.Start();
+
+            var then = DateTime.UtcNow.AddMilliseconds(2000);
+            while (runner.isKilled == false && DateTime.UtcNow < then)
+                Thread.Yield();
+
+            try
+            {
+                Assert.That(runner.isKilled, Is.True);
+                Assert.Throws<MultiThreadRunnerException>(() => RejectedTask().RunOn(runner));
+            }
+            finally
+            {
+                releaseTask.Set();
+            }
+
+            Assert.That(disposeThread.Join(2000), Is.True);
+            Assert.That(disposeException, Is.Null);
+        }
+
+        [Test]
+        public void MultiThreadRunner_FlushFromWorkerThreadThrowsAndRunnerRemainsUsable()
+        {
+            using var attempted = new ManualResetEventSlim(false);
+            using var reused = new ManualResetEventSlim(false);
+            using var runner = new MultiThreadRunner("MultiThreadRunner_WorkerFlush");
+            Exception flushException = null;
+
+            IEnumerator<TaskContract> FlushFromWorker()
+            {
+                try
+                {
+                    runner.Flush();
+                }
+                catch (Exception exception)
+                {
+                    flushException = exception;
                 }
 
-                SpinYield(64).RunOn(runner);
-                
-                // Let it run a bit
-                Thread.Sleep(10);
-                
-                runner.Stop();
-                // Dispose is called by using block
+                attempted.Set();
+                yield break;
             }
+
+            IEnumerator<TaskContract> ReuseTask()
+            {
+                reused.Set();
+                yield break;
+            }
+
+            FlushFromWorker().RunOn(runner);
+
+            Assert.That(attempted.Wait(2000), Is.True);
+            Assert.That(flushException, Is.TypeOf<MultiThreadRunnerException>());
+
+            ReuseTask().RunOn(runner);
+            Assert.That(reused.Wait(2000), Is.True);
+        }
+
+        [Test]
+        public void MultiThreadRunner_DisposeFromWorkerThreadThrowsAndCanBeRetriedExternally()
+        {
+            using var attempted = new ManualResetEventSlim(false);
+            var runner = new MultiThreadRunner("MultiThreadRunner_WorkerDispose");
+            Exception disposeException = null;
+
+            IEnumerator<TaskContract> DisposeFromWorker()
+            {
+                try
+                {
+                    runner.Dispose();
+                }
+                catch (Exception exception)
+                {
+                    disposeException = exception;
+                }
+
+                attempted.Set();
+                yield break;
+            }
+
+            DisposeFromWorker().RunOn(runner);
+
+            Assert.That(attempted.Wait(2000), Is.True);
+            Assert.That(disposeException, Is.TypeOf<MultiThreadRunnerException>());
+            Assert.DoesNotThrow(runner.Dispose);
+            Assert.DoesNotThrow(runner.Dispose);
         }
 
         [Test]
@@ -190,6 +447,33 @@ namespace Svelto.Tasks.Tests
             Assert.That(runner.hasTasks, Is.False);
 
             runner.Dispose();
+        }
+
+        [Test]
+        public void SteppableRunner_ResetFlushesTasksAndAllowsReuse()
+        {
+            using var runner = new SteppableRunner("SteppableRunner_Reset");
+            var disposableTask = new DisposableEnumerator();
+            var reused = false;
+
+            disposableTask.RunOn(runner);
+            runner.Step();
+
+            runner.Reset();
+
+            Assert.That(disposableTask.disposed, Is.True);
+            Assert.That(runner.hasTasks, Is.False);
+
+            IEnumerator<TaskContract> ReusedTask()
+            {
+                reused = true;
+                yield break;
+            }
+
+            ReusedTask().RunOn(runner);
+            runner.Step();
+
+            Assert.That(reused, Is.True);
         }
 
         class DisposableEnumerator : IEnumerator<TaskContract>

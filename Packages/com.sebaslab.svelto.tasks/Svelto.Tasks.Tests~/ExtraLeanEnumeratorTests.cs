@@ -48,6 +48,41 @@ namespace Svelto.Tasks.Tests
         }
 
         [Test]
+        public void TestExtraLeanEnumerator_BreakAndStop_CompletesEntireContinueChain()
+        {
+            bool rootContinued = false;
+            bool middleContinued = false;
+
+            IEnumerator<TaskContract> Root()
+            {
+                yield return Middle().Continue();
+                rootContinued = true;
+            }
+
+            IEnumerator<TaskContract> Middle()
+            {
+                yield return AsExtraLean(ExtraLeanBreakAndStop());
+                middleContinued = true;
+            }
+
+            IEnumerator ExtraLeanBreakAndStop()
+            {
+                yield return TaskContract.Break.AndStop;
+            }
+
+            using (var runner = new SteppableRunner("ExtraLeanChain"))
+            {
+                Root().RunOn(runner);
+
+                while (runner.hasTasks)
+                    runner.Step();
+            }
+
+            Assert.That(rootContinued, Is.False);
+            Assert.That(middleContinued, Is.False);
+        }
+
+        [Test]
         public void TestExtraLeanEnumerator_BreakIt_ContinuesParentTask()
         {
             bool parentContinued = false;
@@ -117,6 +152,157 @@ namespace Svelto.Tasks.Tests
                 Assert.That(caughtException.GetType().Name, Is.EqualTo("SveltoTaskException"));
                 Assert.That(runner.hasTasks, Is.False, "the faulted task must be removed from the runner");
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Disposal ownership of inline ExtraLean children (Lean parent wrapper)
+        // ------------------------------------------------------------------
+
+        enum ChildMode { Natural, BreakIt, BreakAndStop, WaitForever }
+
+        sealed class CountingDisposableChild : IEnumerator, IDisposable
+        {
+            internal CountingDisposableChild(ChildMode mode)
+            {
+                _mode = mode;
+            }
+
+            public object Current
+            {
+                get
+                {
+                    switch (_mode)
+                    {
+                        case ChildMode.BreakIt:      return TaskContract.Break.It;
+                        case ChildMode.BreakAndStop: return TaskContract.Break.AndStop;
+                        default:                     return TaskContract.Yield.It;
+                    }
+                }
+            }
+
+            public bool MoveNext()
+            {
+                _step++;
+
+                switch (_mode)
+                {
+                    case ChildMode.Natural:     return _step < 2; //second MoveNext completes naturally
+                    case ChildMode.WaitForever: return true;      //pending until the test stops the runner task
+                    default:                    return true;      //break modes signal through Current
+                }
+            }
+
+            public void Reset() { }
+
+            public void Dispose() => disposeCount++;
+
+            internal int disposeCount;
+
+            readonly ChildMode _mode;
+            int _step;
+        }
+
+        [Test]
+        public void InlineExtraLeanChild_NaturalCompletion_DisposesChildOnce()
+        {
+            var child = new CountingDisposableChild(ChildMode.Natural);
+            bool parentResumed = false;
+
+            IEnumerator<TaskContract> ParentTask()
+            {
+                yield return AsExtraLean(child);
+                parentResumed = true;
+            }
+
+            using (var runner = new SteppableRunner("InlineChildNatural"))
+            {
+                ParentTask().RunOn(runner);
+
+                while (runner.hasTasks)
+                    runner.Step();
+
+                Assert.That(parentResumed, Is.True);
+            }
+
+            Assert.That(child.disposeCount, Is.EqualTo(1),
+                "a naturally completed inline child must be disposed once");
+        }
+
+        [Test]
+        public void InlineExtraLeanChild_BreakIt_KeepsChildAlive()
+        {
+            var child = new CountingDisposableChild(ChildMode.BreakIt);
+            bool parentResumed = false;
+
+            IEnumerator<TaskContract> ParentTask()
+            {
+                yield return AsExtraLean(child);
+                parentResumed = true;
+            }
+
+            using (var runner = new SteppableRunner("InlineChildBreakIt"))
+            {
+                ParentTask().RunOn(runner);
+
+                while (runner.hasTasks)
+                    runner.Step();
+
+                Assert.That(parentResumed, Is.True);
+            }
+
+            Assert.That(child.disposeCount, Is.EqualTo(0),
+                "Break.It keeps the state machine alive by contract: the child must not be disposed");
+        }
+
+        [Test]
+        public void InlineExtraLeanChild_BreakAndStop_ChildDisposalOnTeardown()
+        {
+            var child = new CountingDisposableChild(ChildMode.BreakAndStop);
+
+            IEnumerator<TaskContract> ParentTask()
+            {
+                yield return AsExtraLean(child);
+            }
+
+            using (var runner = new SteppableRunner("InlineChildAndStop"))
+            {
+                ParentTask().RunOn(runner);
+
+                while (runner.hasTasks)
+                    runner.Step();
+
+                Assert.That(runner.hasTasks, Is.False);
+            }
+
+            Assert.That(child.disposeCount, Is.EqualTo(1),
+                "teardown must deterministically release the abandoned inline child");
+        }
+
+        [Test]
+        public void InlineExtraLeanChild_StoppedMidChild_ChildDisposalOnTeardown()
+        {
+            var child = new CountingDisposableChild(ChildMode.WaitForever);
+
+            IEnumerator<TaskContract> ParentTask()
+            {
+                yield return AsExtraLean(child);
+            }
+
+            using (var runner = new SteppableRunner("InlineChildStop"))
+            {
+                ParentTask().RunOn(runner);
+
+                runner.Step(); //start parent, spawn the child
+                runner.Step(); //child yields Yield.It: still pending
+
+                runner.Stop(); //abandon the task while the child is pending
+                runner.Step(); //stopping pass: completes and disposes the task
+
+                Assert.That(runner.hasTasks, Is.False);
+            }
+
+            Assert.That(child.disposeCount, Is.EqualTo(1),
+                "teardown must deterministically release the abandoned inline child");
         }
     }
 }

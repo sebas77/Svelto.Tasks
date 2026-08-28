@@ -88,7 +88,7 @@ Sentinel to continue a child task on the **same runner** as the parent. Usage: `
 ### `TaskContract.Break`
 Sentinel to break out of a task loop.
 - `Break.It` — breaks the task but NOT the caller. The enumerator can be reused (state machine kept alive). Enables the `while(true) { yield return Break.It; }` pattern for reusable iterator blocks.
-- `Break.AndStop` — breaks the task AND propagates the break to the immediate caller task (one level only).
+- `Break.AndStop` — breaks the task and every waiting `.Continue()` ancestor in its same-runner parent chain.
 - `AnyBreak` — true if `It` or `AndStop`.
 
 **Key distinction:** `yield return Break.It` keeps the state machine alive (can be reused). `yield break` ends the state machine permanently. `Break.AndStop` propagates the break to the parent.
@@ -132,8 +132,9 @@ Interface hierarchy:
 A manually-stepped runner. You call `Step()` each frame/tick. Uses `StandardFlow` by default.
 - `Step()` → `bool` — ticks all tasks once. Returns false if no tasks remain.
 - `Pause()` / `Resume()` — freeze/unfreeze task processing.
-- `Stop()` — flushes all tasks (they run to completion or stop naturally).
-- `Flush()` — stops and resets, allowing reuse.
+- `Stop()` — marks running tasks for cancellation on the next step; queued tasks wait until automatic unstop.
+- `Flush()` — synchronously disposes running and queued tasks, then allows reuse.
+- `Reset()` — equivalent to `Flush()` for all SteppableRunner variants.
 - `UseFlowModifier<TFlowModifier>()` — set the flow modifier strategy.
 - Implements `IEnumerator`/`IEnumerator<TaskContract>` itself, so it can be yielded as a task inside another runner.
 
@@ -147,14 +148,17 @@ A manually-stepped runner. You call `Step()` each frame/tick. Uses `StandardFlow
 
 ### `MultiThreadRunner`
 Runs tasks on a **dedicated background thread**. One thread per runner (all tasks on a runner share the same thread).
-- **Constructors:** `(string name, bool relaxed, bool tightTasks)` or `(string name, int intervalInMs)`.
+- **Constructors:** `(string name, bool relaxed, bool tightTasks, uint initialNumberOfTasks)` or `(string name, uint intervalInMs, uint initialNumberOfTasks)`.
   - `relaxed: true` — less reactive to new tasks, lower CPU.
-  - `tightTasks: true` — for cache-friendly tasks; forces periodic yields to allow other threads to run.
+  - `tightTasks: true` — the worker stops volunteering periodic yields; use it for cache-friendly tight loops that should own the thread.
   - `intervalInMs` — starts a low-CPU runner that ticks at the given interval.
+  - `initialNumberOfTasks` — pre-sizes the internal task containers to avoid growth allocations.
 - Uses a "quick locking" spin mechanism for reactive pause/resume.
 - `Pause()` / `Resume()` — thread-safe.
-- `Stop()` — stops the thread, disposes tasks.
-- `Dispose()` — stops thread and cleans up.
+- `Stop()` — asynchronously cancels running tasks; the worker remains alive and queued tasks run after automatic unstop.
+- `Flush()` — synchronously disposes running and queued tasks, rejects submissions during cleanup, and keeps the worker alive for reuse.
+- `Dispose()` — terminally rejects submissions, disposes all tasks, signals the worker to exit, and joins it.
+- `Flush()` and `Dispose()` cannot be called from the runner's worker thread and have a two-second safety timeout.
 
 **Variants:** Same as SteppableRunner (Lean/ExtraLean/struct/class).
 
@@ -265,9 +269,9 @@ enumerator.Complete(timeoutMs: 5000);  // with timeout
 Also works on `ISteppableRunner`: `runner.WaitForTasksDone()` / `WaitForTasksDoneRelaxed()`.
 
 ### `.ToTask<T>()` (Lean only)
-Converts a Lean iterator to an awaitable `ValueTask<T>`.
+Converts a Lean iterator into an awaitable `ValueTask<T>` that polls the continuation on the thread pool. Requires a runner and `T` must be a reference type (`TaskContract` cannot box a generic value).
 ```csharp
-int result = await enumerator.ToTask<int>();
+string result = await enumerator.ToTask<string>(runner);
 ```
 
 ---
@@ -276,10 +280,10 @@ int result = await enumerator.ToTask<int>();
 
 ### `Continuation` (readonly struct)
 A handle returned by `RunOn` that lets the caller check if a task is still running.
-- `bool isRunning { get; }` — checks if the task is still active (uses a `DateTime` signature to detect stale handles).
+- `bool isRunning { get; }` — checks if the task is still active (uses an incrementing generation token to detect stale handles).
 - `void ReturnToPool()` — return the continuation to the pool.
 
-**Lifecycle:** A `Continuation` is valid until the task completes or is stopped. After that, return it to the pool.
+**Lifecycle:** a Lean task returns its continuation to the pool automatically when the task is disposed (completion, break, stop, flush, dispose). Never call `ReturnToPool()` manually after completion: the pool has no duplicate-return guard and a double return can hand the same internal continuation to two tasks.
 
 ### `ContinuationPool` (internal, static)
 Pre-allocates 1000 `ContinuationEnumeratorInternal` objects. Uses `GC.ReRegisterForFinalize`/`GC.SuppressFinalize` so continuations return themselves to the pool when GC'd.
@@ -417,6 +421,8 @@ IEnumerator<TaskContract> MyReusableTask()
 ```
 `Break.It` signals the task is done for now, but the state machine is NOT ended (unlike `yield break`). The pooled iterator block can be reused with new data via `IteratorBlockPool<P>.Get()`.
 
+**Design reusable blocks around explicit cycle boundaries.** Reuse resumes immediately after the `yield return Break.It`; it does not restart the method. The code after that yield must safely reach the next loop iteration, per-run locals must be reset at the top of the loop, and the pooled data object must be re-initialized after every `Get()`. Do not carry borrowed references or resources across the break. `yield break`, natural completion, or cancellation before the break leaves the state machine at a location that is not safe to pool.
+
 ### ExtraLean: `IteratorBlockPool<T>` / `PooledIteratorBlock<T>`
 Same concept but for plain `IEnumerator`.
 
@@ -425,35 +431,35 @@ Same concept but for plain `IEnumerator`.
 **Threading & disposal contract (both Lean and ExtraLean):**
 - `Get()` and `Return()` are thread safe: both pool variants use `ThreadSafeStack`, so a block may be acquired and returned by different runner threads.
 - A borrowed block and its data object remain exclusively owned from `Get()` until `Return()`. Do not concurrently advance, mutate, or return the same borrowed block from multiple threads.
+- Reaching the designated `Break.It` boundary is what makes a borrowed block reusable. A task stopped at any other yield must not be returned and resumed as a new cycle.
+- Lean ownership: `MoveNext()` only flags a break-completed block; the pool return happens in `PooledIteratorBlock.Dispose()`, which runners call automatically on task completion. Manual callers must call `Dispose()` themselves. Blocks that complete naturally or are abandoned mid-cycle are disposed permanently and left to the GC — they are never pooled.
 - `Dispose()` drains idle blocks only. Stop the runners and wait for every borrowed block to return before disposing the pool; concurrent disposal and use is unsupported.
 
 ---
 
-## 11. Service Tasks
+## 11. MultiThreadRunnerPool
 
-### `IServiceTask`
-Interface for a service-like task that reports completion.
-- `bool isDone { get; }`
-- `IEnumerator<TaskContract> Execute()` — run the service task.
+### `MultiThreadRunnerPool` (ExtraLean)
+A pool of independent ExtraLean `MultiThreadRunner`s. Each scheduled task is a root task dispatched round-robin to one of the inner runners. Runner-local continuation indices cannot be transferred between different inner runners, so this pool is intended for independently scheduled root tasks.
+- Constructor: `(string name, int threadCount, uint initialNumberOfTasks, ...)`.
+- `AddTask(...)` / `Stop()` dispatch to the next inner runner; `Dispose()` disposes every inner runner.
+- The owner must guarantee that no `AddTask` or `Stop` calls overlap disposal.
 
-### `IServiceTaskExceptionHandler`
-- `Exception throwException { get; }` — the exception to throw on failure.
-
-**When to use:** When modeling external services (e.g., network requests, file I/O) as tasks with a known completion state.
+**When to use:** When many independent background tasks should share a fixed set of worker threads instead of one runner per concern.
 
 ---
 
 ## 12. Awaiter Support (async/await interop)
 
 ### `SveltoAwaiterExtensions`
-Extension methods to await Svelto tasks using `async`/`await`.
-- `GetAwaiter()` on `IEnumerator<TaskContract>` — returns a `TaskRunnerAwaiter`.
-- `GetValueTaskRunnerAwaiter<T>()` — returns `ValueTaskRunnerAwaiter<T>` for typed results.
+Extension methods that let `.NET Tasks` and `ValueTasks` be awaited through a Svelto runner:
+- `Task.RunOn(IGenericLeanRunner)` — returns a `TaskRunnerAwaiter`.
+- `ValueTask.RunOn(IGenericLeanRunner)` — returns a `ValueTaskRunnerAwaiter`.
 
-### `TaskRunnerAwaiter` / `ValueTaskRunnerAwaiter<T>`
-Custom awaiters that post the `async` continuation back onto the Svelto runner via `ContinuationEnumerator`. This ensures that code after `await` runs on the same runner/thread as the task.
+### `TaskRunnerAwaiter` / `ValueTaskRunnerAwaiter`
+Custom awaiters (`ICriticalNotifyCompletion`) that wrap the real `TaskAwaiter`/`ValueTaskAwaiter`. When the awaited operation completes, the async continuation is enqueued on the chosen Svelto runner, so code after the `await` runs on the runner's thread, interleaved with its other tasks. If the runner is no longer valid at completion time, the continuation is deliberately never run and the async task stays pending.
 
-**When to use:** When you need to interop with `async`/`await` code. The awaiter ensures continuations run on the correct runner.
+**When to use:** When you need to interop with `async`/`await` code while keeping continuation affinity to a Svelto runner. Note the direction: these awaiters bring .NET Tasks *into* Svelto; use `ToTask<T>()` to bring iterators out to .NET.
 
 ---
 
@@ -515,11 +521,11 @@ The core scheduling engine. Contains:
 - `StartTask` may be called from a different thread → `_newTaskRoutines` is a `ConcurrentQueue`
 
 ### `FlushingOperation`
-Thread-safe (Volatile bitmask) state for runner lifecycle:
+Thread-safe bitmask state for runner lifecycle. State transitions use compare-exchange loops so concurrent transitions cannot lose the terminal kill flag or its reset/stop wake-up flags:
 - `Pause()` / `Resume()` — freeze/unfreeze.
 - `Stop()` / `Unstop()` — flush tasks until empty, then allow restart.
 - `StopAndReset()` — flush and clear for reuse.
-- `Kill()` — immediate termination.
+- `Kill()` — internal terminal signal; cleanup and worker termination happen cooperatively on the worker's next processing pass.
 - `acceptsNewTasks` — true only when not paused/stopped/killed.
 
 ---
@@ -662,33 +668,29 @@ IEnumerator<TaskContract> Parent() {
 
 ### Break.It vs Break.AndStop vs yield break
 
-| Construct | Current task | Parent task | Siblings |
+| Construct | Current task | `.Continue()` ancestors | Unrelated roots |
 |-----------|-------------|------------|----------|
 | `yield break` | Stops | **Continues** | Continue |
 | `Break.It` | Stops | **Continues** | Continue |
-| `Break.AndStop` | Stops | **Stops** | **Stop** |
+| `Break.AndStop` | Stops | **Stop** | Continue |
 
 - `yield break` and `Break.It` behave identically when the breaking task is yielded via `.Continue()`. The parent continues in both cases.
-- `Break.AndStop` propagates the break to the parent — the parent also stops and does NOT reach subsequent `yield return` statements.
-- **`Break.AndStop` propagates exactly ONE level up.** A task cancelled through its child's
-  break never resumes, so it cannot forward anything itself: its own `Current` still holds
-  the `.Continue()` contract, not a break. To cancel N levels at once, the failing leaf must
-  stop with `Break.It` (or set a flag) and every intermediate level must re-yield
-  `Break.AndStop` — see `Examples/08_CancellableChain`.
+- `Break.AndStop` stops every waiting `.Continue()` ancestor, so none reach a subsequent
+  `yield return` statement. Unrelated root tasks continue running.
 - `Break.It` keeps the state machine alive (reusable via iterator block pooling). `yield break` ends it permanently.
 
-### TaskContract: yielding raw values (boxing warning)
+### TaskContract: yielding and extracting typed values
 ```csharp
 IEnumerator<TaskContract> SubEnumerator(int i, int total) {
     do { yield return TaskContract.Yield.It; } while (++i < count);
-    yield return i;  // CAREFUL: int is boxed; retrieve via .ToInt()
+    yield return i;  // int is stored inline in TaskContract; retrieve via .ToInt()
 }
 // To read the result after continuation:
 yield return subEnumerator.Continue();
 yield return subEnumerator.Current;  // passes the value up
 int result = testEnum.Current.ToInt();
 ```
-- `yield return i;` boxes the `int` into a `TaskContract`. Always use `.ToInt()` / `.ToFloat()` / `.ToBool()` / `.ToRef<T>()` to extract.
+- `yield return i;` invokes the typed `TaskContract(int)` conversion and stores the value in the contract's inline union without boxing. Use `.ToInt()` to extract it; `.ToRef<T>()` is for reference payloads only.
 - `yield return TaskContract.Yield.It;` is required inside loops to enable asynchronous execution. **Forgetting it causes an infinite loop** that blocks the runner.
 
 ### TaskContract.Continue.It as a return value (not yield)
@@ -716,19 +718,19 @@ IEnumerator<TaskContract> FirstEnum() {
 }
 ```
 
-### Runner lifecycle: Stop, Flush, Kill, Dispose
+### Runner lifecycle: Pause, Stop, Flush, Dispose
 
 | Operation | Tasks execute? | New tasks accepted? | Runner reusable? |
 |-----------|---------------|--------------------|--------------------|
-| `Pause()` | No (frozen) | Yes | Yes (after `Resume()`) |
+| `Pause()` | No (frozen) | Yes (queued) | Yes (after `Resume()`) |
 | `Resume()` | Yes | Yes | Yes |
-| `Stop()` | Flushes in-flight | Yes (queued, not processed until stepped) | Yes (after `Unstop()` or stepping) |
-| `Flush()` | No (disposed) | No | Yes (cleared for reuse) |
-| `Dispose()` | Disposes all | **Throws** if used | No (dead) |
+| `Stop()` | Cancels in-flight tasks on the next pass | Yes (queued until automatic unstop) | Yes |
+| `Flush()` | No; all tasks are disposed | No during cleanup | Yes; worker is retained |
+| `Dispose()` | No; all tasks are disposed | No; submission throws | No; worker exits |
 
-**Stop behavior:** After `Stop()`, tasks can still be `RunOn`'d (queued) but don't execute until the runner is stepped. When stepped, queued tasks process.
+**Stop behavior:** After `Stop()`, tasks can still be `RunOn`'d. They remain queued while running tasks are cancelled, then process after the runner automatically unstops. `Stop()` itself does not wait for this cleanup.
 
-**Dispose disposes ALL tasks** — queued, running, or completed. Even tasks that never started get disposed. This means `IDisposable` tasks are always cleaned up.
+**Flush and Dispose dispose ALL live tasks** — queued or running. Even tasks that never started get disposed. Completed tasks were already disposed when they completed.
 
 **Runner GC warning:** Runners can be garbage collected if not referenced. The framework does NOT keep a reference. Always store runner references and dispose them explicitly.
 
@@ -738,7 +740,11 @@ IEnumerator<TaskContract> FirstEnum() {
 - `new MultiThreadRunner("name", intervalInMs)` — low-CPU runner that ticks at the given interval.
 - `Pause()` / `Resume()` — thread-safe; counter stays frozen while paused.
 - `WaitForTasksDone(timeoutMs)` — returns `true` if all tasks completed within timeout.
-- `Stop()` + `Dispose()` does NOT deadlock (tested).
+- `Flush()` blocks until reset cleanup completes, rejects task admission during that window, and preserves the worker for reuse.
+- `Dispose()` signals terminal reset and joins the worker. Repeated disposal is safe; scheduling afterward throws `MultiThreadRunnerException`.
+- `Flush()` and `Dispose()` throw when called from the worker thread, avoiding a self-wait/self-join deadlock.
+- Shutdown is cooperative. If a task does not return from `MoveNext()`, cleanup cannot run; `Flush()` or `Dispose()` throws `MultiThreadRunnerException` after two seconds rather than aborting the thread.
+- Lifecycle flags are atomic: concurrent stop/reset/kill transitions cannot clear terminal kill state or let the worker sleep before kill cleanup.
 
 ### Complete() extension method
 ```csharp

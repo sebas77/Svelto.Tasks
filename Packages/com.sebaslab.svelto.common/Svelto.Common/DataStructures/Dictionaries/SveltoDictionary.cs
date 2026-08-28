@@ -43,10 +43,10 @@ namespace Svelto.DataStructures
     /// <summary>
     /// This dictionary has been created for just one reason: I needed a dictionary that would have let me iterate
     /// over the values as an array, directly, without generating one or using an iterator.
-    /// For this goal is N times faster than the standard dictionary. Faster dictionary is also faster than
+    /// For this goal is N times faster than the standard dictionary. Faster dictionary might also be faster than
     /// the standard dictionary for most of the operations, but the difference is negligible. The only slower operation
     /// is resizing the memory on add, as this implementation needs to use two separate arrays compared to the standard
-    /// one
+    /// one, this might be solved in future if I start to use segments.
     /// note: SveltoDictionary is not thread safe. A thread safe version should take care of possible setting of
     /// value with shared hash hence bucket list index.
     /// </summary>
@@ -682,8 +682,6 @@ namespace Svelto.DataStructures
             }
 
             //item with this bucketIndex will point to the last value created
-            //ToDo: if instead I assume that the original one is the one in the bucket
-            //I wouldn't need to update the bucket here. Small optimization but important
             _buckets[bucketIndex] = (int)(_freeValueCellIndex + 1);
 
             indexSet = _freeValueCellIndex;

@@ -76,7 +76,6 @@ namespace SimpleCoroutine
 
         static void DrawBigDigit(int d)
         {
-            string s = d.ToString();
             string[][] digits =
             {
                 new[] { " ██████ ", " ██████ ", " ██████ ", " ██████ ", " ██████ " },

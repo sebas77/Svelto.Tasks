@@ -123,8 +123,8 @@ namespace Svelto.DataStructures
         }
         
         /// <summary>
-        /// todo: this must go away, it's not safe. it must become internal and only used by the framework
-        /// externally should use the AsReader, AsWriter, AsReadOnly, AsParallelReader, AsParallelWriter pattern
+        /// todo: replace public raw-array access with explicit reader/writer contracts as described in
+        /// PROPOSAL_Controlled_MB_Buffer_Access.md. The backing array must eventually become framework-internal.
         /// </summary>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

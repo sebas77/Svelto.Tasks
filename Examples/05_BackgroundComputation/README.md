@@ -52,7 +52,6 @@ runs. When done, the result is printed.
 | `Svelto.Tasks.Lean.MultiThreadRunner` | Runs queued tasks on one dedicated background thread. |
 | `.RunOn(runner)` | Enqueue on a runner; returns `Continuation` (Lean). |
 | `Continuation.isRunning` | `true` while the task is still running. |
-| `Continuation.ReturnToPool()` | Optional: return the continuation struct to the pool. |
 | `runner.WaitForTasksDone(timeout)` | Block the calling thread until the runner drains. |
 | `runner.Dispose()` | Stop the background thread and clean up. |
 
@@ -62,17 +61,19 @@ runs. When done, the result is printed.
   thread-safe with respect to any shared state. Use `volatile` / `Interlocked` for
   cross-thread flags (as this example does for `progress` and `result`).
 - **You MUST `Dispose()` the runner** to stop the background thread. If you let it
-  be GC'd, the finalizer logs a warning and disposes it — but you should dispose
-  explicitly for clean shutdown.
+  be GC'd, the finalizer logs a warning and signals termination, but cannot wait
+  for the worker. Dispose explicitly for deterministic cleanup.
 - The runner processes its queue on **one** thread. If you queue 3 tasks they run
   **serially** on that thread, not in parallel with each other. For parallelism
   across threads, create multiple `MultiThreadRunner` instances or use
   `MultiThreadedParallelTaskCollection`.
-- `Dispose()` calls `StopAndFlush` + `WaitForTasksDone(2000)` internally, so it
-  waits up to 2s for tasks to finish before killing the thread. If a task is
-  stuck in an infinite loop, `Dispose` will warn and kill it.
+- `Dispose()` rejects new work, signals terminal cleanup, and waits up to two
+  seconds for the worker to exit. Shutdown is cooperative: if a task is stuck in
+  an infinite loop or blocking call and never returns from `MoveNext()`, the
+  worker cannot process cleanup and `Dispose()` throws `MultiThreadRunnerException`.
 - `isRunning` on the `Continuation` flips to `false` the moment the task
   completes — there is no separate "collect the result" step. Read shared state
   right after.
-- The `Continuation` is a pooled struct; calling `ReturnToPool()` is optional but
-  recommended if you hold many of them (the finalizer returns it anyway).
+- The `Continuation` is a pooled struct that returns itself to the pool automatically when the
+  task completes (completion, break, stop, flush, dispose). **Do not call `ReturnToPool()` manually** —
+  the pool has no duplicate-return guard and a double return can hand the same continuation to two tasks.

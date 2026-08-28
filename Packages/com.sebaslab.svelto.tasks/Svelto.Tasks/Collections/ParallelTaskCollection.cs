@@ -58,7 +58,7 @@ namespace Svelto.Tasks
                         case TaskState.doneIt:
                             if (stacks[index].count > 1)
                             {
-                                stacks[index].Pop(); //now it can be popped
+                                stacks[index].Pop(); //Pop() disposes the completed child, the parent resumes
                                 index--;             //continue the current task
                             }
                             else
@@ -72,6 +72,8 @@ namespace Svelto.Tasks
                             }
                             break;
                         case TaskState.breakIt:
+                            //Break.AndStop: cancel everything and let MoveNext yield StopParentChain
+                            StopChain();
                             return true;           //end the iteration
                         case TaskState.continueIt: //continue the current task
                             index--;

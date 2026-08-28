@@ -10,7 +10,6 @@ namespace Svelto.DataStructures
     {
         public CircularQueue(int capacity)
         {
-            //todo: probably better to move to prime and fasts mod
             capacity = Utils.NextPowerOfTwo(capacity);
             _entries = new T[capacity];
         }

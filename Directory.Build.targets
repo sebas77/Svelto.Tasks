@@ -1,0 +1,6 @@
+<Project>
+  <!-- Unity metadata is needed by Unity but should not appear as project files in Rider. -->
+  <ItemGroup>
+    <None Remove="**/*.meta" />
+  </ItemGroup>
+</Project>

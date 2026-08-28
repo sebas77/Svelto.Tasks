@@ -12,6 +12,9 @@ namespace Svelto.Tasks.Lean
         IEnumerator<TaskContract> iteratorBlock;
         T data;
         IteratorBlockPool<T> pool;
+        //Set only when the underlying iterator reached its deliberate reusable boundary (Break.It/Break.AndStop).
+        //Dispose() uses it to decide between releasing the block back to the pool and permanently discarding it.
+        bool returnToPool;
 
         public PooledIteratorBlock(IEnumerator<TaskContract> iEnumerator, T data, IteratorBlockPool<T> pool)
         {
@@ -23,19 +26,41 @@ namespace Svelto.Tasks.Lean
         public bool MoveNext()
         {
             var canMove = iteratorBlock.MoveNext();
-            if (canMove == false || iteratorBlock.Current is TaskContract taskContract && taskContract.breakMode != null
+
+            //A break yield is the only safe reusable boundary: the state machine is suspended exactly after
+            //it, so the next borrow resumes at the top of the enclosing loop. Just flag it here; the actual
+            //pool return happens in Dispose(), once the runner has fully released this execution. Returning
+            //the block to the pool inside MoveNext (the old behavior) could hand out a block the runner still
+            //holds, and would pool machines abandoned mid-cycle.
+            if (canMove && iteratorBlock.Current is TaskContract taskContract && taskContract.breakMode != null
              && taskContract.breakMode.AnyBreak)
             {
-                pool.Return(data, this);
+                returnToPool = true;
                 return false;
             }
 
-            return true;
+            //A machine that ended naturally (MoveNext == false / yield break) is dead and must never be
+            //pooled; it will be disposed by Dispose() and a replacement block is allocated by the next Get().
+            return canMove;
         }
 
         public override string ToString() => pool.name;
 
-        public void Dispose() => iteratorBlock?.Dispose();
+        //Called by the runner when it abandons the task (completion, break, Stop, fault, Flush/Dispose) and by
+        //IteratorBlockPool.Dispose() for idle blocks. Only a break-flagged execution goes back to the pool;
+        //any other case permanently disposes the underlying iterator and the block is left to the GC.
+        public void Dispose()
+        {
+            if (returnToPool)
+            {
+                returnToPool = false; //reset before pooling so the next cycle starts clean
+                pool.Return(data, this);
+            }
+            else
+            {
+                iteratorBlock?.Dispose();
+            }
+        }
 
         public void Reset() => throw new NotImplementedException();
         public object Current => throw new NotImplementedException();
@@ -88,6 +113,8 @@ namespace Svelto.Tasks.Lean
 
         public void Dispose()
         {
+            //Idle blocks are not break-flagged, so their Dispose() permanently disposes the underlying
+            //iterators. Borrowed blocks are not drained: stop the runners first (see the pool contract).
             while (_pool.TryPop(out var item))
             {
                 item.pooledIteratorBlock.Dispose();

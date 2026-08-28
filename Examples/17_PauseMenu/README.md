@@ -46,7 +46,7 @@ A game runs tasks on a `MultiThreadRunner`. When the pause menu opens, all task 
 | `MultiThreadRunner` | `Svelto.Tasks.Lean` | Background-thread runner with pause/resume |
 | `.Pause()` | — | Freezes task execution (tasks stay in queue) |
 | `.Resume()` | — | Unfreezes task execution |
-| `.Stop()` | — | Flushes tasks until empty (they run to completion) |
+| `.Stop()` | — | Cancels running tasks on the next pass; queued tasks stay queued |
 | `.WaitForTasksDone(timeout)` | — | Blocks until all tasks complete (with optional timeout) |
 | `TaskContract.Yield.It` | `Svelto.Tasks` | Yield one tick to the runner |
 
@@ -56,18 +56,19 @@ A game runs tasks on a `MultiThreadRunner`. When the pause menu opens, all task 
 |-----------|---------------|------------|---------------------|-----------------|
 | `Pause()` | No (frozen) | **Preserved** | Yes | Yes (after `Resume()`) |
 | `Resume()` | Yes | — | Yes | Yes |
-| `Stop()` | Flushes in-flight | **Drained** | Yes (queued, not processed) | Yes |
+| `Stop()` | Running: cancelled next pass | Running: disposed; queued: kept | Yes (queued, not processed) | Yes (auto-unstops) |
+| `Flush()` | Disposes running + queued | **Cleared** | Throws until reset completes | Yes |
 | `Dispose()` | Disposes all | **Destroyed** | Throws | No (dead) |
 
 **Pause = freeze.** Tasks stay in the queue with their state intact. When you resume, they pick up exactly where they paused.
 
-**Stop = flush.** Tasks are flushed — they run to completion (or stop naturally). The queue drains. Ever-looping tasks are forced to stop and terminate.
+**Stop = cancel in-flight work.** On the next processing pass the running tasks are stopped and disposed; the queue is *not* drained — queued tasks simply wait, and the runner automatically unstops so they run afterwards. If you want to wait for work to finish naturally, use `WaitForTasksDone(timeout)` instead.
 
 ## Gotchas
 
 - `Pause()` is **thread-safe** — you can call it from any thread. The runner uses a lock-free spin mechanism (`_quickThreadSpinning`) for reactive pause/resume.
 - After `Pause()`, the background thread doesn't die — it enters a low-CPU spin/wait state, ready to resume instantly.
-- `Pause()` does NOT dispose tasks. `Dispose()` does. If you want to restart cleanly, use `Stop()` (drain) then add new tasks — or `Dispose()` and create a new runner.
+- `Pause()` does NOT dispose tasks. If you want to restart cleanly, use `Flush()` (disposes running and queued tasks, keeps the worker) then add new tasks — or `Dispose()` and create a new runner.
 - The `MultiThreadRunner` constructor starts the background thread immediately. It begins in a **paused** state internally until `UseFlowModifier` is called (which the Lean variant does in its constructor).
 - `WaitForTasksDone(timeout)` returns `true` if all tasks completed within the timeout, `false` if they're still running.
 

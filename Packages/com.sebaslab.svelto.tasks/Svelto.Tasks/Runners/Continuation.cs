@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Svelto.Tasks.Internal;
 
 namespace Svelto.Tasks.Enumerators
@@ -32,7 +33,7 @@ namespace Svelto.Tasks.Enumerators
             _ce?.ReturnToPool();
         }
         
-        readonly DateTime _signature;
+        readonly long _signature;
         readonly ContinuationEnumeratorInternal _ce;
 
 #if DEBUG && !PROFILE_SVELTO
@@ -47,13 +48,13 @@ namespace Svelto.Tasks.Enumerators
     {
         internal ContinuationEnumeratorInternal()
         {
-            signature = DateTime.UtcNow;
+            _signature = 1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsRunning(in DateTime signature)
+        public bool IsRunning(in long signature)
         {
-            return signature == this.signature;
+            return signature == Volatile.Read(ref _signature);
         }
 
         internal void ReturnToPool()
@@ -73,7 +74,9 @@ namespace Svelto.Tasks.Enumerators
 
         void Reset()
         {
-            signature = DateTime.UtcNow; //invalidate ContinuationEnumerator holding this object
+            // A clock value can repeat when an object is returned and retrieved in the same tick.
+            // A generation token must change for every return so stale continuations cannot remain live.
+            Interlocked.Increment(ref _signature);
         }
 
         ~ContinuationEnumeratorInternal()
@@ -81,6 +84,8 @@ namespace Svelto.Tasks.Enumerators
             ReturnToPool();
         }
 
-        public DateTime signature { get; private set; }
+        public long signature => Volatile.Read(ref _signature);
+
+        long _signature;
     }
 }

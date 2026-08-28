@@ -21,6 +21,12 @@ namespace Svelto.Tasks
             _returnValue.uint64 = number;
         }
 
+        public TaskContract(long number) : this()
+        {
+            _currentState      = States.value;
+            _returnValue.int64 = number;
+        }
+
         public TaskContract(float val) : this()
         {
             _currentState       = States.value;
@@ -156,7 +162,7 @@ namespace Svelto.Tasks
 
         public long ToLong()
         {
-            return (long)_returnValue.uint64;
+            return _returnValue.int64;
         }
 
         public uint ToUInt()
@@ -260,6 +266,7 @@ namespace Svelto.Tasks
             [FieldOffset(0)] internal int   int32;
             [FieldOffset(0)] internal uint  uint32;
             [FieldOffset(0)] internal ulong uint64;
+            [FieldOffset(0)] internal long  int64;
             [FieldOffset(0)] internal bool  vbool;
         }
 
@@ -285,7 +292,6 @@ namespace Svelto.Tasks
             continueIt, //immediate MoveNext without yielding
         }
         
-        // ReSharper disable once ClassNeverInstantiated.Global
         public class Yield
         {
             public static readonly Yield It = null;
@@ -309,13 +315,12 @@ namespace Svelto.Tasks
             /// </summary>
             public static readonly Break It = new Break();
             /// <summary>
-            /// Break.AndStop breaks the task and the caller tasks too (propagates the break to the caller task).
+            /// Break.AndStop breaks the task and every caller in its .Continue() chain.
             /// </summary>
             public static readonly Break AndStop = new Break();
             
             //Break.It completes only the yielding task: a Continue()-caller resumes normally.
-            //Break.AndStop ALSO completes the direct caller (one level only - a killed task cannot forward
-            //its own break, callers must re-yield AndStop to cascade further up).
+            //Break.AndStop disposes the yielding task and every .Continue()-caller up to the root.
             //Semantics pinned by TaskBreakTests and ExtraLeanEnumeratorTests.
             public bool AnyBreak => this == It || this == AndStop;
         }

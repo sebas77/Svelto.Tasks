@@ -19,6 +19,8 @@ namespace Svelto.Tasks.ExtraLean
     /// </summary>
     public sealed class MultiThreadRunnerPool : IRunner<ExtraLeanSveltoTask<IEnumerator>>, IDisposable
     {
+        private const uint NUMBER_OF_INITIAL_COROUTINE = 3;
+        
         public int numberOfRunners => _runners.Length;
         public bool isDisposed => Volatile.Read(ref _disposed) == 1;
         public bool isStarted
@@ -35,7 +37,7 @@ namespace Svelto.Tasks.ExtraLean
             }
         }
 
-        public MultiThreadRunnerPool(string name, int threadCount)
+        public MultiThreadRunnerPool(string name, int threadCount, uint initialNumberOfTasks = NUMBER_OF_INITIAL_COROUTINE )
         {
             if (threadCount <= 0)
                 throw new MultiThreadRunnerPoolException("threadCount must be greater than zero");
@@ -43,13 +45,13 @@ namespace Svelto.Tasks.ExtraLean
             _runners = new MultiThreadRunner[threadCount];
             for (int i = 0; i < threadCount; i++)
             {
-                _runners[i] = new MultiThreadRunner(name + " #" + i, false, true);
+                _runners[i] = new MultiThreadRunner(name + " #" + i, false, false, initialNumberOfTasks);
                 _runners[i].Resume();
             }
         }
 
-        public MultiThreadRunnerPool(string name)
-            : this(name, Math.Max(1, Environment.ProcessorCount - 2))
+        public MultiThreadRunnerPool(string name, uint initialNumberOfTasks = NUMBER_OF_INITIAL_COROUTINE)
+            : this(name, Math.Max(1, Environment.ProcessorCount - 2), initialNumberOfTasks)
         {
         }
 

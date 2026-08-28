@@ -18,7 +18,7 @@ Each example targets `net8.0` (rolls forward to newer SDKs if 8 isn't installed)
 | 1 | [`01_GameLoop`](01_GameLoop/README.md) | Lean Task + SteppableRunner | Tick a runner from a game loop; task yields each frame |
 | 2 | [`02_SimpleCoroutine`](02_SimpleCoroutine/README.md) | ExtraLean Task | Minimal-overhead countdown coroutine |
 | 3 | [`03_LoadingPipeline`](03_LoadingPipeline/README.md) | TaskContract return values | Child returns parsed config to parent |
-| 4 | [`04_ContinueChildTask`](04_ContinueChildTask/README.md) | Continue() | Parent delegates to child on same runner, waits |
+| 4 | [`04_PreallocatedRunner`](04_PreallocatedRunner/README.md) | Runner capacity preallocation | Size runner containers upfront; generic struct-task path for zero-allocation steady-state waves |
 | 5 | [`05_BackgroundComputation`](05_BackgroundComputation/README.md) | RunOn() + Continuation | Heavy math on background thread, poll from main |
 | 6 | [`06_FireAndForgetLogging`](06_FireAndForgetLogging/README.md) | Forget() | Kick off telemetry task, don't wait |
 | 7 | [`07_ReusableSpawnLoop`](07_ReusableSpawnLoop/README.md) | Break.It + pooling | Reusable spawn loop via `while(true) + Break.It` |

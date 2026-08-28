@@ -23,6 +23,17 @@ namespace Svelto.Tasks.Tests
             Assert.That(contract.ToUlong(), Is.EqualTo(1234567890123456789UL));
         }
 
+        [TestCase(0L)]
+        [TestCase(1234567890123456789L)]
+        [TestCase(-1234567890123456789L)]
+        [TestCase(long.MinValue)]
+        [TestCase(long.MaxValue)]
+        public void TaskContract_Long_ImplicitConversionRoundTrips(long value)
+        {
+            TaskContract contract = value;
+            Assert.That(contract.ToLong(), Is.EqualTo(value));
+        }
+
         [Test]
         public void TaskContract_Float_StoresAndRetrievesValue()
         {

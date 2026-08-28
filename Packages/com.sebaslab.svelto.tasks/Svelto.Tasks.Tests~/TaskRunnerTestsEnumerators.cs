@@ -26,6 +26,24 @@ namespace Svelto.Tasks.Tests
             LocalSyncRunners.Reset();
         }
 
+        [TestCase(CompletionMode.Natural)]
+        [TestCase(CompletionMode.Break)]
+        [TestCase(CompletionMode.BreakAndStop)]
+        [TestCase(CompletionMode.Value)]
+        public void LeanTask_CompletionDisposesEnumeratorExactlyOnce(CompletionMode completionMode)
+        {
+            using (var runner = new SteppableRunner("SingleDisposeTest"))
+            {
+                var task = new CountingDisposableEnumerator(completionMode);
+
+                task.RunOn(runner);
+                runner.Step();
+
+                Assert.That(task.disposeCount, Is.EqualTo(1));
+                Assert.That(runner.hasTasks, Is.False);
+            }
+        }
+
 #if PROFILE_SVELTO        
         [Test]
         public void TestPooledTaskMemoryUsage()
@@ -526,7 +544,8 @@ namespace Svelto.Tasks.Tests
         }
 
         /// <summary>
-        /// very naive implementation, it's boxing and allocation madness. Just for testing purposes
+        /// Deliberately allocation-heavy implementation: it repeatedly creates compiler-generated
+        /// iterator objects. Primitive TaskContract results themselves are stored inline.
         /// </summary>
         /// <param name="callback"></param>
         /// <returns></returns>
@@ -542,14 +561,15 @@ namespace Svelto.Tasks.Tests
                 yield return enumerator.Continue(); //yield until is done 
                 enumerator = SubEnumerator((int)enumerator.Current.ToInt(), 10); //naive enumerator! it allocates
                 yield return enumerator.Continue(); //yield until is done 
-                i = (int)enumerator.Current.ToInt(); //careful it will be unboxed
+                i = enumerator.Current.ToInt(); //extract the inline int value from TaskContract
             }
 
             callback(i);
         }
 
         /// <summary>
-        /// very naive implementation, it's boxing and allocation madness. Just for testing purposes
+        /// deliberately allocation-heavy implementation: it repeatedly creates compiler-generated
+        /// iterator objects. Primitive TaskContract results themselves are stored inline. Just for testing purposes
         /// this give a first glimpse to the powerful concept of Svelto Tasks continuation (running
         /// tasks on other runners and white their completion on the current runner)
         /// </summary>
@@ -588,7 +608,7 @@ namespace Svelto.Tasks.Tests
                 yield return TaskContract.Yield.It; //enable asynchronous execution
             } while (++i < count);
 
-            yield return i; //careful it will be boxed;
+            yield return i; //stored inline in TaskContract; retrieve with ToInt()
         }
 
         [Test]
@@ -744,6 +764,53 @@ namespace Svelto.Tasks.Tests
             public void Dispose() { disposed = true; }
             public volatile bool disposed = false;
             int count = 0;
+        }
+
+        public enum CompletionMode
+        {
+            Natural,
+            Break,
+            BreakAndStop,
+            Value
+        }
+
+        sealed class CountingDisposableEnumerator : IEnumerator<TaskContract>
+        {
+            internal CountingDisposableEnumerator(CompletionMode completionMode)
+            {
+                _completionMode = completionMode;
+            }
+
+            public TaskContract Current
+            {
+                get
+                {
+                    switch (_completionMode)
+                    {
+                        case CompletionMode.Break: return TaskContract.Break.It;
+                        case CompletionMode.BreakAndStop: return TaskContract.Break.AndStop;
+                        case CompletionMode.Value: return 1;
+                        default: return TaskContract.Yield.It;
+                    }
+                }
+            }
+
+            object IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                return _completionMode != CompletionMode.Natural;
+            }
+
+            public void Reset() { }
+
+            public void Dispose()
+            {
+                disposeCount++;
+            }
+
+            internal int disposeCount;
+            readonly CompletionMode _completionMode;
         }
 
         [TearDown]

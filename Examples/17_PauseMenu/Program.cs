@@ -86,8 +86,8 @@ class Program
         Console.WriteLine("  ╚═══════════════════════════════════════════════════════════╝");
         Console.WriteLine();
         Console.WriteLine("  Pause = freeze task states (they stay in the queue).");
-        Console.WriteLine("  Stop  = flush tasks until empty (they run to completion).");
-        Console.WriteLine("  The difference: pause keeps state, stop drains it.");
+        Console.WriteLine("  Stop  = cancel in-flight tasks; queued ones run after auto-unstop.");
+        Console.WriteLine("  The difference: pause keeps state, stop abandons the current pass.");
         Console.WriteLine();
 
         try { Console.CursorVisible = true; } catch {}

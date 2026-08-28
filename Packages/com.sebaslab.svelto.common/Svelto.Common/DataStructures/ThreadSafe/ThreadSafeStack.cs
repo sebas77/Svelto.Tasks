@@ -1,92 +1,68 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Svelto.DataStructures
 {
     public class ThreadSafeStack<T>
     {
-        public ThreadSafeValues GetValues => new ThreadSafeValues(_lockQ, _stack);
+        public ThreadSafeValues GetValues => new ThreadSafeValues(_syncRoot, _stack);
 
         public void Push(in T value)
         {
-            _lockQ.EnterWriteLock();
-            try
+            lock (_syncRoot)
             {
                 _stack.Push(value);
-            }
-            finally
-            {
-                _lockQ.ExitWriteLock();
             }
         }
 
         public bool TryPop(out T value)
         {
-            _lockQ.EnterUpgradableReadLock();
-            try
+            lock (_syncRoot)
             {
                 if (_stack.Count > 0)
                 {
-                    _lockQ.EnterWriteLock();
-                    try
-                    {
-                        value = _stack.Pop();
-                    }
-                    finally
-                    {
-                        _lockQ.ExitWriteLock();
-                    }
-                    
+                    value = _stack.Pop();
                     return true;
                 }
 
                 value = default(T);
-                
                 return false;
             }
-            finally
-            {
-                _lockQ.ExitUpgradableReadLock();
-            }
         }
-        
+
         public uint count
         {
             get
             {
-                _lockQ.EnterReadLock();
-                try
+                lock (_syncRoot)
                 {
                     return (uint) _stack.Count;
-                }
-                finally
-                {
-                    _lockQ.ExitReadLock();
                 }
             }
         }
 
-        readonly Stack<T>      _stack;
-        ReaderWriterLockSlimEx _lockQ;
+        readonly Stack<T>   _stack;
+        readonly object     _syncRoot;
 
         public ThreadSafeStack()
         {
-            _stack = new Stack<T>();
-            _lockQ = ReaderWriterLockSlimEx.Create();
+            _stack    = new Stack<T>();
+            _syncRoot = new object();
         }
 
         public struct ThreadSafeValues: IDisposable
         {
-            ReaderWriterLockSlimEx _lockQ;
-            readonly Stack<T>      _stack;
+            object          _syncRoot;
+            readonly Stack<T> _stack;
 
-            public ThreadSafeValues(ReaderWriterLockSlimEx lockQ,
+            public ThreadSafeValues(object syncRoot,
                 Stack<T> stack):this()
             {
-                lockQ.EnterReadLock();
-                _lockQ = lockQ;
-                _stack = stack;
+                Monitor.Enter(syncRoot);
+                _syncRoot = syncRoot;
+                _stack    = stack;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -94,7 +70,7 @@ namespace Svelto.DataStructures
 
             public void Dispose()
             {
-                _lockQ.ExitReadLock();
+                Monitor.Exit(_syncRoot);
             }
         }
     }

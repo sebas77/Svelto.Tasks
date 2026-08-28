@@ -62,9 +62,9 @@ namespace LoadingPipeline
                     DrawProgress(0, status);
 
                     var child = DownloadAndParse();
-                    yield return child.Continue();
+                    yield return child.Continue(); // parent waits for child to finish
 
-                    var cfg = child.Current.ToRef<GameConfig>();
+                    var cfg = child.Current.ToRef<GameConfig>(); // parent reads the GameConfig returned by child
                     status = "done";
                     DrawResult(cfg);
                 }

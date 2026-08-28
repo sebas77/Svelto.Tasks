@@ -21,6 +21,7 @@ namespace Svelto.Tasks
         Running = 1 << 0,
         Completed = 1 << 1,
         Faulted = 1 << 2,
+        StopParentChain = 1 << 3,
     }
 }
 

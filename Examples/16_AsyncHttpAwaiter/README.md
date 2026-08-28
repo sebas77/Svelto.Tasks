@@ -38,10 +38,10 @@ Task.Delay(800).RunOn(runner)
 ```
 
 1. `SimulateHttpRequest()` runs synchronously until the first `await`.
-2. `Task.Delay(800).RunOn(runner)` creates a `TaskRunnerAwaiter`.
-3. The awaiter's `UnsafeOnCompleted` grabs a pooled `ContinuationEnumerator`, sets the async continuation on it, and registers it on the runner.
-4. Each `runner.Step()` runs the continuation enumerator, which polls `Task.IsCompleted`.
-5. After 800ms, `Task.Delay` completes. The next `Step()` continues the async method, which returns the response body — completing the returned `Task<string>`.
+2. `Task.Delay(800).RunOn(runner)` creates a `TaskRunnerAwaiter` wrapping the real `TaskAwaiter`.
+3. Because the task is not complete yet, `UnsafeOnCompleted` registers the hook on the `Task` itself — nothing runs on the runner yet.
+4. The runner keeps stepping freely while `Task.Delay` ticks on the ThreadPool.
+5. When the delay completes, the hook posts the async continuation onto the runner; the next `Step()` resumes the async method, which returns the response body — completing the returned `Task<string>`.
 6. The main loop polls `task.IsCompleted`, so it exits as soon as the `Task` completes, having visibly stepped the runner N times.
 
 ## Key Concepts
@@ -56,7 +56,7 @@ Task.Delay(800).RunOn(runner)
 
 ## Gotchas
 
-- **If the runner is stopped, queued continuations do NOT execute.** `Task.IsCompleted` stays `false`. The awaiter posts continuations *onto the runner* — if the runner isn't stepping, the continuation never runs.
+- **If the runner is killed before the awaited task completes, the continuation is deliberately never run.** `Task.IsCompleted` stays `false`: the delayed enqueue checks `runner.isValid` and skips instead of posting to a dead runner. (A merely stopped-but-reusable runner queues the continuation and runs it on the next tick.)
 - The runner holds no strong reference to itself outside your code — always store the runner reference and `Dispose()` it.
 - `Task.Delay` itself runs on the ThreadPool. Only the *continuation* (code after `await`) runs on the Svelto runner.
 - The `ContinuationEnumerator` is pooled — it's recycled after use via `ContinuationEnumeratorPool`.

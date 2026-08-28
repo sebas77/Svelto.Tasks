@@ -85,10 +85,10 @@ class Program
         Console.WriteLine("  ┌─ How it worked ────────────────────────────────────────────┐");
         Console.WriteLine("  │ 1. SimulateHttpRequest() runs until the first await        │");
         Console.WriteLine("  │ 2. Task.Delay(800).RunOn(runner) creates a TaskRunnerAwaiter│");
-        Console.WriteLine("  │ 3. The awaiter posts the async continuation to the runner   │");
-        Console.WriteLine("  │ 4. Each Step() runs the continuation → polls Task.IsComplete│");
-        Console.WriteLine("  │ 5. After 800ms Task.Delay completes → next Step continues   │");
-        Console.WriteLine("  │ 6. The async method returns the body → task completes      │");
+        Console.WriteLine("  │ 3. The awaiter registers the continuation on the .NET Task  │");
+        Console.WriteLine("  │ 4. Each Step() ticks freely while the delay runs elsewhere  │");
+        Console.WriteLine("  │ 5. On completion the Task posts the continuation back here  │");
+        Console.WriteLine("  │ 6. The next Step() resumes the async method → task completes│");
         Console.WriteLine("  └────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
         Console.WriteLine("  Key: .RunOn(runner) on a Task returns a TaskRunnerAwaiter that");

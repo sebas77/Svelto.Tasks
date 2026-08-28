@@ -128,7 +128,7 @@ namespace Svelto.Tasks.Lean
                     }
                     catch (Exception e)
                     {
-                        Console.LogException(e);
+                        TaskExceptionStrategy.HandleException(e);
                     }
                     finally
                     {

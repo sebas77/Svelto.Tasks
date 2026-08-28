@@ -48,18 +48,17 @@ drawn showing the parsed config contents.
 | Type / API | Purpose |
 |---|---|
 | `IEnumerator<TaskContract>` | Lean task shape. |
-| `yield return <int/float/...>` | Return a primitive value (boxed into `TaskContract` via implicit operator). |
+| `yield return <int/float/...>` | Return a supported primitive through a typed implicit conversion; it is stored inline in `TaskContract` without boxing. |
 | `yield return <string>` / `TaskContract.FromReference(obj)` | Return a reference value. |
 | `child.Continue()` | Run `child` on the same runner; parent waits. |
-| `child.Current.ToInt()` | Unbox a returned `int` from the child's last `Current`. |
+| `child.Current.ToInt()` | Extract a returned inline `int` from the child's last `Current`. |
 | `child.Current.ToRef<T>()` | Retrieve a returned reference as type `T`. |
 
 ## Gotchas
 
-- **`yield return i` boxes the int** into a `TaskContract` (the implicit
-  `operator TaskContract(int)` runs). You **must** use `.ToInt()` to read it
-  back — `.ToRef<int>()` returns `null` because the int is stored in the value
-  union, not the reference field.
+- **`yield return i` does not box the int:** `operator TaskContract(int)` stores it in
+  the inline value union. Use `.ToInt()` to read it back. `.ToRef<T>()` is constrained
+  to reference types, so `.ToRef<int>()` does not compile.
 - `.Continue()` runs the child on the **same** runner as the parent. Use
   `.RunOn(otherRunner)` only when you want the child on a *different* runner (then
   the parent yields the returned `Continuation`).

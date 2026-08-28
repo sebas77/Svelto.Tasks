@@ -6,20 +6,12 @@ using Svelto.DataStructures;
 namespace Svelto.Tasks
 {
     /// <summary>
-    /// Todo: this cannot be used at the moment because TaskCollection can handle only T parameters, that
-    /// are specific type of IEnumerator<TaskContract>. This means that it cannot push on the stack a normal
-    /// IEnumerator, that is a necessary option in case an IEnumerator<TaskContract> returns an IEnumerator
-    /// This is solved differently in the runners, because TaskContract can hold both kind of IEnumerators.
-    /// Of course IEnumerators can be returned only by Iterator blocks that are also IEnumerators so the problem
-    /// could be solved if we decide
+    /// Proposal 002-TaskCollection-IEnumerator-support to complete the support of IEnumerator in the TaskCollection. This is a more generic approach
+    /// to support any kind of enumerator, not just IEnumerator<TaskContract>.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public interface ITaskCollection<T> : IEnumerator<TaskContract>
-        where T : IEnumerator
-    {
-    }
 
-    public abstract partial class TaskCollection<T>:ITaskCollection<T>
+    public abstract partial class TaskCollection<T>: IEnumerator<TaskContract>
        where T:IEnumerator<TaskContract> //eventually this could go back to IEnumerator if makes sense
     {
         public event Func<Exception, bool> onException;
@@ -47,6 +39,14 @@ namespace Svelto.Tasks
 
         public bool MoveNext()
         {
+            //a hard-stopped collection stays completed until Reset()/Clear(): remaining roots are cancelled
+            if (_stopped)
+            {
+                isRunning = false;
+                return false;
+            }
+
+            _hasOverrideCurrent = false;
             isRunning = true;
 
             try
@@ -68,10 +68,28 @@ namespace Svelto.Tasks
 
                 throw;
             }
-            
+
+            //Break.AndStop: yield the stop signal once, so a runner wrapper converts it to
+            //StepState.StopParentChain and disposes the whole .Continue() chain waiting on this collection
+            if (_chainStopped)
+            {
+                _chainStopped       = false;
+                _overrideCurrent    = TaskContract.Break.AndStop;
+                _hasOverrideCurrent = true;
+
+                return true;
+            }
+
             isRunning = false;
 
             return false;
+        }
+
+        protected void StopChain()
+        {
+            //unwind: everything still queued is cancelled, the collection yields Break.AndStop once
+            _chainStopped = true;
+            _stopped      = true;
         }
 
         public void Add(in T enumerator)
@@ -103,11 +121,12 @@ namespace Svelto.Tasks
         public virtual void Reset()
         {
             isRunning = false;
-            
+
             var count = _listOfStacks.count;
             for (int index = 0; index < count; ++index)
             {
                 var stack = _listOfStacks[index];
+                //trimmed children are disposed by Pop() itself; roots are kept for reuse
                 while (stack.count > 1) stack.Pop();
                 try
                 {
@@ -119,6 +138,7 @@ namespace Svelto.Tasks
                 }
             }
 
+            ResetRunState();
             _currentStackIndex = 0;
         }
         
@@ -135,6 +155,7 @@ namespace Svelto.Tasks
             
             _listOfStacks.Clear();
          
+            ResetRunState();
             _currentStackIndex = 0;
         }
 
@@ -144,6 +165,9 @@ namespace Svelto.Tasks
         {
             get
             {
+                if (_hasOverrideCurrent)
+                    return _overrideCurrent;
+
                 if (_listOfStacks.count > 0)
                     return CurrentStack.Current;
                 
@@ -158,6 +182,12 @@ namespace Svelto.Tasks
             //“Which individual stack am I executing right now?”
             _currentStackIndex = currentindex;
             StructFriendlyStack[] arrayOfTasks = rawListOfStacks;
+
+            //a pending ExtraLean child owns this stack until it completes: the parent must not be advanced
+            //while the child runs. The runner wrapper does the same, keeping the child inside its state.
+            if (_pendingExtraEnumerator != null)
+                return StepPendingExtraEnumerator();
+
             //it's the responsibility of the caller method to pop this enumerator from the stack, here we just execute
             ref var enumerator = ref arrayOfTasks[_currentStackIndex].Peek();
 
@@ -174,12 +204,26 @@ namespace Svelto.Tasks
                 if (contract.yieldIt)
                     return TaskState.yieldIt;
 
-                //can be a Svelto.Tasks Break
-                if (contract.breakMode == TaskContract.Break.It || contract.breakMode == TaskContract.Break.AndStop)
+                //a returned value completes this enumerator, exactly like a value-yield completes a Lean task
+                if (contract.hasValue)
+                    return TaskState.doneIt;
+
+                //Break.AndStop is a hard stop: unwind the collection, MoveNext will yield StopParentChain
+                if (contract.breakMode == TaskContract.Break.AndStop)
                     return TaskState.breakIt;
+
+                //Break.It ends only THIS enumerator (aligned with runner semantics): nested, the caller pops it
+                //and the parent resumes; at root level, only this root task is done and the collection continues
+                if (contract.breakMode == TaskContract.Break.It)
+                    return TaskState.doneIt;
 
                 if (contract.isTaskEnumerator(out var t))
                 {
+                    if (t.isFireAndForget == true)
+                        throw new SveltoTaskException(
+                            $"{nameof(TaskCollection<T>)} cannot support .Forget(): a collection can only run " +
+                            $"what it waits for, it cannot schedule independent tasks like a runner does");
+
                     if (t.enumerator is T casted)
                     {
                         arrayOfTasks[_currentStackIndex].Push(casted);
@@ -191,33 +235,90 @@ namespace Svelto.Tasks
                 
                 if (contract.isExtraLeanEnumerator(out IEnumerator extraEnum))
                 {
-                    return StepExtraEnumerator(extraEnum);
+                    //retain the child across ticks and step it immediately, like the runner wrapper does
+                    _pendingExtraEnumerator = extraEnum;
+                    return StepPendingExtraEnumerator();
                 }
             }
 
             return TaskState.continueIt;
         }
-        
-        TaskState StepExtraEnumerator(IEnumerator extraEnumerator)
+
+        TaskState StepPendingExtraEnumerator()
         {
-            // run one step
-            if (extraEnumerator.MoveNext() == false)
-                return TaskState.continueIt;          // child finished, keep running parent
+            //run one step of the pending child, never of the parent
+            try
+            {
+                if (_pendingExtraEnumerator.MoveNext() == false)
+                {
+                    //child finished naturally: dispose it (like the runner does) and let the parent resume
+                    ClearPendingExtraEnumerator(dispose: true);
+                    return TaskState.continueIt;
+                }
 
-            // interpret the value it yielded (can be null or TaskContract)
+                var current = _pendingExtraEnumerator.Current;
 
-            if (extraEnumerator.Current is not TaskContract yielded || yielded.yieldIt)
-                return TaskState.yieldIt;             // wait until next frame
+                if (current == null)
+                    return TaskState.yieldIt; //wait until next tick
 
-            if (yielded.breakMode == TaskContract.Break.AndStop)
-                return TaskState.breakIt;             // propagate hard break
+                if (current is TaskContract yielded)
+                {
+                    if (yielded.yieldIt)
+                        return TaskState.yieldIt;
 
-            if (yielded.breakMode == TaskContract.Break.It)
-                return TaskState.continueIt;          // soft break – resume parent next loop
+                    if (yielded.breakMode == TaskContract.Break.AndStop)
+                    {
+                        //hard stop: the state machine stays alive (no dispose), the collection unwinds
+                        ClearPendingExtraEnumerator(dispose: false);
+                        return TaskState.breakIt;
+                    }
 
-            // Anything else is illegal for a plain IEnumerator
-            throw new SveltoTaskException(
-                $"Extra-lean enumerator {extraEnumerator} can only yield null, Yield.It, Break.It or Break.AndStop");
+                    if (yielded.breakMode == TaskContract.Break.It)
+                    {
+                        //soft break: keep the child's state machine alive for reuse (no dispose), resume the parent
+                        ClearPendingExtraEnumerator(dispose: false);
+                        return TaskState.continueIt;
+                    }
+
+                    throw new SveltoTaskException(
+                        $"ExtraLean enumerator {_pendingExtraEnumerator} can only yield null, Yield.It, Break.It or Break.AndStop");
+                }
+
+                throw new SveltoTaskException(
+                    $"ExtraLean enumerator {_pendingExtraEnumerator} can only yield null, Yield.It, Break.It or Break.AndStop");
+            }
+            catch (Exception e)
+            {
+                Console.LogException(e);
+
+                throw;
+            }
+        }
+
+        void ClearPendingExtraEnumerator(bool dispose)
+        {
+            var extraEnumerator = _pendingExtraEnumerator;
+            _pendingExtraEnumerator = null;
+
+            if (dispose && extraEnumerator is IDisposable disposable)
+            {
+                try
+                {
+                    disposable.Dispose();
+                }
+                catch (Exception e)
+                {
+                    Console.LogException(e);
+                }
+            }
+        }
+
+        void ResetRunState()
+        {
+            ClearPendingExtraEnumerator(dispose: true);
+            _chainStopped       = false;
+            _stopped            = false;
+            _hasOverrideCurrent = false;
         }
 
         public override string ToString()
@@ -236,6 +337,14 @@ namespace Svelto.Tasks
         int                                      _currentStackIndex;
         readonly FasterList<StructFriendlyStack> _listOfStacks;
         string                                   _name;
+
+        //ExtraLean child currently owned by the top stack: stepped instead of the parent until it completes
+        IEnumerator _pendingExtraEnumerator;
+        //Break.AndStop bookkeeping: the collection yields Break.AndStop once, then stays stopped until Reset/Clear
+        bool         _chainStopped;
+        bool         _stopped;
+        TaskContract _overrideCurrent;
+        bool         _hasOverrideCurrent;
 
         const int _INITIAL_STACK_SIZE = 1;
         

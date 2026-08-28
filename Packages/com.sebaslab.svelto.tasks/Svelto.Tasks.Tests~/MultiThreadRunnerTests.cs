@@ -271,6 +271,25 @@ namespace Svelto.Tasks.Tests
         }
 
         [Test]
+        public void MultiThreadRunner_WaitForTasksDone_DoesNotReturnDuringQueueToRunningTransfer()
+        {
+            var disposableTask = new DisposableEnumerator(1);
+
+            using (var runner = new Lean.MultiThreadRunner("MT_QueueToRunningTransfer", initialNumberOfTasks: 1))
+            {
+                for (int iteration = 0; iteration < 10000; iteration++)
+                {
+                    disposableTask.Reset();
+                    disposableTask.RunOn(runner);
+
+                    Assert.That(runner.WaitForTasksDone(), Is.True);
+                    Assert.That(disposableTask.disposed, Is.True,
+                        $"WaitForTasksDone returned during queue-to-running transfer at iteration {iteration}");
+                }
+            }
+        }
+
+        [Test]
         public void MultiThreadRunner_Dispose_DisposesQueuedTasks()
         {
             var disposableTask = new DisposableEnumerator();

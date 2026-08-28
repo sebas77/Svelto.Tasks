@@ -43,7 +43,7 @@ namespace Svelto.Tasks
                     {
                         case TaskState.doneIt:
                             if (listBuffer[_stackOffset].count > 1) //there is still something to do with this task
-                                listBuffer[_stackOffset].Pop(); //now it can be popped, we continue the iteration
+                                listBuffer[_stackOffset].Pop(); //Pop() disposes the completed child, the parent resumes
                             else
                             {
                                 //“Which root-task slot should I resume from on the next MoveNext()?”
@@ -54,7 +54,9 @@ namespace Svelto.Tasks
                             }
                             break;
                         case TaskState.breakIt:
-                            return true; //iteration done
+                            //Break.AndStop: cancel everything and let MoveNext yield StopParentChain
+                            StopChain();
+                            return true;
                         case TaskState.continueIt: 
                             continue; //continue with the current task 
                         case TaskState.yieldIt:

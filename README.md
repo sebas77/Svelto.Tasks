@@ -2,17 +2,17 @@
 
 ## Introduction
 
-*Svelto.Tasks* is the platform agnostic C# library that runs serial and parallel coroutines, even on other threads. It has been the quiet library behind many of my games for years, shipping in real products (*Robocraft*, *Cardlife*), yet it never got the attention it deserved. With the version **2.0** finished a long time ago, I decided to get help from AI to organize a proper package usable on every C# platform, and add a good test coverage plus several self-contained console examples. 
+*Svelto.Tasks* is the platform-agnostic C# library that runs serial and parallel coroutines, even on other threads. It has been the quiet library behind many of my games for years, shipping in real products (*Robocraft*, *Cardlife*), yet it never got the attention it deserved. For version **2.0**, I decided to get help from AI to organize a proper package usable on every C# platform, add good test coverage, and provide several self-contained console examples.
 
-The API has settled through years of production use, the AI made test suite covers the core semantics properly, but I obviously cannot promise there are no bugs left. Two areas are explicitly **experimental**: the .NET `Tasks` integration (`SveltoAwaiter` and the new `TaskSynchronizationContext`) and the Burst-oriented job path when used inside *Unity*. They work, the examples demonstrate them, but consider their APIs more fluid than the rest.
+The API has settled through years of production use, and the AI-made test suite covers the core semantics properly, but I obviously cannot promise there are no bugs left. Two areas are explicitly **experimental**: the .NET `Tasks` integration (`SveltoAwaiter` and the new `TaskSynchronizationContext`) and the Burst-oriented job path when used inside *Unity*. They work, the examples demonstrate them, but consider their APIs more fluid than the rest.
 
-One important thing to understand from the start: the core of Svelto.Tasks has no dependency on any engine. If you can compile C#, you can run Svelto.Tasks. The few Unity specializations (yield-instruction interop and the Unity-dedicated schedulers) live behind compiler defines and are strictly optional add-ons to an otherwise engine-agnostic core.
+Svelto.Tasks has no dependency on any engine. If you can compile C#, you can run Svelto.Tasks. The few Unity specializations (yield-instruction interop and the Unity-dedicated schedulers) live behind compiler defines and are strictly optional add-ons to an otherwise engine-agnostic core.
 
-## Why I keep coming back to Svelto.Tasks from .net Tasks
+## Why I keep coming back to Svelto.Tasks from .NET Tasks
 
-.Net tasks has not been designed for games and especially two problems make me come back to Svelto.Tasks: being able to **profile** the tasks and being sure that tasks are **stopped** when I need to. When I leave a match and go back to the main menu, I want to be sure that every task belonging to that match is stopped.
+My take is that .NET Tasks were (obviously) not designed for games, and two problems especially make me come back to Svelto.Tasks: being able to **profile** tasks and being sure they are **stopped** when I need them to be. For example: when I leave a match and go back to the main menu, I want to be sure that every task belonging to that match is stopped.
 
-That is where I find the `CancellationToken` pattern awkward and impractical: tokens must be created, passed down through every layer, checked at every step and remembered at every spawn site, and one forgotten call quietly leaves an orphan behind. A runner inverts the responsibility: tasks belong to their context, so stopping the context stops everything, all at once, by construction. `Pause()`, `Stop()` and `Dispose()` give me the certainty that cancellation tokens never could.
+That is where I find the `CancellationToken` pattern awkward and impractical: tokens must be created, passed down through every layer, checked at every step, and remembered at every spawn site. One forgotten call quietly leaves an orphan behind. A runner inverts the responsibility: tasks belong to their context, so stopping the context stops everything, all at once, by construction. `Pause()`, `Stop()` and `Dispose()` give me the certainty that cancellation tokens never could.
 
 ## The mental model: tasks are iterators, runners are schedulers
 
@@ -26,7 +26,7 @@ IEnumerator&lt;TaskContract&gt; FrameCounterTask() //this is the iterator block
     for (int i = 1; i &lt;= 10; i++)
     {
         frameCount = i;
-        yield return TaskContract.Yield.It; //suspend until the next runner.Step()
+        yield return TaskContract.Yield.It; //this doesn't handle the continuator to the context, but suspend the task until the next runner.Step()
     }
 }
 
@@ -39,11 +39,11 @@ using (var runner = new SteppableRunner("GameLoopRunner")) //this is the runner!
 }
 </pre>
 
-The user can decide when to step any SteppableRunner, while Multithreaded Runners handle the ticking themselves.
+You can decide when to step any `SteppableRunner`, while `MultiThreadRunner`s handle the ticking themselves.
 
 ## How is this different from the Task pattern?
 
-Before comparing them, one fact makes everything simpler: `async` methods and iterator blocks are both compiled into a **state machine**. The compiler chops your method into chunks around every `await` or `yield` and stores the chunk-to-execute-next in an object. That stored *"what runs after the pause"* is called the **continuation**. Both worlds use continuations, then. The whole difference is about **who holds the continuation, and who decides when, where and if it ever runs**:
+Before comparing them, one fact makes everything simpler: `async` methods and iterator blocks are both compiled into a **state machine**. The compiler chops your method into chunks around every `await` or `yield` and stores the chunk-to-execute-next in an object. That stored *"what runs after the pause"* is called the **continuation**. Both worlds use continuations, with a big difference: co-routines cannot yield to other coroutine out of the box. Svelto.Tasks introduces an API to let coroutine run exactly like .Net tasks.
 
 ```text
 THE TASK PATTERN - your code is PUSHED forward by the runtime
@@ -67,7 +67,7 @@ THE TASK PATTERN - your code is PUSHED forward by the runtime
   for every other `await` in the method
 
   NOTE: can you choose WHERE the code resumes? Not by
-  default: it lands on the ThreadPool, however in .net 
+  default: it lands on the ThreadPool. However, in .NET
   two levers exist:
   - a CUSTOM AWAITER receives the continuation at every
     await and can resume it wherever IT wants
@@ -75,7 +75,7 @@ THE TASK PATTERN - your code is PUSHED forward by the runtime
     every default await of the method
 ```
 
-In .net, once the method started, your hands are off. The continuation travels with the awaited operation and comes back to life on a thread, at a moment, chosen by the infrastructure.
+In .NET, once the method starts, your hands are off. The continuation travels with the awaited operation and comes back to life on a thread, at a moment, chosen by the infrastructure.
 
 ```text
 THE SVELTO.TASKS PATTERN - your code is PULLED forward by your runner
@@ -106,11 +106,9 @@ THE SVELTO.TASKS PATTERN - your code is PULLED forward by your runner
   the runner passed to RunOn()
 ```
 
-Here the continuation never goes anywhere: it belongs to the task, and the task belongs to your runner. Since stepping always originates from your own `Step()` call, svelto tasks can only ever execute on the thread that owns the runner. Stop stepping, or `Dispose()` the runner, and every continuation out there is simply frozen forever. And because the runner inspects each yield before acting on it, these runners can also implement pacing strategies like **StaggeredFlow** or **TimeBoundFlow** to run tasks according to predefined rules.
-
 ## Ticking or handing over?
 
-.Net tasks hands a continuation over to another thread once the previous slice is done, Svelto.Tasks runs the next slice on the next tick:
+.NET Tasks hand a continuation over to another thread once the previous slice is done; Svelto.Tasks runs the next slice on the next tick:
 
 |                          | **hand-over (`async`/`await`) — push**  | **ticking (iterators + runners) — pull**       |
 |--------------------------|-----------------------------------------|------------------------------------------------|
@@ -147,20 +145,20 @@ PopupResult choice = await ShowPopup(cfg); //the rest of the method IS the conti
 ApplyChoice(choice);
 </pre>
 
-When an async sequence needs to run in a linear fashion, both Svelto.Tasks and .Net Tasks make sense to use, with the difference that Svelto.Tasks has been designed around game architecture needs.
+When an async sequence needs to run in a linear fashion, both Svelto.Tasks and .NET Tasks make sense, with the difference that Svelto.Tasks has been designed around game architecture needs.
 
-## Plain Tasks are fine for services
+## .Net Tasks are fine for services
 
-Tasks are still fine to use for service layer async coroutines: HTTP requests, telemetry, cloud saves, asset downloads, login flows, as long as you can still control their flow.
+Tasks are still fine for service-layer async operations: HTTP requests, telemetry, cloud saves, asset downloads, and login flows, as long as you can still control their flow.
 
 Where I would reach for Svelto.Tasks instead is whenever I want **complete control over the execution**: which context resumes the code, when it may proceed, whether it can outlive its context, how much of it runs per tick. The moment a service's consumption becomes frame-sensitive — say, downloaded assets materializing progressively in the world — that control starts to matter, and runners are designed exactly for it.
 
 ## Lean or ExtraLean?
 
-Svelto.Tasks come in two weights:
+Svelto.Tasks comes in two weights:
 
-- **ExtraLean** tasks are plain `IEnumerator`s. They can only yield "wait" signals, which makes them extremely lean — ideal for the vast majority of gameplay coroutines.
-- **Lean** tasks yield the **TaskContract**, a discriminated union that can also carry return values, continuations, break directives and nested enumerators. They power composition: waiting for children, returning results, cancelling chains.
+- **ExtraLean** tasks are plain co-routines. They can only yield "wait" signals, which makes them extremely lean — ideal for the vast majority of gameplay coroutines.
+- **Lean** tasks yield the **TaskContract**, a discriminated union that can also carry return values, continuations, break directives and nested enumerators. They power the Svelto.Tasks composition logic: waiting for children, returning results, cancelling chains.
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 //ExtraLean: the whole contract is "keep me waiting"
@@ -186,12 +184,13 @@ Everything a Lean task can say to its runner passes through one type: the **Task
 IEnumerator&lt;TaskContract&gt; Vocabulary()
 {
     yield return TaskContract.Yield.It;           //suspend until the runner steps me again
-    yield return Download().Continue();           //suspend until this child task completes
+    yield return Download().Continue();           //suspend until this child task completes, immediately execute the task until the first yield
     yield return SideEffect().Forget();           //queue the child, keep going right away
     yield return TaskContract.Continue.It;        //advance again WITHIN the same runner step
     yield return 42;                              //hand a value upward, no boxing involved
     yield return TaskContract.FromReference(cfg); //hand any reference upward
     yield return TaskContract.Break.It;           //end my cycle; my iterator stays reusable
+    yield return TaskContract.Break.AndStop;      //end me AND every parent waiting on me
 }
 </pre>
 
@@ -205,18 +204,19 @@ int        answer = child.Current.ToInt();
 GameConfig cfg    = child.Current.ToRef&lt;GameConfig&gt;();
 </pre>
 
-Two TaskContract members deserve special mention because they are unique to this design. **`Continue.It`** tells the wrapper to call `MoveNext()` again immediately instead of returning to the runner: instant instructions chain within one step without paying a tick each. **`Break.It`**, instead, plays a trick on the C# language itself, and deserves its own subsection.
+Three TaskContract members are unique to this design. **`Continue.It`** tells the wrapper to call `MoveNext()` again immediately instead of waiting for the next runner step: instant instructions chain within one step without paying a tick each. **`Break.It`** and **`Break.AndStop`**, instead, play a trick on the C# language itself, and get their own subsections.
 
 ### Break.It: the state machine that refuses to die
 
-Svelto.Tasks relies on special signals to add more semantic to the state machine:
+Svelto.Tasks relies on special signals to add more semantics to the state machine:
 
-- yield return TaskContract.Yield.it (equivalent to yield return null), means return here next step
-- yield return TaskContract.Break.it (which is NOT the equivalent of yield break), means the task is now over.
+- `yield return TaskContract.Yield.It` (equivalent to `yield return null`) means return here on the next step.
+- `yield return TaskContract.Break.It` (which is NOT the equivalent of `yield break`) means the task is now over.
+- `yield return TaskContract.Break.AndStop` means the task is now over, *and* every parent waiting on it through `.Continue()` is over too.
 
-A compiler-generated iterator dies only one way: `MoveNext()` returning false, which happens at sequence end or through `yield break`. Every other yield simply parks the machine where it stands. **`Break.It`** exploits exactly this gap: the runner-side bookkeeping treats the task as completed — the task is disposed and removed from the runner — but nobody drives the state machine to exhaustion. The `finally` blocks run, the object stays alive, frozen just after its `yield return Break.It` line. Call `MoveNext()` again and it wakes up at the top of the enclosing loop, good as new.
+A compiler-generated iterator dies when `MoveNext()` returns false, which happens at sequence end or through `yield break`. Every yield instead parks the machine at that exact point. **`Break.It`** marks that point as the end of one reusable cycle: runner-side bookkeeping treats the task as completed, while the pooled state machine remains suspended just after its `yield return Break.It` line. On the next use, `MoveNext()` resumes after that yield, reaches the end of the enclosing loop, and starts its next iteration.
 
-Svelto.Tasks exploits this mechanism, through the IteratorBlockPool<T> to achieve 0 allocations at run time, as preventing the allocation of new iterator blocks the only allocations still happening in recurring tasks inside a gameplay loop.
+Svelto.Tasks exploits this mechanism through `IteratorBlockPool<T>` to achieve zero allocations at runtime, preventing new iterator blocks from becoming the only allocations left in recurring tasks inside a gameplay loop.
 The pool pairs an immortal `while(true)` machine with a plain data-holder class, and recycles both forever:
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
@@ -237,26 +237,55 @@ var (data, block) = pool.Get(); //allocates once, recycles forever after
 data.kind = "Orc";              //re-initialize the data, run again
 </pre>
 
+Reusable blocks resume; they do not restart. Put `Break.It` only at a deliberate cycle boundary inside the infinite loop, and make sure everything after it safely leads back to the top. Locals captured by the iterator survive between cycles, so reset all per-run state at the start of the loop or keep it in the pooled data object and re-initialize that object after every `Get()`. Do not retain references or resources from the previous borrower across the break. A block that reaches `yield break`, falls off the end, or is stopped before reaching its cycle boundary cannot safely be reused.
+
+### Break.AndStop: stopping the entire chain
+
+`Break.It` is polite: it stops the task that yields it and lets the parent continue as if the child had simply completed. Sometimes that is not what you want. When a deep child hits a fatal condition, you do not want every ancestor to poll a flag and unwind politely one per frame — you want the whole pipeline gone. **`Break.AndStop`** is that kill switch: the runner disposes the task that yields it together with its entire `.Continue()` ancestry, in one pass:
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+IEnumerator&lt;TaskContract&gt; LoadPipeline()
+{
+    yield return DownloadAsset().Continue(); //wait for the deep child
+    SpawnLevel();                            //never reached if the checksum fails
+}
+
+IEnumerator&lt;TaskContract&gt; DownloadAsset()
+{
+    if (ChecksumFails())
+        yield return TaskContract.Break.AndStop; //kill me, LoadPipeline and whoever waits on it
+
+    ...                                          //download, verify, hand the bytes upward
+}
+</pre>
+
+The chain is disposed, not parked: unlike `Break.It`, nothing here is meant to run again. There is one boundary to remember: `Break.AndStop` travels along `.Continue()` chains on the same runner only. A task handed to another runner with `.RunOn()` is a root on its own — `Break.AndStop` inside it cannot cross over, and the parent waiting through `RunOn` simply resumes when the child completes. The same rule holds inside task collections, which unwind themselves and propagate the stop to whoever was waiting on them.
+
 ### Errors and exceptions
 
-Exceptions deserve their own paragraph because C# forces a constraint on us: a `yield return` cannot sit inside a `try`/`catch` block (only `try`/`finally`). Fallible code must live between yields, wrapped manually. What happens to exceptions then? Three layers, from implicit to deliberate.
+Exceptions deserve their own paragraph because C# forces a constraint on us: a `yield return` cannot sit inside a `try`/`catch` block (only a `try`/`finally` block). Fallible work must live between yields, with any error stored until the iterator reaches its next yield point.
 
-If an exception escapes a task uncaught, the runner catches it, logs it through `Svelto.Console`, marks the task as faulted and removes it. Sibling tasks keep running untouched, and a caller waiting through `.Continue()` simply resumes at its next step: from the caller's perspective a faulted child looks like a completed one, so check logs or handle errors explicitly when correctness depends on it.
+If an exception escapes a task uncaught, the runner catches it, marks the task as faulted, disposes it, and keeps ticking its siblings. It reports the exception through the global **`TaskExceptionStrategy`**. By default, `LogTaskExceptionStrategy` sends it to `Svelto.Console`, but applications can replace the strategy to forward failures to their own reporting system. A caller waiting through `.Continue()` simply resumes at its next step: from the caller's perspective, a faulted child looks like a completed one.
 
-For deliberate error handling, the contract itself can carry an exception upward. Yielding one ends the task while handing the payload to whoever was waiting:
+That reporting is a deliberate plugin point, not a hard-wired behavior: implementing **`ITaskExceptionStrategy`** and assigning it to `TaskExceptionStrategy.Current` routes uncaught faults to any external system, from a custom logger to a cloud crash reporter. Implementations must be thread-safe, since several multithreaded runners can report concurrently, and a strategy that itself throws while reporting is caught and logged on its own: a broken reporting pipeline must never be able to alter how runners dispose faulted tasks and tick their siblings.
+
+For deliberate error handling, the contract itself can carry an exception upward. An exception-valued `TaskContract` completes the task while handing its payload to whoever was waiting:
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 IEnumerator&lt;TaskContract&gt; RiskyStep()
 {
     Result r;
+    Exception error = null;
     try   { r = Parse(DownloadedBytes()); }        //fallible work between yields
     catch (Exception e)
     {
-        yield return new TaskContract(e);           //end here, hand the error to my caller
-        yield break;                                //never reached
+        error = e;                                  //a catch block cannot yield
     }
 
-    yield return Process(r).Continue();             //normal path
+    if (error != null)
+        yield return new TaskContract(error);       //complete here, hand the error to my caller
+    else
+        yield return Process(r).Continue();         //normal path
 }
 
 IEnumerator&lt;TaskContract&gt; Caller()
@@ -269,92 +298,230 @@ IEnumerator&lt;TaskContract&gt; Caller()
 }
 </pre>
 
-Between the two extremes — silent faults and hand-carried exceptions — you can pick per task how loud failures should be. What the runner never does is let one broken task take down the others: isolation is part of the deal.
+Between runner-level fault reporting and hand-carried exceptions, you can pick per task how explicit failure handling should be. What the runner never does is let one broken task take down the others: isolation is part of the deal.
 
-## Customising runners
+## Customising runners and FlowModifiers
 
-Runners offer two natural seams for specialisation, and interestingly they sit at opposite ends of the abstraction: the *task type* and the *iteration strategy*.
-
-The first seam is the generic parameter itself. `GenericSteppableRunner<TTask>` accepts any `ISveltoTask`, and since generics devirtualise calls and keep structs inline, T can be a **hand-written struct state machine**: no iterator block, no heap object, no pooling needed — stepping such a task touches zero heap allocations:
+Flow modifiers decide how tasks advance during one `Step()`:
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
-//a struct implementing IEnumerator&lt;TaskContract&gt;: the JIT never boxes it through the runner
-struct Blink : IEnumerator&lt;TaskContract&gt;
+runner.UseFlowModifier(new StandardFlow());      //every task advances once
+runner.UseFlowModifier(new SerialFlow());        //one task advances until complete
+runner.UseFlowModifier(new StaggeredFlow(3));    //at most three tasks advance
+runner.UseFlowModifier(new TimeBoundFlow(5f));   //advance tasks for about 5 ms
+runner.UseFlowModifier(new TimeSlicedFlow(5f));  //keep cycling through tasks for about 5 ms
+</pre>
+
+- **StandardFlow** is the default: every live task advances once per `Step()`.
+- **SerialFlow** advances one task until it completes, then moves to the next.
+- **StaggeredFlow(n)** advances at most `n` tasks per `Step()`; the others wait for the next one.
+- **TimeBoundFlow(milliseconds)** advances tasks until the time budget expires; the remaining tasks wait for the next `Step()`.
+- **TimeSlicedFlow(milliseconds)** does the same, but wraps to the first task when it reaches the end, so tasks can advance more than once in the same `Step()`.
+
+## Controlling runner lifetime
+
+Tasks belong to their runner, so runner lifetime controls task lifetime:
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+runner.Pause();   //freeze every task where it is
+runner.Resume();  //continue from the same yield points
+
+runner.Stop();    //asynchronously stop running tasks; runner stays reusable
+runner.Flush();   //synchronously dispose running and queued tasks; runner stays reusable
+runner.Dispose(); //dispose all tasks, terminate the worker, and reject new work
+</pre>
+
+- **Pause** freezes running and queued tasks without disposing anything. New tasks may still be queued and start after `Resume()`.
+- **Stop** is asynchronous. It stops tasks already running on the next processing pass. Tasks queued while it stops wait, then run after the runner automatically unstops.
+- **Flush** disposes both running and queued tasks and leaves the runner ready for new work. On a `MultiThreadRunner`, it blocks until cleanup completes and rejects submissions while cleanup is in progress; the same worker thread remains alive for reuse.
+- **Dispose** is terminal. It rejects further scheduling, disposes every task, signals the `MultiThreadRunner` worker to exit, and waits for that worker to terminate.
+
+Runner shutdown is cooperative: a task must return from its current `MoveNext()` call before a `MultiThreadRunner` can process `Flush()` or `Dispose()`. Both operations reject calls made from the worker itself, and throw `MultiThreadRunnerException` if cleanup or termination exceeds the two-second safety timeout. They cannot forcibly abort an infinite loop or blocking call inside a task.
+
+## The multithreaded runners
+
+Everything I described about lifetime controls applies to the **`MultiThreadRunner`** family, the runners that own their own background thread. The rule to keep in mind is that a runner is a thread, not a thread pool: every task scheduled on the same `MultiThreadRunner` runs serially on that single worker, in submission order. Want two things to actually run in parallel? Two runners.
+
+The Lean `MultiThreadRunner` comes in a few flavors. The default constructor spins up a reactive worker that wakes essentially instantly when a task is queued. `relaxed: true` trades some wake-up latency for a quieter thread, and the `intervalInMs` constructor builds the low-CPU variant: the worker ticks at fixed intervals and sleeps in between. On the other axis, `tightTasks: true` tells the worker to never volunteer a pause — ideal for cache-friendly loops you know will occupy the thread — while the default behavior yields periodically so other threads can breathe. `initialNumberOfTasks` pre-sizes the internal containers so even submitting a burst of tasks stays allocation-free. The same machinery exists in the ExtraLean flavors — `ExtraLean.MultiThreadRunner` and its struct-typed variant — for when the task itself must be as lean as the scheduler:
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+var mainRunner = new SteppableRunner("MainLoop");  //single-threaded: ticks from my game loop
+var worker1    = new MultiThreadRunner("Worker1"); //each runner owns one background thread
+var worker2    = new MultiThreadRunner("Worker2");
+
+var chunkA = new float[500_000]; //three chunks of data
+var chunkB = new float[500_000]; //to be processed on
+var chunkC = new float[500_000]; //the workers
+
+IEnumerator&lt;TaskContract&gt; ComputeChunk(float[] buffer)
 {
-    readonly float _duration;
-    float          _elapsed;
+    for (int i = 0; i &lt; buffer.Length; i++)
+        buffer[i] = DoHeavyMath(i);
 
-    public Blink(float duration) : this() => _duration = duration;
-
-    public TaskContract Current =>
-        _elapsed &lt; _duration ? TaskContract.Yield.It : TaskContract.Break.It;
-
-    public bool MoveNext()
-    {
-        _elapsed += UnityEngine.Time.deltaTime;
-        return true; //completion arrives through the Break.It contract above
-    }
-
-    public void Reset() => _elapsed = 0f;
-    public void Dispose() { }
+    yield break; //one-shot task: everything above runs inside the first MoveNext, on the worker
 }
-</pre>
 
-However, in years of shipping games I have never used this feature in practice. Hand-writing state machines is exactly the kind of work iterator blocks exist to avoid, and pooled blocks already reach zero steady-state allocations for everything cyclical. The struct path remains there for the cases where even the pool feels like too much machinery, but I would start from iterator blocks and let profiling tell me otherwise.
-
-The second seam is the one I actually exercise: the **flow modifier**. A runner does not hardcode who gets processed each tick; it asks an `IFlowModifier` three questions — may this index run now, may we advance to the next task, and reset for the new frame. Every pacing strategy shipped with the library is just an answer to those questions:
-
-<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
-//the shape of a custom pacing policy (sketch)
-class PriorityFlow : IFlowModifier
+IEnumerator&lt;TaskContract&gt; MainTask()
 {
-    public bool CanProcessThis(ref int index) =&gt;
-        index &lt; _budget; //only the highest-priority tasks fit this tick
+    //dispatch one batch and wait for it: worker2 sits idle the whole time
+    yield return ComputeChunk(chunkA).RunOn(worker1);
 
-    public bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted)
-        where T : ISveltoTask =>
-        ++nextIndex < coroutinesCount;
+    //dispatch BOTH before waiting: a RunOn starts the task when it is called,
+    //a yield only waits for it — the two chunks now compute side by side
+    Continuation left  = ComputeChunk(chunkB).RunOn(worker1);
+    Continuation right = ComputeChunk(chunkC).RunOn(worker2);
 
-    public void Reset() { }
+    yield return left;     //suspend the loop task — the main thread never blocks
+    yield return right;    //however long the slower chunk takes, not their sum
+
+    Merge(chunkA, chunkB, chunkC); //back on the main thread, results are ready
 }
 
-runner.UseFlowModifier(new PriorityFlow());
+MainTask().RunOn(mainRunner); //my game loop just calls mainRunner.Step() every frame
 </pre>
 
-**StaggeredFlow**, **TimeBoundFlow** and **TimeSlicedFlow** are little more than different answers to those same three questions, which is why they cost a handful of lines each. In my experience, "writing your own runner" almost always means writing your own flow instead. Truly new runners are only justified when the driving loop itself changes shape — a `SyncRunner` that drains tasks synchronously until completion, or a `MultiThreadRunner` that owns its dedicated thread — and even those are thin shells around the shared task-processing core.
+Spot the difference: the first batch kept worker2 idle — dispatch and wait, one at a time. The next two were dispatched together, so they computed side by side, and the wait lasted as long as the slower chunk, not their sum. Dispatch before you yield, zero locks, and the main loop never stopped ticking: this skeleton — a main-thread task fanning work out to multithreaded runners and suspending on their continuations — is exactly what the MillionPoints implementations below scale up.
 
-## Why not simply async/await for gameplay?
+When one thread is not enough but a runner-per-producer is too blunt, **`MultiThreadRunnerPool`** dispatches each scheduled root task round-robin to one of N inner runners: a fixed set of worker threads shared by independent jobs. One constraint to respect: a task can spawn children only within the runner that is executing it, so the pool is designed for independently scheduled root tasks — exactly the shape of the workloads where you would otherwise create and juggle several `MultiThreadRunner` instances by hand.
 
-Fair question! `async`/`await` is great infrastructure, and Svelto.Tasks 2.0 interoperates with it (examples 16 and 21 show how). But gameplay code usually wants the opposite trade-off: to know *exactly* when and where things run, and to be able to stop them. With Tasks-based code, once you fire an async operation, you mostly hope it completes and you juggle cancellation tokens everywhere.
+`MultiThreadRunnerPool` and `MultiThreadedParallelTaskCollection` look deceptively similar — N threads processing queued work — but they solve different problems. The pool is task-level parallelism with a thread budget: I push independent root tasks whenever they arise, each one lands on the next runner round-robin, and the tasks are unrelated jobs that merely share the threads. There is no shared lifecycle: tracking completion is my business, through continuations, signals or whatever fits the job. The parallel task collection is batch parallelism with a single handle: I compose a set of sub-tasks into one collection and the collection itself becomes the unit of work — reset it, fill it, run it — while it spreads the sub-tasks across its own N internal runners and knows when the whole batch is done. A rule of thumb: independent, long-lived or irregularly arriving jobs → the pool; a bounded burst of work with one beginning and one end → the parallel collection; a single loop over data → the `ISveltoJob` variant, which splits an index range across threads like an `IJobParallelFor` would.
 
-With runners, lifecycle is explicit and absolute. The feature I value most: **runners can be stopped at any time**, which lets you tie a set of tasks to an isolated context and be sure that none of its tasks is still running once the context is gone:
+### Thread safety, the whole library in one place
 
-<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
-//a match owns every coroutine of that session
-_matchRunner = new MultiThreadRunner("MatchSession");
-SpawnEffects().RunOn(_matchRunner);
-UpdateAI().RunOn(_matchRunner);
-UploadTelemetry().Forget(); //even fire-and-forget work belongs to the match
+The boundaries are thread-safe by construction: submitting a task to any runner from any thread is safe — admission is serialized and queued through a concurrent structure. So are the iterator pools, the continuation handles you may poll from a foreign thread, and the `WaitForSignal<T>` handshake.
 
-//match over: no orphan coroutine can outlive it. guaranteed.
-_matchRunner.Dispose();
-</pre>
-
-A level owns its runner → unloading the level cannot leave coroutines ticking into destroyed objects. A UI screen owns its runner → closing the screen kills its animations without unwinding dozens of tokens. `Pause()`/`Resume()` give you the same control temporarily (freeze a background worker mid-state without tearing it down), and `Flush()`/`Stop()` let a runner be reused after cleanup. Try expressing "these hundred coroutines belong to this context and must not outlive it" with plain Tasks. You'll end up rebuilding a poor man's runner anyway 🙂
+Task bodies are not magic: a task runs on the thread of its runner, and if it touches data shared with other threads, synchronizing that data is my job, not the library's — `volatile`, `Interlocked` and locks as usual. In return the library guarantees the useful half: a task's state machine is only ever touched by its owning runner, so a task that keeps its state to itself is thread-safe without a single lock. On the steppable runners the same rule takes a specific form: submit from anywhere, but step from one thread only — the owner of the loop. One hook carries a threading contract of its own: a custom `ITaskExceptionStrategy` must be thread-safe, since several multithreaded runners can report concurrently.
 
 ## Taking over coroutines, Tasks and Unity Jobs patterns
 
-One way to look at 2.0: whatever concurrency pattern you use today, Svelto.Tasks has a counterpart designed to absorb it.
+One way to look at 2.0: whatever concurrency pattern you use today, Svelto.Tasks has a proposed counterpart designed to mimic it.
 
 - **Unity coroutines**: iterator tasks *are* Unity-coroutine-shaped, minus the engine lock. Yield `Yield.It` instead of `null`, run them on a runner instead of a `MonoBehaviour`, and they keep working outside the editor, on dedicated servers, in tests. Unity-specific glue (like yield-instruction interop) exists behind defines for when you need it.
 - **Tasks / async-await**: await a Svelto runner directly so continuations resume on *your* thread, not the ThreadPool; or go the other way around and host entire `async` methods on a runner through the experimental `TaskSynchronizationContext`. Both directions are shown in the examples.
 - **Unity Jobs**: the data-parallel pattern maps onto `ISveltoJob` + `MultiThreadedParallelJobCollection<T>`, which splits N iterations across M worker threads exactly like an `IJobParallelFor` would. On Unity these job structs can be Burst-compiled — that path is marked experimental.
 
-**Svelto.Tasks is not a true replacement for Unity Jobs**, and I am not going to pretend otherwise. Jobs+Burst is a compiler pipeline: your job code gets transformed into highly vectorized native code, backed by a safety system and deep player-loop integration that plain C# cannot replicate. If you need maximum raw throughput on tightly packed numeric loops inside *Unity*, use Jobs. Where Svelto.Tasks shines is everything around those hot kernels: orchestrating serial pipelines, staggering work across frames, bounding frame budgets, coordinating threads — with one consistent API on every platform.
+**Svelto.Tasks is not a true replacement for Unity Jobs**, and I am not going to pretend otherwise. Jobs has a ton of controls that I didn't mirror in Svelto.Tasks, but for some specific algorithms, Svelto.Tasks runners can be used. They support burstification too.
+
+The .NET Tasks interop works in both directions. The natural one brings existing async code *into* a runner: `await someDotNetTask.RunOn(runner)` wraps the real `TaskAwaiter` (or `ValueTaskAwaiter`) so that when the task completes, the continuation after the `await` is enqueued on the runner instead of the ThreadPool. The other direction pushes an iterator *out* to async land: `await enumerator.ToTask<T>(runner)` returns a `ValueTask` that completes with the task result — `T` must be a reference type, since the contract carries references, not generic values. For whole async methods that should *live* on a runner, the experimental `TaskSynchronizationContext` hosts them through the standard `SynchronizationContext` mechanism: every internal `await` continuation resumes on the runner's thread, interleaved with the other tasks.
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+//existing async code, kept on the runner thread where it matters:
+async Task&lt;PlayerProfile&gt; DownloadProfile(SteppableRunner runner)
+{
+    //standard await: this continuation resumes on the ThreadPool, as always
+    var response = await _httpClient.GetAsync(profileUrl);
+
+    response.EnsureSuccessStatusCode();
+
+    //RunOn: this continuation is enqueued on the runner instead
+    var json = await response.Content.ReadAsStringAsync().RunOn(runner);
+
+    //deserialization runs on the runner thread: game data is safe to touch here
+    return JsonSerializer.Deserialize&lt;PlayerProfile&gt;(json);
+}
+</pre>
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+//or host whole async methods on a runner, through the standard SynchronizationContext mechanism:
+var context = new TaskSynchronizationContext(runner);
+
+context.Run(async () =&gt;
+{
+    var data = await ComputeOnJob();  //every internal await resumes on the runner thread,
+    Publish(data);                    //interleaved with the runner's other tasks
+});
+</pre>
+
+One semantic is deliberate everywhere: if the runner is disposed before a bridged task completes, the pending continuation is never run — the abandoned async method stays frozen, exactly like any other task the runner was carrying. The whole interop surface is marked experimental: solid enough for the demos, but I want real-world feedback before I freeze it.
+
+## The MillionPoints demo, implementation by implementation
+
+The companion *Unity* project (`Svelto.Tasks.Examples`) contains my favourite stress case: animating **one million rotating points** at full framerate. Every implementation in `Assets/MillionPoints` renders identically — a one-vertex point mesh drawn through `Graphics.DrawMeshInstancedIndirect`, with positions streamed every frame into a mapped (`SubUpdates`) `ComputeBuffer` — but each computes those positions with a different strategy. Comparing them side by side is the whole point of the demo.
+
+### The comparison baselines
+
+`MillionPointsGPU` moves the whole simulation to the GPU through a compute shader — the best tool for this job, and the quality reference. `MillionPointsCPUUnityJobs` is the classic Unity `IJobParallelFor` path, `Schedule()`/`Complete()` once per frame, which I keep around as the baseline to beat. Both matter for measurements, neither teaches anything about Svelto.Tasks, so let me jump straight to the interesting part: the three Svelto strategies and their synchronization.
+
+### Svelto Burst — BurstSync: one barrier per frame
+
+`MillionPointsCPU_BurstSync` is the direct Svelto.Tasks counterpart of the Unity Jobs version, with the simplest possible contract. Every frame the main thread maps the GPU upload region (`BeginWrite`), lets a `MultiThreadedBurstParallelTaskCollection<T>` split the million iterations across `ProcessorCount - 1` worker threads — whose Burst kernel writes the mapped GPU-bound memory directly through a `SharedStatic` — then closes the write (`EndWrite`) and draws. `Complete()` is the only synchronization: a hard barrier between compute and rendering.
+
+```text
+BURSTSYNC - compute, copy and draw never overlap
+
+main thread:    BeginWrite --> Complete(): block --> EndWrite + Draw --> next frame
+                                    |
+                                    v
+workers (xM):              particles pass N
+                           M threads write the mapped GPU region directly
+
+frame cost = compute + copy + draw, serialized inside every single frame
+```
+
+### Svelto Burst — AdvancedSync: pipelined by handshake
+
+`MillionPointsCPU_AdvancedSync` buys overlap with a double buffer and two typed `WaitForSignal<T>` subclasses. While the main thread uploads and renders pass N from one half of the buffer, a coordinator task on its own `MultiThreadRunner` computes pass N+1 into the other half. Each side waits exactly once per frame, and note the small trick that makes the pipeline flow: the main thread releases the coordinator *before* uploading and drawing — it has already snapshotted the frame time the next pass will use.
+
+```text
+ADVANCEDSYNC - double buffer, one signal round-trip per frame
+
+main thread:    wait("done") -> snapshot time -> signal("go") -> upload + draw slot a
+coordinator:    compute pass N into slot a -> signal("done") -> wait("go") -> compute pass N+1 into slot b
+
+steady state:
+coordinator:  |== pass N (a) ==|--done--|.wait.|== pass N+1 (b) ==|--done--|.wait.|==
+main thread:                            |wait|--go--|== upload + draw N ==
+                                                            ^ pass N+1 computes WHILE pass N renders
+
+one frame of latency traded for overlapped compute and rendering,
+but both sides still advance in lockstep: one handshake per frame
+```
+
+### Svelto Burst — IndependentThreads: latest wins
+
+`MillionPointsCPU_IndependentThreads` deletes the lockstep altogether. The coordinator computes passes back-to-back, forever, publishing each finished generation through a volatile counter; the renderer, every frame, takes whichever generation is newest, copies it into the mapped region and draws — stale generations are skipped for free. No signals exist at all. The only synchronization is a back-pressure check: before starting pass N, the coordinator spins only if more than two generations are still unconsumed. The cap doubles as a safety guarantee — pass N writes the slot pass N-2 used, so requiring pass N-2 to be consumed first means a writer can never overwrite a buffer the renderer is still copying.
+
+```text
+INDEPENDENTTHREADS - decoupled rates, latest-wins handoff
+
+coordinator:   P0   P1   P2   P3   P4   P5   P6 ...    never looks at frames
+               |    |    |    |    |    |    |         publishes a generation per pass
+published:     0    1    2    3    4    5    6
+
+frames:            F0         F1         F2              display rate, independent
+                   |          |          |
+                draws gen 2  draws gen 5  draws gen 6      gens 3,4 skipped, nobody waits
+                acks 2       acks 5       acks 6
+
+back-pressure (rare): if published - acked > 2 the coordinator SpinWaits
+                      until the renderer acks again, then carries on
+```
+
+### Why IndependentThreads is so fast
+
+Three decisions stack up:
+
+1. **Decoupled rates.** BurstSync pays compute + copy + draw inside every frame; AdvancedSync hides compute behind rendering but still advances one step per frame; IndependentThreads computes at maximum CPU speed, indifferent to how fast frames arrive.
+2. **A handoff that blocks nobody.** Latest-wins means the renderer grabs the freshest finished result and skips stale ones at zero cost: no frame ever stalls behind compute, no pass ever stalls behind rendering. The two-generation cap engages so rarely it vanishes from the profile.
+3. **Skipping work cannot distort the animation.** Every pass bakes its own wall-clock timestamp when scheduled, so dropped generations do not slow the points down: correctness never depends on running every pass.
+
+The honest price: the coordinator saturates its core whether the display needs the throughput or not, and some computed results are never shown. Throughput is bought with efficiency.
+
+*(profiler captures to be added here: per-strategy Task Time / Task Steps counters, main-thread frame time vs worker occupancy across the three strategies, and how often the back-pressure cap engages)*
+
+All three strategies share the Burst kernel and range-task plumbing defined in `PipelinedBurstSupport.cs`: deterministic hash-based random rotation axes, quaternion position rotation, slot-indexed output buffers — deliberately identical math everywhere, so the differences you measure come from the scheduling, not from the kernels.
 
 ## Performance and zero allocations
 
 Performance was a first-class design constraint since 1.x. My benchmarks show Svelto.Tasks trading blows with *UniTask* and *Unity Jobs*: comparable throughput on coroutine stepping, comparable scaling on multi-threaded fan-out. I will publish the profiling numbers and captures separately, so you can judge for yourself rather than trusting my word for it.
+
+### Profiling with PROFILE_SVELTO
+
+When profiling a Debug build, define **`PROFILE_SVELTO`**. It removes Svelto's debug checks, diagnostic runner references, and debug logging, so they do not pollute the measurements. It does not enable the task profiler itself: that is the separate **`TASKS_PROFILER_ENABLED`** define, available in *Unity* through `Tasks/Enable Profiler`.
+
+The task profiler is designed as a plugin as well. When **`TASKS_PROFILER_ENABLED`** is compiled in, **`TaskProfiler`** wraps every task step and every runner processing pass: it measures durations through thread-local stopwatches, accumulates the per-task timing data the editor views consume, and forwards balanced begin/end scopes to an optional **`ITaskProfilerDriver`**. That four-method interface — `BeginRunner`/`EndRunner`, `BeginTask`/`EndTask` — is the extension point toward any profiling backend, which keeps platform-specific instrumentation out of the scheduler entirely.
+
+*Unity* ships a driver ready-made: **`UnityTaskProfilerDriver`** installs itself automatically at startup and emits dynamic **`ProfilerMarker`s** for every runner (`Runner/<name>`) and normalized task name inside a dedicated *Svelto.Tasks* profiler category, plus two per-frame native counters, *Task Time* (nanoseconds) and *Task Steps*, synchronized across threads so background runners are counted correctly too. The editor-only `SveltoTasksProfilerModule` picks them up and renders them CPU-module-style: a busiest-first runner picker, a case-insensitive name filter, and an expandable Object/Total/Self/Calls/GC Alloc hierarchy pruned to show only Svelto subtrees, with dominant branches red-tinted.
 
 *(benchmark tables and profiler screenshots to be added here)*
 
@@ -364,18 +531,11 @@ Zero-allocation usage is a set of patterns rather than magic, and 2.0 makes them
 - **Pooled iterator blocks**: `IteratorBlockPool<T>` recycles `while(true)` state machines via `Break.It`; blocks and their data survive across uses (examples 07 and 15 prove reuse with reference equality).
 - **Pooled continuations**: every `.Continue()` hands back a pooled handle; nothing is allocated per wait.
 - **Preallocated collections**: `SerialTaskCollection`/`ParallelTaskCollection` own their storage upfront.
-- The usual discipline applies: avoid closures and LINQ in per-frame tasks. Value extraction through `ToInt()`/`ToRef<T>()` stays explicit, but since 2.0 nothing boxes: typed constructors store primitives in an inline union.
+- The usual discipline applies: avoid closures and LINQ in per-frame tasks. Value extraction through `ToInt()`/`ToRef<T>()` stays explicit. Supported primitive payload conversions do not box: typed constructors store them in an inline union. Boxing can still occur when a `TaskContract` is exposed through non-generic `IEnumerator.Current`, or when a struct task enters a non-generic runner that stores an interface reference.
+
+Release-only zero-allocation tests cover preallocated Lean, ExtraLean, synchronous, multithreaded, pooled and parallel runner paths.
 
 ## The examples, one by one
-
-Documentation was historically my libraries' weak spot, so this time every feature ships as a minimal runnable demo with a README explaining scenario, API and gotchas. Each folder under `Examples/` is independent:
-
-<pre class="EnlighterJSRAW" data-enlighter-language="bash">
-cd Examples/01_GameLoop
-dotnet run
-</pre>
-
-The most important extract of each one:
 
 ### 01 — GameLoop: Lean task + SteppableRunner
 
@@ -416,15 +576,6 @@ IEnumerator&lt;TaskContract&gt; Parent()
 
     GameConfig cfg = child.Current.ToRef&lt;GameConfig&gt;(); //extract the result
 }
-</pre>
-
-### 04 — ContinueChildTask: `.Continue()`
-
-The simplest composition primitive: a parent delegates to a child **on the same runner** and parks until the child completes. Distinct from `.RunOn(runner)`, which targets a specific runner and returns a pollable continuation instead.
-
-<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
-yield return Child().Continue(); //same runner: parent suspends until done
-parentResult = childCounter * 10; //resumes only after Child finished
 </pre>
 
 ### 05 — BackgroundComputation: RunOn + Continuation
@@ -475,18 +626,15 @@ data.kind = "Orc";              //re-initialize, then run again
 
 ### 08 — CancellableChain: forwarding failures
 
-Load → Validate → Process, launched by a parent. Validation fails and the failure must cancel everything above it. The example teaches a subtle truth: `Break.AndStop` propagates **exactly one level up** — a killed task cannot forward its own break — so the chain forwards deliberately. Process is skipped, Parent is cancelled, and the summary derives from flags written while tasks ran.
+Load → Validate → Process, launched by a parent. Validation fails and `Break.AndStop` cancels the failing task plus every waiting `.Continue()` ancestor. Process is skipped, Parent is cancelled, and the summary derives from flags written while tasks ran.
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
-//leaf: stop only myself, let my caller decide
+//leaf: stop myself and the complete .Continue() parent chain
 validationFailed = true;
-yield return TaskContract.Break.It;
+yield return TaskContract.Break.AndStop;
 
-//middle level: forward the failure so EVERYTHING above cancels too
+//neither Chain nor Parent resumes after the child stops
 yield return ValidateStep().Continue();
-if (validationFailed)
-    yield return TaskContract.Break.AndStop; //Process skipped AND Parent cancelled
-
 yield return ProcessStep().Continue(); //never reached
 </pre>
 
@@ -582,7 +730,7 @@ data.EntityId = ++_totalSpawned;
 ...step block.MoveNext() each tick...
 
 //lifecycle yields Break.It at despawn:
-//block auto-returns to the pool, state machine kept alive
+//block is flagged for release; the runner's Dispose returns it, machine kept alive
 int available = _pool.count;          //live pool occupancy
 </pre>
 
@@ -677,6 +825,6 @@ Being a beta, there are open points where I would value your help:
 
 ## Conclusions
 
-Svelto.Tasks 2.0 stays true to the idea the library was born with — iterators as tasks, runners as schedulers, zero surprises — while finally getting the packaging, the test suite and the 21 runnable examples it always deserved. Use it wherever C# compiles; reach for ExtraLean in hot gameplay paths; treat Lean tasks, the Tasks interop and the job path as tools for the cases that genuinely need them.
+Svelto.Tasks 2.0 stays true to the idea the library was born with — iterators as tasks, runners as schedulers, zero surprises — while finally getting the packaging, the test suite and the 20 runnable examples it always deserved. Use it wherever C# compiles; reach for ExtraLean in hot gameplay paths; treat Lean tasks, the Tasks interop and the job path as tools for the cases that genuinely need them.
 
 Everything is on GitHub in the [sebas77/Svelto.Tasks-Repo](https://github.com/sebas77/Svelto.Tasks-Repo) repository. If you have questions or spot problems, leave a comment here or join our populated [Discord server](https://discord.gg/JTUZuJcME5). Feedback on the beta is not only welcome, it is necessary!

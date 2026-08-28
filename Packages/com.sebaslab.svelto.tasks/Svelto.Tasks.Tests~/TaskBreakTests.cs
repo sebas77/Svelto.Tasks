@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Svelto.Tasks.Lean;
 
 namespace Svelto.Tasks.Tests
 {
@@ -32,6 +33,77 @@ namespace Svelto.Tasks.Tests
             Assert.That(_iterable1.AllRight, Is.True);
             Assert.That(_iterable2.AllRight, Is.False);
             Assert.That(severalTasksParent.Current.ToInt(), Is.Not.EqualTo(10));
+        }
+
+        [Test]
+        public void BreakAndStop_DisposesEntireContinueChain_AndLeavesUnrelatedRootsRunning()
+        {
+            bool rootResumed = false;
+            bool middleResumed = false;
+            bool rootDisposed = false;
+            bool middleDisposed = false;
+            bool leafDisposed = false;
+            bool unrelatedRootRan = false;
+
+            IEnumerator<TaskContract> Leaf()
+            {
+                try
+                {
+                    yield return TaskContract.Break.AndStop;
+                }
+                finally
+                {
+                    leafDisposed = true;
+                }
+            }
+
+            IEnumerator<TaskContract> Middle()
+            {
+                try
+                {
+                    yield return Leaf().Continue();
+                    middleResumed = true;
+                }
+                finally
+                {
+                    middleDisposed = true;
+                }
+            }
+
+            IEnumerator<TaskContract> Root()
+            {
+                try
+                {
+                    yield return Middle().Continue();
+                    rootResumed = true;
+                }
+                finally
+                {
+                    rootDisposed = true;
+                }
+            }
+
+            IEnumerator<TaskContract> UnrelatedRoot()
+            {
+                unrelatedRootRan = true;
+                yield break;
+            }
+
+            using (var runner = new Lean.SteppableRunner("BreakAndStopChain"))
+            {
+                Root().RunOn(runner);
+                UnrelatedRoot().RunOn(runner);
+
+                while (runner.hasTasks)
+                    runner.Step();
+            }
+
+            Assert.That(rootResumed, Is.False);
+            Assert.That(middleResumed, Is.False);
+            Assert.That(rootDisposed, Is.True);
+            Assert.That(middleDisposed, Is.True);
+            Assert.That(leafDisposed, Is.True);
+            Assert.That(unrelatedRootRan, Is.True);
         }
         
         [Test]

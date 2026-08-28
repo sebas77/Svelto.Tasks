@@ -44,7 +44,8 @@ machine, enabling reuse.
 4. Call `pool.Get()` → returns `(EntityData data, PooledIteratorBlock<EntityData> block)`.
 5. **Initialize `data`** before use (the pool does not reset it).
 6. Call `block.MoveNext()` to step the iterator. When the iterator yields
-   `Break.It`, the block auto-returns itself to the pool.
+   `Break.It`, the block flags itself for release; `Dispose()` — automatic on
+   runners, manual otherwise — returns it to the pool.
 7. Call `pool.Get()` again — you'll get the **same block back** (reference-equal).
 
 ## Key Concepts
@@ -52,8 +53,8 @@ machine, enabling reuse.
 | Type | Namespace | Role |
 |------|-----------|------|
 | `IteratorBlockPool<T>` | `Svelto.Tasks.Lean` | Pool of reusable iterator blocks |
-| `PooledIteratorBlock<T>` | `Svelto.Tasks.Lean` | Wrapper that auto-returns to pool on `Break.It` |
-| `TaskContract.Break.It` | `Svelto.Tasks` | Soft-break: completes current cycle, returns to pool, keeps state machine alive |
+| `PooledIteratorBlock<T>` | `Svelto.Tasks.Lean` | Wrapper that flags itself on `Break.It`; `Dispose()` (automatic on runners) returns it to the pool |
+| `TaskContract.Break.It` | `Svelto.Tasks` | Soft-break: completes the cycle at a reusable boundary, keeps state machine alive |
 | `TaskContract.Yield.It` | `Svelto.Tasks` | Yield one iteration (come back next step) |
 | `pool.Get()` | (on pool) | Get a (data, block) tuple from the pool |
 | `pool.Dispose()` | (on pool) | Clean up all pooled blocks |
@@ -67,8 +68,16 @@ machine, enabling reuse.
 - **Must initialize `Data` before use after `Get()`.** The pool does not reset the data
   object — you get it back with whatever state it had when it was last returned. Always
   set `data.X = initialValue` right after `Get()`.
+- Reuse resumes immediately after the previous `Break.It`; it does not restart the iterator.
+  Place the break only at a complete lifecycle boundary and ensure the following code safely
+  returns to the top of the infinite loop.
+- Iterator locals persist between entity lifecycles. Reset per-run locals at the top and do not
+  retain references or resources owned by the previous borrower.
+- Never recycle a block stopped before its `Break.It` boundary: it would resume in the middle of
+  the previous entity's lifecycle.
 - The `PooledIteratorBlock<T>.MoveNext()` method checks if the current value is
-  `Break.It` (or `Break.AndStop`). If so, it calls `pool.Return(data, this)` and returns
-  `false`. The next `Get()` will pop this same block from the stack.
+  `Break.It` (or `Break.AndStop`). If so, it flags the block for release and returns
+  `false`; the actual `pool.Return(data, this)` happens in `Dispose()`, which runners
+  call automatically. The next `Get()` will pop this same block from the stack.
 - The pool uses a `Stack` internally — it's LIFO. The most recently returned block is the
   first to be reused.
