@@ -701,6 +701,8 @@ namespace Svelto.Tasks.Tests
 
                 long allocated = Measure(() =>
                 {
+                    int completedBeforeThisExecution = tasks[0].completedRuns;
+
                     for (int wave = 0; wave < MtWaves; wave++)
                     {
                         for (int i = 0; i < ConcurrentTasks; i++)
@@ -711,7 +713,7 @@ namespace Svelto.Tasks.Tests
 
                         var spinner = new SpinWait();
                         var deadline = DateTime.UtcNow.AddSeconds(10);
-                        while (PoolTasksDone(tasks, wave + 1) == false)
+                        while (PoolTasksDone(tasks, completedBeforeThisExecution + wave + 1) == false)
                         {
                             if (DateTime.UtcNow > deadline)
                             {

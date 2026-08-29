@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Svelto.Common;
 using Svelto.DataStructures;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Internal;
@@ -16,8 +17,20 @@ namespace Svelto.Tasks.Lean
             _task   = task;
         }
 
-        internal string name => _task.ToString();
-        
+        //TypeCache computes the name once per closed TTask type: _task.ToString() on every
+        //profiler step would allocate (compiler-generated iterator ToString builds the type name)
+        internal string name
+        {
+            get
+            {
+                #if !PROFILE_SVELTO
+                return _task.ToString();
+                #else
+                return TypeCache<TTask>.name;
+#endif
+            }
+        }
+
         internal void Dispose()
         {
             try

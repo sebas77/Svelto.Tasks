@@ -338,69 +338,13 @@ runner.Dispose(); //dispose all tasks, terminate the worker, and reject new work
 
 Runner shutdown is cooperative: a task must return from its current `MoveNext()` call before a `MultiThreadRunner` can process `Flush()` or `Dispose()`. Both operations reject calls made from the worker itself, and throw `MultiThreadRunnerException` if cleanup or termination exceeds the two-second safety timeout. They cannot forcibly abort an infinite loop or blocking call inside a task.
 
-## The multithreaded runners
-
-Everything I described about lifetime controls applies to the **`MultiThreadRunner`** family, the runners that own their own background thread. The rule to keep in mind is that a runner is a thread, not a thread pool: every task scheduled on the same `MultiThreadRunner` runs serially on that single worker, in submission order. Want two things to actually run in parallel? Two runners.
-
-The Lean `MultiThreadRunner` comes in a few flavors. The default constructor spins up a reactive worker that wakes essentially instantly when a task is queued. `relaxed: true` trades some wake-up latency for a quieter thread, and the `intervalInMs` constructor builds the low-CPU variant: the worker ticks at fixed intervals and sleeps in between. On the other axis, `tightTasks: true` tells the worker to never volunteer a pause — ideal for cache-friendly loops you know will occupy the thread — while the default behavior yields periodically so other threads can breathe. `initialNumberOfTasks` pre-sizes the internal containers so even submitting a burst of tasks stays allocation-free. The same machinery exists in the ExtraLean flavors — `ExtraLean.MultiThreadRunner` and its struct-typed variant — for when the task itself must be as lean as the scheduler:
-
-<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
-var mainRunner = new SteppableRunner("MainLoop");  //single-threaded: ticks from my game loop
-var worker1    = new MultiThreadRunner("Worker1"); //each runner owns one background thread
-var worker2    = new MultiThreadRunner("Worker2");
-
-var chunkA = new float[500_000]; //three chunks of data
-var chunkB = new float[500_000]; //to be processed on
-var chunkC = new float[500_000]; //the workers
-
-IEnumerator&lt;TaskContract&gt; ComputeChunk(float[] buffer)
-{
-    for (int i = 0; i &lt; buffer.Length; i++)
-        buffer[i] = DoHeavyMath(i);
-
-    yield break; //one-shot task: everything above runs inside the first MoveNext, on the worker
-}
-
-IEnumerator&lt;TaskContract&gt; MainTask()
-{
-    //dispatch one batch and wait for it: worker2 sits idle the whole time
-    yield return ComputeChunk(chunkA).RunOn(worker1);
-
-    //dispatch BOTH before waiting: a RunOn starts the task when it is called,
-    //a yield only waits for it — the two chunks now compute side by side
-    Continuation left  = ComputeChunk(chunkB).RunOn(worker1);
-    Continuation right = ComputeChunk(chunkC).RunOn(worker2);
-
-    yield return left;     //suspend the loop task — the main thread never blocks
-    yield return right;    //however long the slower chunk takes, not their sum
-
-    Merge(chunkA, chunkB, chunkC); //back on the main thread, results are ready
-}
-
-MainTask().RunOn(mainRunner); //my game loop just calls mainRunner.Step() every frame
-</pre>
-
-Spot the difference: the first batch kept worker2 idle — dispatch and wait, one at a time. The next two were dispatched together, so they computed side by side, and the wait lasted as long as the slower chunk, not their sum. Dispatch before you yield, zero locks, and the main loop never stopped ticking: this skeleton — a main-thread task fanning work out to multithreaded runners and suspending on their continuations — is exactly what the MillionPoints implementations below scale up.
-
-When one thread is not enough but a runner-per-producer is too blunt, **`MultiThreadRunnerPool`** dispatches each scheduled root task round-robin to one of N inner runners: a fixed set of worker threads shared by independent jobs. One constraint to respect: a task can spawn children only within the runner that is executing it, so the pool is designed for independently scheduled root tasks — exactly the shape of the workloads where you would otherwise create and juggle several `MultiThreadRunner` instances by hand.
-
-`MultiThreadRunnerPool` and `MultiThreadedParallelTaskCollection` look deceptively similar — N threads processing queued work — but they solve different problems. The pool is task-level parallelism with a thread budget: I push independent root tasks whenever they arise, each one lands on the next runner round-robin, and the tasks are unrelated jobs that merely share the threads. There is no shared lifecycle: tracking completion is my business, through continuations, signals or whatever fits the job. The parallel task collection is batch parallelism with a single handle: I compose a set of sub-tasks into one collection and the collection itself becomes the unit of work — reset it, fill it, run it — while it spreads the sub-tasks across its own N internal runners and knows when the whole batch is done. A rule of thumb: independent, long-lived or irregularly arriving jobs → the pool; a bounded burst of work with one beginning and one end → the parallel collection; a single loop over data → the `ISveltoJob` variant, which splits an index range across threads like an `IJobParallelFor` would.
-
 ### Thread safety, the whole library in one place
 
 The boundaries are thread-safe by construction: submitting a task to any runner from any thread is safe — admission is serialized and queued through a concurrent structure. So are the iterator pools, the continuation handles you may poll from a foreign thread, and the `WaitForSignal<T>` handshake.
 
 Task bodies are not magic: a task runs on the thread of its runner, and if it touches data shared with other threads, synchronizing that data is my job, not the library's — `volatile`, `Interlocked` and locks as usual. In return the library guarantees the useful half: a task's state machine is only ever touched by its owning runner, so a task that keeps its state to itself is thread-safe without a single lock. On the steppable runners the same rule takes a specific form: submit from anywhere, but step from one thread only — the owner of the loop. One hook carries a threading contract of its own: a custom `ITaskExceptionStrategy` must be thread-safe, since several multithreaded runners can report concurrently.
 
-## Taking over coroutines, Tasks and Unity Jobs patterns
-
-One way to look at 2.0: whatever concurrency pattern you use today, Svelto.Tasks has a proposed counterpart designed to mimic it.
-
-- **Unity coroutines**: iterator tasks *are* Unity-coroutine-shaped, minus the engine lock. Yield `Yield.It` instead of `null`, run them on a runner instead of a `MonoBehaviour`, and they keep working outside the editor, on dedicated servers, in tests. Unity-specific glue (like yield-instruction interop) exists behind defines for when you need it.
-- **Tasks / async-await**: await a Svelto runner directly so continuations resume on *your* thread, not the ThreadPool; or go the other way around and host entire `async` methods on a runner through the experimental `TaskSynchronizationContext`. Both directions are shown in the examples.
-- **Unity Jobs**: the data-parallel pattern maps onto `ISveltoJob` + `MultiThreadedParallelJobCollection<T>`, which splits N iterations across M worker threads exactly like an `IJobParallelFor` would. On Unity these job structs can be Burst-compiled — that path is marked experimental.
-
-**Svelto.Tasks is not a true replacement for Unity Jobs**, and I am not going to pretend otherwise. Jobs has a ton of controls that I didn't mirror in Svelto.Tasks, but for some specific algorithms, Svelto.Tasks runners can be used. They support burstification too.
+# .Net Tasks and Svelto.Tasks interop
 
 The .NET Tasks interop works in both directions. The natural one brings existing async code *into* a runner: `await someDotNetTask.RunOn(runner)` wraps the real `TaskAwaiter` (or `ValueTaskAwaiter`) so that when the task completes, the continuation after the `await` is enqueued on the runner instead of the ThreadPool. The other direction pushes an iterator *out* to async land: `await enumerator.ToTask<T>(runner)` returns a `ValueTask` that completes with the task result — `T` must be a reference type, since the contract carries references, not generic values. For whole async methods that should *live* on a runner, the experimental `TaskSynchronizationContext` hosts them through the standard `SynchronizationContext` mechanism: every internal `await` continuation resumes on the runner's thread, interleaved with the other tasks.
 
@@ -434,86 +378,141 @@ context.Run(async () =&gt;
 
 One semantic is deliberate everywhere: if the runner is disposed before a bridged task completes, the pending continuation is never run — the abandoned async method stays frozen, exactly like any other task the runner was carrying. The whole interop surface is marked experimental: solid enough for the demos, but I want real-world feedback before I freeze it.
 
-## The MillionPoints demo, implementation by implementation
+## The multithreaded runners
 
-The companion *Unity* project (`Svelto.Tasks.Examples`) contains my favourite stress case: animating **one million rotating points** at full framerate. Every implementation in `Assets/MillionPoints` renders identically — a one-vertex point mesh drawn through `Graphics.DrawMeshInstancedIndirect`, with positions streamed every frame into a mapped (`SubUpdates`) `ComputeBuffer` — but each computes those positions with a different strategy. Comparing them side by side is the whole point of the demo.
+Everything I described about lifetime controls applies to the **`MultiThreadRunner`** family, the runners that own their own background thread. Every task scheduled on the same `MultiThreadRunner` runs serially on that single worker, in submission order. Want two things to actually run in parallel? Two runners.
+
+The Lean `MultiThreadRunner` comes in a few flavors. The default constructor spins up a reactive worker that wakes essentially instantly when a task is queued. `relaxed: true` trades some wake-up latency for a quieter thread, and the `intervalInMs` constructor builds the low-CPU variant: the worker ticks at fixed intervals and sleeps in between. On the other axis, `tightTasks: true` tells the worker to never volunteer a pause — ideal for cache-friendly loops you know will occupy the thread — while the default behavior yields periodically so other threads can breathe. `initialNumberOfTasks` pre-sizes the internal containers so even submitting a burst of tasks stays allocation-free. The same machinery exists in the ExtraLean flavors — `ExtraLean.MultiThreadRunner` and its struct-typed variant — for when the task itself must be as lean as the scheduler:
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+var mainRunner = new SteppableRunner("MainLoop");  //single-threaded: ticks from my game loop
+var worker1    = new MultiThreadRunner("Worker1"); //each runner owns one background thread
+var worker2    = new MultiThreadRunner("Worker2");
+
+var chunkA = new float[500_000]; //three chunks of data
+var chunkB = new float[500_000]; //to be processed on
+var chunkC = new float[500_000]; //the workers
+
+IEnumerator&lt;TaskContract&gt; ComputeChunk(float[] buffer)
+{
+    for (int i = 0; i &lt; buffer.Length; i++)
+        buffer[i] = DoHeavyMath(i);
+
+    yield break; //one-shot task: everything above runs inside the first MoveNext, on the worker
+}
+
+IEnumerator&lt;TaskContract&gt; MainTask()
+{
+    //dispatch one batch and wait for it: worker2 sits idle the whole time
+    yield return ComputeChunk(chunkA).RunOn(worker1);
+
+    //dispatch BOTH before waiting: a RunOn starts the task when it is called,
+    //a yield only waits for it — the two chunks now compute side by side
+    Continuation left  = ComputeChunk(chunkB).RunOn(worker1);
+    Continuation right = ComputeChunk(chunkC).RunOn(worker2);
+	
+    yield return left;     //suspend the loop task — the main thread never blocks
+    yield return right;    //however long the slower chunk takes, not their sum
+
+    Merge(chunkA, chunkB, chunkC); //back on the main thread, results are ready
+}
+
+MainTask().RunOn(mainRunner); //my game loop just calls mainRunner.Step() every frame
+</pre>
+
+The first batch kept worker2 idle — dispatch and wait, one at a time. The next two were dispatched together, so they computed side by side, and the wait lasted as long as the slower chunk, not their sum. Dispatch before you yield, zero locks, and the main loop never stopped ticking: a main-thread task fanning work out to multithreaded runners and suspending on their continuations.
+
+When one thread is not enough but a runner-per-producer is too blunt, **`MultiThreadRunnerPool`** dispatches each scheduled root task round-robin to one of N inner runners: a fixed set of worker threads shared by independent jobs. The pool is designed for independently scheduled root tasks and the sub-tasks can still run on other runners.
+
+### The MultiThreadedParallelTaskCollection implementations
+
+When I need a bounded burst of work to actually run in parallel, I reach for the **`MultiThreadedParallelTaskCollection`** implementations (Lean, ExtraLean, plain or struct-typed): a collection owns N internal `MultiThreadRunner`s and behaves as a single reusable unit of work. I fill it with tasks — each one implements `IParallelTask`, so it is an iterator that disposes its own state — then drive it like any other task: poll `MoveNext()`, call `Complete()`, or `yield return collection.Run()`. The tasks wait in a concurrent queue and each runner claims the next one the moment it frees up, so uneven durations self-balance instead of matching a static split. The lifecycle is deliberately strict: `Add()` throws once the batch is running (compose first, run second); `onComplete` fires exactly once, when the last task finishes; `Stop()` ends the run cooperatively but keeps the tasks, so the collection can run again as-is; `Reset()` empties it; and `Dispose()` disposes every task — including the ones no thread ever claimed — together with its runners. The Burst sibling, `MultiThreadedBurstParallelTaskCollection<T>`, scales the same batch idea to data-parallel range tasks: `Add(prototype, iterations, elementsPerTask)` stores one immutable prototype and splits the range into fixed-size chunks that one reusable dispatcher per thread claims atomically — no per-chunk wrappers to allocate, a cooperative `Stop()` whose latency is bounded to one chunk, and Burst code that stays hot on the workers.
+The MultiThreadedParallelTaskCollection come both in `Lean` and `ExtraLean` version, but I actually do not expect it to be used with complex `Lean` tasks.
+
+## Taking over coroutines, Tasks and Unity Jobs patterns
+
+One way to look at 2.0: whatever concurrency pattern you use today, Svelto.Tasks has a proposed counterpart designed to mimic it.
+
+- **Unity coroutines**: iterator tasks *are* Unity-coroutine-shaped, minus the engine lock. Yield `Yield.It` instead of `null`, run them on a runner instead of a `MonoBehaviour`, and they keep working outside the editor, on dedicated servers, in tests. Unity-specific glue (like yield-instruction interop) exists behind defines for when you need it.
+- **Tasks / async-await**: await a Svelto runner directly so continuations resume on *your* thread, not the ThreadPool; or go the other way around and host entire `async` methods on a runner through the experimental `TaskSynchronizationContext`. Both directions are shown in the examples.
+- **Unity Jobs**: the data-parallel pattern maps onto `ISveltoJob` + `MultiThreadedParallelJobCollection<T>`, which splits N iterations across M worker threads exactly like an `IJobParallelFor` would. On Unity these job structs can be Burst-compiled — that path is marked experimental.
+
+**Svelto.Tasks is not a true replacement for Unity Jobs**, and I am not going to pretend otherwise. Jobs has a ton of controls that I didn't mirror in Svelto.Tasks, but for some specific algorithms, Svelto.Tasks runners can be used. They support burstification too.
+
+## The MillionPoints Unity demo: how Svelto.Tasks can be used for massive parallelism
+
+The companion *Unity* project [`Svelto.Tasks.Examples`](https://github.com/sebas77/Svelto.Tasks.Examples) contains my favourite stress case: animating **one million rotating points** at full framerate. Every implementation lives in the `Assets/MillionPoints` folder of the repo and renders identically — a one-vertex point mesh drawn through `Graphics.DrawMeshInstancedIndirect`, with positions streamed every frame into a mapped (`SubUpdates`) `ComputeBuffer`. Uploading buffers from the CPU to the GPU is a tricky task because of the asynchronous nature of the operation: the various examples show different forms of synchronization achievable with Svelto.Tasks and compare their performance against the fully native version (everything running on the GPU through compute shaders) and the Unity Jobs version. All the Svelto.Tasks examples use Unity Burst to vectorise the code and write straight into the driver-mapped `ComputeBuffer` memory exposed by Unity's modern `ComputeBuffer.BeginWrite` API.
+
+![The MillionPoints demo: one million points animated at full framerate](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/Screenshot.png)
 
 ### The comparison baselines
 
-`MillionPointsGPU` moves the whole simulation to the GPU through a compute shader — the best tool for this job, and the quality reference. `MillionPointsCPUUnityJobs` is the classic Unity `IJobParallelFor` path, `Schedule()`/`Complete()` once per frame, which I keep around as the baseline to beat. Both matter for measurements, neither teaches anything about Svelto.Tasks, so let me jump straight to the interesting part: the three Svelto strategies and their synchronization.
+`MillionPointsGPU` moves the whole simulation to the GPU through a compute shader — the best tool for this job, and the quality reference. `MillionPointsCPUUnityJobs` is the classic Unity `IJobParallelFor` path, `Schedule()`/`Complete()` once per frame, which I keep around as the baseline to beat. Both matter for measurements, neither teaches anything about Svelto.Tasks, so let me jump straight to the interesting part: the three Svelto strategies and their synchronization. All three drive `MultiThreadedBurstParallelTaskCollection<T>` identically — one prototype range task, the million iterations split into 8192-particle chunks, `ProcessorCount - 1` workers claiming chunks through the collection's idle callbacks — so the only thing that changes from one strategy to the next is *who waits for whom*.
 
-### Svelto Burst — BurstSync: one barrier per frame
+![Profiler capture of the GPU compute shader version](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/GPUCS.png)
 
-`MillionPointsCPU_BurstSync` is the direct Svelto.Tasks counterpart of the Unity Jobs version, with the simplest possible contract. Every frame the main thread maps the GPU upload region (`BeginWrite`), lets a `MultiThreadedBurstParallelTaskCollection<T>` split the million iterations across `ProcessorCount - 1` worker threads — whose Burst kernel writes the mapped GPU-bound memory directly through a `SharedStatic` — then closes the write (`EndWrite`) and draws. `Complete()` is the only synchronization: a hard barrier between compute and rendering.
+![Profiler capture of the Unity Jobs version](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/CPUJOBS.png)
+
+### Svelto Burst — BurstSync: double-buffered frames
+
+`MillionPointsCPU_BurstSync` is the direct Svelto.Tasks counterpart of the Unity Jobs version, with the simplest possible contract. A main-thread runner hosts two roots: an upload task and a render task. The upload task claims a slot of the double buffer, waits until that slot's newest graphics fence proves the GPU finished reading it, maps the upload region (`BeginWrite`) and publishes the region — together with the frame time — through a native frame-data struct the Burst tasks read. Then it just `yield return`s the collection's `Run()` continuation: the Burst pass fills the mapped GPU-bound memory on the worker threads while the main loop keeps ticking and the render root keeps drawing the last published slot. When the pass completes, the upload task closes the write (`EndWrite`) and publishes the slot. No `Complete()` barrier exists in the steady state: while the GPU reads slot A, the CPU is already filling slot B, and the fences — not a blocking call — tell the CPU when a slot is safe to map again.
 
 ```text
-BURSTSYNC - compute, copy and draw never overlap
+BURSTSYNC - double buffered, cooperative wait: no hard barrier per frame
 
-main thread:    BeginWrite --> Complete(): block --> EndWrite + Draw --> next frame
-                                    |
-                                    v
-workers (xM):              particles pass N
-                           M threads write the mapped GPU region directly
+upload root:   wait fence(slot) -> BeginWrite -> run Burst pass  (yield on Run().Continue())
+                     ^                                                             |
+                     |                                                             v
+               draw published slot (render root, every step)            EndWrite -> publish slot
+workers (xM):              8192-particle chunks write the mapped region directly
 
-frame cost = compute + copy + draw, serialized inside every single frame
+while the GPU reads slot A, the CPU already fills slot B:
+compute and rendering overlap, and the main thread never blocks
 ```
+
+![Profiler capture of the Svelto.Tasks Burst Sync strategy](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/CPUSveltoBurstSync.png)
 
 ### Svelto Burst — AdvancedSync: pipelined by handshake
 
-`MillionPointsCPU_AdvancedSync` buys overlap with a double buffer and two typed `WaitForSignal<T>` subclasses. While the main thread uploads and renders pass N from one half of the buffer, a coordinator task on its own `MultiThreadRunner` computes pass N+1 into the other half. Each side waits exactly once per frame, and note the small trick that makes the pipeline flow: the main thread releases the coordinator *before* uploading and drawing — it has already snapshotted the frame time the next pass will use.
+`MillionPointsCPU_AdvancedSync` makes the division of responsibilities explicit with three independent roots: the upload loop and the render loop live on the main-thread runner, the compute loop on its own `MultiThreadRunner` coordinator. `BeginWrite`/`EndWrite` are main-thread-only APIs, so two typed `WaitForSignal<T>` subclasses move exactly those boundaries across the thread: the main thread maps a fence-safe slot, publishes the region together with the snapshot frame time and signals "region mapped"; the coordinator runs one complete Burst pass into it and signals "compute done"; the main thread closes the write and the render loop draws. Two GPU buffers alternate every pass so a region is only ever re-mapped after the draw reading it has retired, and the render loop draws unconditionally every Update — slow compute never gates the render cadence. The price is lockstep: one handshake round-trip per frame.
 
 ```text
-ADVANCEDSYNC - double buffer, one signal round-trip per frame
+ADVANCEDSYNC - three roots, two signals: BeginWrite/EndWrite stay on the main thread
 
-main thread:    wait("done") -> snapshot time -> signal("go") -> upload + draw slot a
-coordinator:    compute pass N into slot a -> signal("done") -> wait("go") -> compute pass N+1 into slot b
+upload root:    [wait fence] -> BeginWrite -> signal "mapped" -> wait "done" -> EndWrite
+coordinator:                                     wait "mapped" -> Burst pass -> signal "done"
+render root:                     draws every Update, whichever slot the upload loop published
 
-steady state:
-coordinator:  |== pass N (a) ==|--done--|.wait.|== pass N+1 (b) ==|--done--|.wait.|==
-main thread:                            |wait|--go--|== upload + draw N ==
-                                                            ^ pass N+1 computes WHILE pass N renders
-
-one frame of latency traded for overlapped compute and rendering,
+compute of pass N+1 overlaps the rendering of pass N,
 but both sides still advance in lockstep: one handshake per frame
 ```
 
+![Profiler capture of the Svelto.Tasks Advanced Sync strategy](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/CPUSveltoAdvanced.png)
+
 ### Svelto Burst — IndependentThreads: latest wins
 
-`MillionPointsCPU_IndependentThreads` deletes the lockstep altogether. The coordinator computes passes back-to-back, forever, publishing each finished generation through a volatile counter; the renderer, every frame, takes whichever generation is newest, copies it into the mapped region and draws — stale generations are skipped for free. No signals exist at all. The only synchronization is a back-pressure check: before starting pass N, the coordinator spins only if more than two generations are still unconsumed. The cap doubles as a safety guarantee — pass N writes the slot pass N-2 used, so requiring pass N-2 to be consumed first means a writer can never overwrite a buffer the renderer is still copying.
+`MillionPointsCPU_IndependentThreads` deletes the lockstep altogether. The coordinator computes passes back-to-back, forever, and the only synchronization is a tiny three-state ownership machine (`closed -> computing -> ready-to-close`) plus per-slot graphics fences — no signals at all. Since `BeginWrite` must run on the main thread, the coordinator snapshots the pass time, then requests the mapping through a reusable `BeginWriteTask` scheduled on the main runner: a cross-thread continuation that completes the moment the main thread opens the slot. The Burst pass fills the region, the coordinator marks the write ready to close, and the main-thread root closes it, publishes the slot and draws — as many frames as it likes, always the slot published last. Back-pressure is structural instead of counted: the coordinator cannot even start pass N before pass N-1's mapping is closed and the target slot's newest draw fence has passed, so with two slots in rotation the pipeline can never run ahead of the renderer by more than one in-flight pass.
 
 ```text
 INDEPENDENTTHREADS - decoupled rates, latest-wins handoff
 
-coordinator:   P0   P1   P2   P3   P4   P5   P6 ...    never looks at frames
-               |    |    |    |    |    |    |         publishes a generation per pass
-published:     0    1    2    3    4    5    6
+coordinator:   P0   P1   P2   P3   P4   P5   P6 ...    computes passes back-to-back,
+               |    |    |    |    |    |    |         one in-flight pass at most
+published:     0    1    2    3    4    5    6          each pass closes into a slot
 
 frames:            F0         F1         F2              display rate, independent
                    |          |          |
                 draws gen 2  draws gen 5  draws gen 6      gens 3,4 skipped, nobody waits
-                acks 2       acks 5       acks 6
 
-back-pressure (rare): if published - acked > 2 the coordinator SpinWaits
-                      until the renderer acks again, then carries on
+back-pressure is structural: pass N cannot start before pass N-1 is closed
+and the target slot's newest draw fence has passed — nobody spins
 ```
 
-### Why IndependentThreads is so fast
-
-Three decisions stack up:
-
-1. **Decoupled rates.** BurstSync pays compute + copy + draw inside every frame; AdvancedSync hides compute behind rendering but still advances one step per frame; IndependentThreads computes at maximum CPU speed, indifferent to how fast frames arrive.
-2. **A handoff that blocks nobody.** Latest-wins means the renderer grabs the freshest finished result and skips stale ones at zero cost: no frame ever stalls behind compute, no pass ever stalls behind rendering. The two-generation cap engages so rarely it vanishes from the profile.
-3. **Skipping work cannot distort the animation.** Every pass bakes its own wall-clock timestamp when scheduled, so dropped generations do not slow the points down: correctness never depends on running every pass.
-
-The honest price: the coordinator saturates its core whether the display needs the throughput or not, and some computed results are never shown. Throughput is bought with efficiency.
-
-*(profiler captures to be added here: per-strategy Task Time / Task Steps counters, main-thread frame time vs worker occupancy across the three strategies, and how often the back-pressure cap engages)*
-
-All three strategies share the Burst kernel and range-task plumbing defined in `PipelinedBurstSupport.cs`: deterministic hash-based random rotation axes, quaternion position rotation, slot-indexed output buffers — deliberately identical math everywhere, so the differences you measure come from the scheduling, not from the kernels.
+![Profiler capture of the Svelto.Tasks Independent Threads strategy](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/CPUSveltoInd.png)
 
 ## Performance and zero allocations
 
-Performance was a first-class design constraint since 1.x. My benchmarks show Svelto.Tasks trading blows with *UniTask* and *Unity Jobs*: comparable throughput on coroutine stepping, comparable scaling on multi-threaded fan-out. I will publish the profiling numbers and captures separately, so you can judge for yourself rather than trusting my word for it.
+Performance was a first-class design constraint since 1.x. My benchmarks show Svelto.Tasks trading blows with *UniTask* and *Unity Jobs*: comparable throughput on coroutine stepping, comparable scaling on multi-threaded fan-out. Zero allocation is guaranteed (except for buffer resizes) in release mode. 
 
 ### Profiling with PROFILE_SVELTO
 

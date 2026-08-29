@@ -102,6 +102,7 @@ namespace Svelto.Common.Tests
             Assert.That(list[handle2], Is.EqualTo(2), "Second handle should still refer to its original value.");
         }
 
+#if DEBUG
         [Test]
         public void RemoveAt_Twice_Throws()
         {
@@ -112,6 +113,7 @@ namespace Svelto.Common.Tests
 
             Assert.That(() => list.RemoveAt(index), Throws.TypeOf<DBC.Common.PreconditionException>());
         }
+#endif
 
         /// <summary>
         /// Enumerating the list should yield only live items (non‑tombstoned slots) in the order
@@ -153,6 +155,7 @@ namespace Svelto.Common.Tests
         /// According to .NET enumerator semantics, modifying a collection during enumeration
         /// should cause the enumerator to be invalidated and throw an <see cref="InvalidOperationException"/>.
         /// </summary>
+#if DEBUG
         [Test]
         public void Enumerator_ShouldThrowWhenCollectionModified()
         {
@@ -178,6 +181,7 @@ namespace Svelto.Common.Tests
             
             Assert.That(thrown, Is.True, "Modifying the collection during enumeration should invalidate the enumerator and throw.");
         }
+#endif
 
         /// <summary>
         /// Clearing the list should reset the count to zero and allow subsequent additions to start
@@ -209,6 +213,7 @@ namespace Svelto.Common.Tests
         /// handle is considered invalid if it equals <see cref="TombstoneHandle.Invalid"/> or points
         /// to a slot that has been removed.
         /// </summary>
+#if DEBUG
         [Test]
         public void Indexer_ShouldThrow_WhenHandleIsInvalidOrRemoved()
         {
@@ -226,6 +231,7 @@ namespace Svelto.Common.Tests
                 () => { var _ = list[TombstoneHandle.Invalid]; },
                 "Accessing an invalid handle should throw.");
         }
+#endif
 
         /// <summary>
         /// Adding a large number of items beyond the initial capacity should increase

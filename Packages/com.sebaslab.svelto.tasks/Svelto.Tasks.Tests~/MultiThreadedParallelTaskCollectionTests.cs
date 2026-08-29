@@ -143,6 +143,36 @@ namespace Svelto.Tasks.Tests
         }
 
         [Test]
+        public void MultiThreadedParallelTaskCollection_UnevenTasks_AreSelfBalanced()
+        {
+            // What we are testing:
+            // Tasks are claimed through an atomic cursor, so a thread that frees up early
+            // picks up the next task instead of waiting for its statically assigned share.
+            // 1 slow task (1s) + 10 quick tasks (0.1s) on 2 threads:
+            // static distribution would give one thread the slow task plus 4 quick ones (~1.4s),
+            // cursor claiming lets the other thread absorb all quick tasks (~1.0s).
+
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_self_balance", 2, false))
+            {
+                Token token = new Token();
+
+                collection.Add(new WaitEnumeratorExtraLean(token, 1));
+                for (int i = 0; i < 10; i++)
+                    collection.Add(new WaitEnumeratorExtraLean(token, 0));
+
+                DateTime now = DateTime.Now;
+
+                collection.Complete(3000);
+
+                var totalSeconds = (DateTime.Now - now).TotalSeconds;
+
+                Assert.That(totalSeconds, Is.GreaterThan(0.9));
+                Assert.That(totalSeconds, Is.LessThan(1.3)); // static distribution would take ~1.4s
+                Assert.That(token.count, Is.EqualTo(11));
+            }
+        }
+
+        [Test]
         public void MultiThreadedParallelTaskCollection_Stop_DoesNotClearAndAllowsReuse()
         {
             using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_stop_reuse", 2, false))
@@ -161,6 +191,25 @@ namespace Svelto.Tasks.Tests
                 collection.Complete(1000);
 
                 Assert.That(token.count, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void MultiThreadedParallelTaskCollection_RunEnumerator_DoesNotDisposeOwnerAndAllowsReuse()
+        {
+            using (var collection =
+                   new Parallelism.Lean.MultiThreadedParallelTaskCollection("test_run_reuse", 2, false))
+            {
+                var token = new Token();
+                int completions = 0;
+                collection.onComplete += () => completions++;
+                collection.Add(new WaitEnumerator(token, 0));
+
+                collection.Run().Complete(1000);
+                collection.Run().Complete(1000);
+
+                Assert.That(token.count, Is.EqualTo(2));
+                Assert.That(completions, Is.EqualTo(2));
             }
         }
 
@@ -200,6 +249,28 @@ namespace Svelto.Tasks.Tests
             }
 
             Assert.That(counter.count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void MultiThreadedParallelTaskCollection_DisposeWhileRunning_DisposesUnclaimedTasks()
+        {
+            var counter = new DisposeCounter();
+
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("dispose_unclaimed", 2, false))
+            {
+                // More tasks than threads: only the first two get claimed by the runners,
+                // the rest sit beyond the cursor when Dispose is called.
+                for (int i = 0; i < 6; i++)
+                    collection.Add(new DisposableBlockingParallelTask(counter));
+
+                collection.MoveNext();
+                Assert.That(collection.isRunning, Is.True);
+
+                collection.Dispose();
+            }
+
+            // 2 claimed tasks disposed by the runners, 4 unclaimed ones by the collection.
+            Assert.That(counter.count, Is.EqualTo(6));
         }
 
         [Test]

@@ -55,6 +55,19 @@ namespace Svelto.Tasks.Profiler
             driver?.EndRunner(runnerName);
         }
 
+        internal static ITaskProfilerThreadDriver BeginWorkerThread(string runnerName)
+        {
+            var driver = Driver as ITaskProfilerThreadDriver;
+            driver?.BeginWorkerThread(runnerName);
+
+            return driver;
+        }
+
+        internal static void EndWorkerThread(ITaskProfilerThreadDriver driver)
+        {
+            driver?.EndWorkerThread();
+        }
+
         public static StepState MonitorUpdateDuration<T>(ref T sveltoTask, string runnerName,
             (int index, TombstoneHandle currentSpawnedTaskToRunIndex) valueTuple) where T : ISveltoTask
         {
@@ -90,9 +103,12 @@ namespace Svelto.Tasks.Profiler
                 ref var infosPerRunnner = ref taskInfos.GetOrAdd(runnerName,
                     () => new FasterDictionary<RefWrapper<string>, TaskInfo>());
 
-                //GetOrAdd only invokes the builder on the first insert, so the regex name is paid once per task
-                ref var info = ref infosPerRunnner.GetOrAdd(taskName,
-                    () => new TaskInfo(NormalizeTaskName(taskName), runnerName));
+                //GetOrAdd(key) never allocates: a capturing builder delegate would allocate
+                //a closure on every call, per task step, on every runner thread. The name is
+                //normalized only on the first insert (taskName is null for a default TaskInfo)
+                ref var info = ref infosPerRunnner.GetOrAdd(taskName);
+                if (info.taskName == null)
+                    info = new TaskInfo(NormalizeTaskName(taskName), runnerName);
 
                 info.AddUpdateDuration(elapsedMilliseconds);
             }

@@ -100,6 +100,7 @@ namespace Svelto.Common.Tests
             }
         }
 
+#if DEBUG
         [Test]
         public void NativeDynamicArray_AddWithoutGrow_Throws_WhenNoSpace()
         {
@@ -115,6 +116,7 @@ namespace Svelto.Common.Tests
                 arr.Dispose();
             }
         }
+#endif
 
         [Test]
         public void NativeDynamicArrayCast_Wraps_NativeDynamicArray()

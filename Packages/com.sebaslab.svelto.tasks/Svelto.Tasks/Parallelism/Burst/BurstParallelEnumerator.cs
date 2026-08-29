@@ -1,4 +1,3 @@
-#if SVELTO_BURST
 namespace Svelto.Tasks.Parallelism
 {
     /// <summary>
@@ -11,4 +10,4 @@ namespace Svelto.Tasks.Parallelism
         void SetRange(int startIndex, int count);
     }
 }
-#endif
+

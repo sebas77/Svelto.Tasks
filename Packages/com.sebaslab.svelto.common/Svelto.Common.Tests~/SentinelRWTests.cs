@@ -19,6 +19,7 @@ namespace Svelto.Common.Tests
             }
         }
 
+#if DEBUG
         [Test]
         public void MB_AsWriter_WriteWhileRead_Throws()
         {
@@ -76,6 +77,7 @@ namespace Svelto.Common.Tests
                 w1.Dispose();
             }
         }
+#endif
 
         [Test]
         public unsafe void NB_AsReader_ReadRead_IsAllowed()
@@ -111,6 +113,7 @@ namespace Svelto.Common.Tests
             MemoryUtilities.NativeFree((IntPtr)statePtr, Allocator.Persistent);
         }
 
+#if DEBUG
         [Test]
         public unsafe void NB_AsWriter_WriteWhileRead_Throws()
         {
@@ -182,5 +185,6 @@ namespace Svelto.Common.Tests
             MemoryUtilities.NativeFree((IntPtr)dataPtr, Allocator.Persistent);
             MemoryUtilities.NativeFree((IntPtr)statePtr, Allocator.Persistent);
         }
+#endif
     }
 }

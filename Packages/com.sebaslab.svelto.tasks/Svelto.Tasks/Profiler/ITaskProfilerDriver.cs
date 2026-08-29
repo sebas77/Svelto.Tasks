@@ -15,5 +15,12 @@ namespace Svelto.Tasks.Profiler
         void BeginTask(string runnerName, string taskName);
         void EndTask(string runnerName, string taskName, float elapsedMilliseconds);
     }
+
+    //Optional Unity-facing lifecycle hook. Keeping this separate avoids changing the public profiler-driver contract.
+    internal interface ITaskProfilerThreadDriver
+    {
+        void BeginWorkerThread(string runnerName);
+        void EndWorkerThread();
+    }
 }
 #endif

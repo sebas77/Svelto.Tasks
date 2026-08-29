@@ -80,6 +80,7 @@ namespace Svelto.Common.Tests
             Assert.That(s[1], Is.Null);
         }
 
+#if DEBUG
         [Test]
         public void ManagedStrategy_ToBuffer_ThrowsIfNotAllocated()
         {
@@ -87,6 +88,7 @@ namespace Svelto.Common.Tests
 
             Assert.That(() => ((IBufferStrategy<int>)s).ToBuffer(), Throws.Exception);
         }
+#endif
 
         [Test]
         public void ManagedStrategy_AsBytesPointer_And_SerialiseFrom_ThrowNotImplemented()

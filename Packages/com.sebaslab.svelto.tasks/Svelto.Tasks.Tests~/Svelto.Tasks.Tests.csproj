@@ -6,6 +6,7 @@
         <TargetFramework>net9.0</TargetFramework>
         <RollForward>Major</RollForward>
         <LangVersion>10</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>disable</Nullable>
         <IsPackable>false</IsPackable>

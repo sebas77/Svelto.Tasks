@@ -17,8 +17,7 @@ com.sebaslab.svelto.tasks/
         Parallelism/                         #   MultiThreadedParallelTaskCollection, MultiThreadedParallelJobCollection<T>
         Runners/                             #   SteppableRunner, MultiThreadRunner, SyncRunner (Lean + ExtraLean variants)
         Tasks/                               #   TaskContract, Lean/ExtraLean task wrappers
-        Unity/                               #   Unity-only extensions (do not touch unless targeting Unity APIs)
-    Svelto.Tasks.Tests~/                     # NUnit tests (the ~ suffix is intentional: Unity ignores these folders)
+    Svelto.Tasks.Tests~/                     # NUnit tests
     .aiguides/AI_GUIDE_Svelto.Tasks.md       # DEEP API reference — read before non-trivial changes
 ```
 
@@ -30,7 +29,7 @@ Use it when you need any of the following; otherwise prefer plain `async`/`await
 
 | Need | Use |
 |---|---|
-| Tick cooperative coroutines from your own loop / Unity `Update()` | Lean task + `SteppableRunner` |
+| Tick cooperative coroutines from your own host loop | Lean task + `SteppableRunner` |
 | Minimal-overhead coroutine that only waits | ExtraLean task |
 | Run work on a dedicated background thread | `MultiThreadRunner` |
 | Run one task synchronously to completion | `.Complete()` |
@@ -159,15 +158,15 @@ dotnet run --project Examples/01_GameLoop            # run any example
 ```
 
 - SDK is pinned by `global.json`; library targets `netstandard2.1`, tests target `net9.0`, examples `net8.0` (both roll forward).
-- Build artifacts go to custom `obj~/` / `bin~/` folders (Unity convention). Don't be surprised; don't "fix" it.
+- Build artifacts go to custom `obj~/` / `bin~/` folders by repository convention. Don't be surprised; don't "fix" it.
 - Tests are NUnit 4. There is no separate lint/format step — build warnings matter.
 
 ## Conventions for changes to this repo
 
 - C# 10, `<Nullable>disable</Nullable>`, implicit usings disabled — write explicit usings, no nullable annotations.
-- Log via `Svelto.Console` (`Log`, `LogWarning`, `LogError`, `LogDebug`), never `Console.WriteLine` or `UnityEngine.Debug`.
+- Log via `Svelto.Console` (`Log`, `LogWarning`, `LogError`, `LogDebug`) rather than direct console APIs.
 - Contract checks use DBC (`Check.Require/Ensure/Assert`) — they compile away in release (`DISABLE_CHECKS`).
-- Keep platform-specific code out of core paths; Unity-only code lives under `Svelto.Tasks/Unity/` or behind existing defines.
+- Keep platform-specific code out of core paths and behind the existing platform defines.
 - Every new feature should come with an example under `Examples/NN_Name/` following the existing pattern (csproj + Program.cs + README.md), and tests where practical.
 
 ## Deep reference docs

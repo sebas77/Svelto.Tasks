@@ -73,7 +73,7 @@ namespace Svelto.Tasks.Enumerators
                         Reset();
                 
                     if (timedOut)
-                        Console.LogWarning("WaitForSignalEnumerator ".FastConcat(_name, " timedOut"));
+                        throw new WaitForSignalException($"WaitForSignal {_name} timed out after {_initialTimeOut} milliseconds");
                 
                     return false;
                 }
@@ -116,5 +116,12 @@ namespace Svelto.Tasks.Enumerators
         
         readonly WaitBackC  _waitBack;
         readonly WaitBackC  _wait;
+    }
+
+    class WaitForSignalException : Exception
+    {
+        public WaitForSignalException(string s) : base (s)
+        {
+        }
     }
 }
