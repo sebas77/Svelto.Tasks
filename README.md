@@ -1,4 +1,4 @@
-# Introducing Svelto.Tasks 2.0 beta: coroutines for every C# platform
+# Svelto.Tasks 2.0: a multithreaded, allocation-free coroutine engine for C# — massive parallelism, async/await interoperable, built for games
 
 ## Introduction
 
@@ -510,6 +510,8 @@ and the target slot's newest draw fence has passed — nobody spins
 
 ![Profiler capture of the Svelto.Tasks Independent Threads strategy](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/CPUSveltoInd.png)
 
+Notice what none of the three demos contain: no locks, no event handles, no busy-wait loops. The yield mechanism *is* the synchronization. Every cross-thread wait — the workers finishing a pass, the `WaitForSignal<T>` handshake, the coordinator suspending until the main thread maps a slot — is expressed as `yield return something`, and the runner parks the coroutine at zero cost until the wait resolves. The same statement that suspends a task for one frame suspends it for a million-particle compute pass, which is why the parallel code reads top-down like the serial one.
+
 ## Performance and zero allocations
 
 Performance was a first-class design constraint since 1.x. My benchmarks show Svelto.Tasks trading blows with *UniTask* and *Unity Jobs*: comparable throughput on coroutine stepping, comparable scaling on multi-threaded fan-out. Zero allocation is guaranteed (except for buffer resizes) in release mode. 
@@ -814,16 +816,50 @@ context.Run(async () =&gt;
 //runner.Dispose() mid-await: hosted work abandoned deterministically
 </pre>
 
-## What's next
-
-Being a beta, there are open points where I would value your help:
-
-1. **Feedback on the TaskContract API** — it is the heart of Lean tasks and the community will stress it better than my tests did.
-2. **Stabilizing the experimental parts** — the .NET Tasks interop and the Burst-oriented job path need real-world usage before I freeze them.
-3. **Docs and schedulers for other platforms** — if you are a happy user, reviewing the example READMEs or porting a scheduler to your favourite framework is the most valuable contribution.
-
 ## Conclusions
 
 Svelto.Tasks 2.0 stays true to the idea the library was born with — iterators as tasks, runners as schedulers, zero surprises — while finally getting the packaging, the test suite and the 20 runnable examples it always deserved. Use it wherever C# compiles; reach for ExtraLean in hot gameplay paths; treat Lean tasks, the Tasks interop and the job path as tools for the cases that genuinely need them.
+
+## FAQ
+
+### Is Svelto.Tasks a replacement for Unity Jobs?
+
+No, and I am not going to pretend otherwise. Jobs has a ton of controls I did not mirror. What Svelto.Tasks offers is the familiar shapes: `MultiThreadedParallelJobCollection<T>` splits an index range across threads like an `IJobParallelFor` would, Burst range tasks run through `MultiThreadedBurstParallelTaskCollection<T>`, and the MillionPoints demo shows the whole spectrum. For specific algorithms the runners are an excellent tool; as a general Jobs replacement, they are not.
+
+### Why shouldn't I just use async/await and .NET Tasks?
+
+Because they give you no control over where and when your code runs. An awaited continuation resumes on the ThreadPool, stopping mid-flight means passing `CancellationToken`s through every layer, pacing and profiling cannot be imposed centrally. Svelto.Tasks inverts that: you choose the runner, so you choose the thread; stopping the runner stops everything by construction; and flow modifiers see every step, so budgets and profiling are features of the design. .NET Tasks remain fine for service-layer work like HTTP calls and cloud saves.
+
+### How do I stop all the tasks of a match when the player leaves?
+
+Stop their context, not each task: `runner.Stop()` ends running tasks asynchronously, `runner.Flush()` disposes running and queued ones, `runner.Dispose()` is terminal. No token to create, pass down and remember at every spawn site — one forgotten call cannot leave an orphan behind.
+
+### Lean or ExtraLean?
+
+ExtraLean for the vast majority of gameplay coroutines: plain `IEnumerator`, only wait signals, the cheapest possible task. Lean when you need the TaskContract: return values, waiting for child tasks, `Break.It`/`Break.AndStop` semantics and composition. ExtraLean struct tasks plus the pooling machinery are what make the zero-allocation paths possible.
+
+### Is it really allocation-free?
+
+Zero-allocation usage is a set of patterns rather than magic: ExtraLean tasks with struct iterators, `IteratorBlockPool<T>` recycling immortal state machines, pooled continuations, preallocated task collections. Release-only zero-allocation tests cover the Lean, ExtraLean, synchronous, multithreaded, pooled and parallel paths — run them with `dotnet test -c Release`. The usual discipline still applies: no closures or LINQ in per-frame tasks.
+
+### Does it work outside Unity?
+
+The core is engine-agnostic and targets `netstandard2.1`: if you can compile C#, you can run Svelto.Tasks. The console examples in this repo are plain .NET applications. The few Unity specializations (yield-instruction interop, the Unity profiler driver) live behind compiler defines and are strictly optional.
+
+### Do I need locks when tasks run on other threads?
+
+For the task itself, no: a task's state machine is only ever touched by its owning runner, so a task that keeps its state to itself is thread-safe without a single lock. Submitting tasks from any thread is safe by construction. If a task touches data shared with other threads, synchronizing that data is your job — `volatile`, `Interlocked` and locks as usual.
+
+### How does it compare to UniTask?
+
+My benchmarks show Svelto.Tasks trading blows with UniTask and Unity Jobs: comparable throughput on coroutine stepping, comparable scaling on multi-threaded fan-out. I will publish the numbers and captures separately so you can judge for yourself rather than trusting my word for it.
+
+### What does "massive parallelism" mean in practice?
+
+That one million rotating points can be simulated on the CPU every frame while the framerate stays full. The MillionPoints demo splits the million iterations into 8192-particle chunks that `ProcessorCount - 1` workers claim as they free up, with the Burst kernels writing straight into the memory the driver mapped for the GPU. Three synchronization strategies span the spectrum, from a double-buffered frame barrier to compute passes that run completely decoupled from rendering. None of that synchronization is written by hand: waiting for the worker chunks, for a handshake signal or for the main thread to map a slot is always the same `yield return` statement, and the runner parks the coroutine until the wait is over — the parallel code reads like the serial one. To be precise, it is batch and data parallelism — a bounded burst of work spread across all your cores — not a thread pool for unrelated async jobs.
+
+### What is still experimental?
+
+Two areas: the .NET Tasks interop (`SveltoAwaiter`, `TaskSynchronizationContext`) and the Burst-oriented job path inside Unity. They work and the examples demonstrate them, but consider their APIs more fluid than the rest until real-world feedback comes in.
 
 Everything is on GitHub in the [sebas77/Svelto.Tasks-Repo](https://github.com/sebas77/Svelto.Tasks-Repo) repository. If you have questions or spot problems, leave a comment here or join our populated [Discord server](https://discord.gg/JTUZuJcME5). Feedback on the beta is not only welcome, it is necessary!
