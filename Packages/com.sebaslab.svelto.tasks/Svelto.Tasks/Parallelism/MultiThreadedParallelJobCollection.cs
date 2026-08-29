@@ -12,9 +12,8 @@ public class
     //works similarly to Unity Jobs, the same job is split into different iterations, the work is then divided according to the indexed iterations
     public void Add(in TJob job, int iterations)
     {
-        if (isRunning == true)
-            throw new MultiThreadedParallelTaskCollectionException(
-                "can't add tasks on a started MultiThreadedParallelTaskCollection");
+        DBC.Tasks.Check.Require(isRunning == false,
+            "can't add tasks on a started MultiThreadedParallelJobCollection");
 
         var runnersLength   = _runners.Length;
         int tasksPerThread     = (int)System.MathF.Floor((float)iterations / runnersLength);

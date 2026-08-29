@@ -47,15 +47,20 @@ state object.
 
 - **Constructor is `(name, threadCount, tightTasks)`** — `tightTasks: true` is for
   cache-friendly CPU-bound work; use `false` for I/O-bound tasks.
-- Each task runs on its **own thread** (round-robin assigned from the pool of runner
-  threads). If you have fewer threads than tasks, tasks queue up.
+- Tasks are handed to a **pool of worker threads** as they free up: tasks are
+  round-robin assigned from the runner pool at schedule time, and a thread that
+  finishes early can claim more queued tasks. With fewer threads than tasks,
+  tasks queue up.
 - The collection's `MoveNext()` returns `true` while tasks are still running and
   `false` when all are done. Calling `Complete()` loops `MoveNext()` until done.
 - **Don't add tasks while running** — it throws
   `MultiThreadedParallelTaskCollectionException`.
 - Tasks must be **thread-safe** in any shared state they access (use `Interlocked` or
-  `volatile`).
+  `volatile`) — this includes the host's monitor loop: stop flags shared with
+  other threads must be `volatile` (as `_monitoring` is here) or the final
+  `Thread.Join()` can hang.
 - The non-generic `MultiThreadedParallelTaskCollection` stores tasks in a non-generic
-  list, so an `IParallelTask` implementing the interface through a `struct` would be
-  boxed on every access — use a **class** for allocation-free stepping (a generic
-  struct-constrained variant exists for value-type tasks).
+  list, so an `IParallelTask` implementing the interface through a `struct` is
+  boxed when it is stored/scheduled; subsequent interface calls go through that
+  boxed object. Use a **class** here, or the generic struct-constrained variant
+  for value-type tasks.

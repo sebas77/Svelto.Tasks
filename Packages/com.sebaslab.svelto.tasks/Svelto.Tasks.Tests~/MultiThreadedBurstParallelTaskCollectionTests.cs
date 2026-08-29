@@ -8,12 +8,14 @@ namespace Svelto.Tasks.Tests
     [TestFixture]
     public unsafe class MultiThreadedBurstParallelTaskCollectionTests
     {
+#if DEBUG && !DISABLE_DBC && !PROFILE_SVELTO
         [Test]
         public void MultiThreadedBurstParallelTaskCollection_ZeroThreads_Throws()
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Assert.Throws<DBC.Tasks.PreconditionException>(() =>
                 new MultiThreadedBurstParallelTaskCollection<BurstRangeJob>("burst_zero_threads", 0, false));
         }
+#endif
 
         [Test]
         public void MultiThreadedBurstParallelTaskCollection_SplitsIterations_IncludingPartialLastChunk()
@@ -94,18 +96,20 @@ namespace Svelto.Tasks.Tests
             }
         }
 
+#if DEBUG && !DISABLE_DBC && !PROFILE_SVELTO
         [Test]
         public void MultiThreadedBurstParallelTaskCollection_Add_WithNonPositiveElementsPerTask_Throws()
         {
             using (var results = new SharedResults(1))
             using (var collection = new MultiThreadedBurstParallelTaskCollection<BurstRangeJob>("burst_guard", 2, false))
             {
-                Assert.Throws<ArgumentOutOfRangeException>(() =>
+                Assert.Throws<DBC.Tasks.PreconditionException>(() =>
                     collection.Add(new BurstRangeJob(results.Pointer, results.DisposeCounter), 100, 0));
-                Assert.Throws<ArgumentOutOfRangeException>(() =>
+                Assert.Throws<DBC.Tasks.PreconditionException>(() =>
                     collection.Add(new BurstRangeJob(results.Pointer, results.DisposeCounter), 100, -1));
             }
         }
+#endif
 
         [Test]
         public void MultiThreadedBurstParallelTaskCollection_Add_WithNonPositiveIterations_IsIgnored()
@@ -127,10 +131,11 @@ namespace Svelto.Tasks.Tests
             }
         }
 
+#if DEBUG && !DISABLE_DBC && !PROFILE_SVELTO
         [Test]
         public void MultiThreadedBurstParallelTaskCollection_Constructor_WithZeroThreads_Throws()
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Assert.Throws<DBC.Tasks.PreconditionException>(() =>
                 new MultiThreadedBurstParallelTaskCollection<BurstRangeJob>("burst_zero_threads_ctor", 0, false));
         }
 
@@ -145,12 +150,13 @@ namespace Svelto.Tasks.Tests
                 collection.MoveNext();
                 Assert.That(collection.isRunning, Is.True);
 
-                Assert.Throws<MultiThreadedParallelTaskCollectionException>(() =>
+                Assert.Throws<DBC.Tasks.PreconditionException>(() =>
                     collection.Add(new BurstSteppedJob(results.Pointer, results.DisposeCounter, steps: 1, sleepMs: 0), 1, 1));
 
                 collection.Run().Complete(2000);
             }
         }
+#endif
 
         [Test]
         public void MultiThreadedBurstParallelTaskCollection_Stop_CancelsPendingChunks_AndRun_CanBeRestarted()

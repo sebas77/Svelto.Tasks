@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using Svelto.Tasks.Parallelism;
 
@@ -17,37 +19,42 @@ namespace Example14_ParallelDownloads
     {
         readonly string _fileName;
         readonly int _stepDelayMs;
-        readonly int _increment;
+        readonly int _totalSteps;
         readonly DownloadProgress _progress;
+        int _stepsLeft;
 
-        public DownloadTask(string fileName, int totalSteps, int stepDelayMs, DownloadProgress progress)
+        public DownloadTask(string fileName, int steps, int stepDelayMs, DownloadProgress progress)
         {
             _fileName = fileName;
             _stepDelayMs = stepDelayMs;
+            _totalSteps = steps;
             _progress = progress;
-            //rounded so the declared step count actually reaches 100% (integer division
-            //would silently stretch the download beyond its declared duration)
-            _increment = Math.Max(1, (int)Math.Round(100f / totalSteps));
+            _stepsLeft = steps;
         }
 
         public object Current => null;
 
         public bool MoveNext()
         {
+            //the collection hands queued tasks to whichever runner is idle: each MoveNext
+            //records the thread it runs on, so the host can see the self-balancing live
             _progress.ThreadId = Thread.CurrentThread.ManagedThreadId;
 
-            if (_progress.Percent >= 100)
+            if (_stepsLeft == 0)
             {
+                _progress.Percent = 100;
                 _progress.Done = true;
                 return false;
             }
 
             Thread.Sleep(_stepDelayMs);
+            _stepsLeft--;
 
-            _progress.Percent = Math.Min(100, _progress.Percent + _increment);
+            _progress.Percent = 100 - _stepsLeft * 100 / _totalSteps;
 
-            if (_progress.Percent >= 100)
+            if (_stepsLeft == 0)
             {
+                _progress.Percent = 100;
                 _progress.Done = true;
                 return false;
             }
@@ -62,10 +69,16 @@ namespace Example14_ParallelDownloads
 
     static class Program
     {
+        const int TotalDownloads = 400;
+        const int ThreadCount = 4;
+        const int MonitorFrameMs = 100;
+
         static readonly char[] _spin = { '|', '/', '-', '\\' };
         static DownloadProgress[] _progresses;
-        static (string name, int steps, int delay)[] _specs;
-        static bool _monitoring = true;
+        static string[] _names;
+        static int[] _sequentialMs; //per-download cost, used for the sequential-estimate line
+        static volatile bool _monitoring = true;
+        static long _totalSequentialMs;
 
         static void SafeClear() { try { Console.Clear(); } catch { } }
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch { } }
@@ -75,28 +88,35 @@ namespace Example14_ParallelDownloads
 
         static void Main()
         {
-            SafeTitle("Svelto.Tasks — Parallel Downloads");
+            SafeTitle("Svelto.Tasks — 400 Parallel Downloads on 4 Threads");
             SafeCursorVisible(false);
 
             PrintBanner();
 
-            _specs = new (string name, int steps, int delay)[]
-            {
-                ("File_1.zip", 20, 40),
-                ("File_2.zip", 10, 80),
-                ("File_3.zip", 25, 30),
-                ("File_4.zip", 15, 60),
-            };
-
-            _progresses = new DownloadProgress[4];
-            for (int i = 0; i < 4; i++)
-                _progresses[i] = new DownloadProgress();
+            //uneven download sizes (seeded for reproducibility): with far more tasks than
+            //threads, the collection's idle-runner stealing is what keeps all threads busy
+            var random = new Random(7);
+            _progresses = new DownloadProgress[TotalDownloads];
+            _names = new string[TotalDownloads];
+            _sequentialMs = new int[TotalDownloads];
 
             using var collection = new Svelto.Tasks.Parallelism.ExtraLean
-                .MultiThreadedParallelTaskCollection("Downloads", 4, false);
+                .MultiThreadedParallelTaskCollection("Downloads", ThreadCount, false);
 
-            for (int i = 0; i < 4; i++)
-                collection.Add(new DownloadTask(_specs[i].name, _specs[i].steps, _specs[i].delay, _progresses[i]));
+            //the wave-end signal: fires once, on the thread calling Complete()
+            bool onCompleteFired = false;
+            collection.onComplete += () => onCompleteFired = true;
+
+            for (int i = 0; i < TotalDownloads; i++)
+            {
+                int steps = 2 + random.Next(7);        //2..8 steps
+                int delayMs = 8 + random.Next(7);      //8..14 ms per step
+                _names[i] = $"File_{i:D3}.zip";
+                _sequentialMs[i] = steps * delayMs;
+                _totalSequentialMs += _sequentialMs[i];
+                _progresses[i] = new DownloadProgress();
+                collection.Add(new DownloadTask(_names[i], steps, delayMs, _progresses[i]));
+            }
 
             var monitorThread = new Thread(MonitorProgress)
             {
@@ -105,12 +125,14 @@ namespace Example14_ParallelDownloads
             };
             monitorThread.Start();
 
-            collection.Complete();
+            var clock = Stopwatch.StartNew();
+            collection.Complete(); //one wave: all 400 downloads distributed over 4 runners
+            clock.Stop();
 
             _monitoring = false;
             monitorThread.Join();
 
-            DrawFinal();
+            DrawFinal(clock.ElapsedMilliseconds, onCompleteFired);
 
             Console.WriteLine();
             Console.WriteLine("  ✅ All downloads complete! Press any key to exit.");
@@ -124,7 +146,7 @@ namespace Example14_ParallelDownloads
             while (_monitoring)
             {
                 DrawProgress(frame++);
-                Thread.Sleep(80);
+                Thread.Sleep(MonitorFrameMs);
             }
         }
 
@@ -133,83 +155,107 @@ namespace Example14_ParallelDownloads
             SafeSetCursor(0, 9);
             string spinner = _spin[frame % 4].ToString();
 
-            Console.WriteLine("  ┌──────────────────────────────────────────────────────────┐  ");
-            Console.WriteLine("  │  📦 Parallel Downloads  {0}  4 threads, 4 files simultan. │  ", spinner);
-            Console.WriteLine("  ├──────────────────────────────────────────────────────────┤  ");
+            int done = 0;
+            long percentSum = 0;
+            var perThreadInFlight = new Dictionary<int, int>();
+            var perThreadDone = new Dictionary<int, int>();
 
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < TotalDownloads; i++)
             {
                 var p = _progresses[i];
-                int pct = p.Percent;
-                int barLen = 20;
-                int filled = pct * barLen / 100;
-                string bar = new string('█', filled) + new string('░', barLen - filled);
+                percentSum += p.Percent;
 
-                string status;
                 if (p.Done)
-                    status = "✓ done";
-                else if (pct > 0)
-                    status = "⬇ down";
-                else
-                    status = "⏳ ...";
-
-                Console.Write("  │  {0,-12} [{1}] {2,3}% {3}",
-                    _specs[i].name, bar, pct, status);
-                Console.WriteLine("  T{0:D2}    │  ",
-                    p.ThreadId > 0 ? p.ThreadId % 100 : 0);
+                {
+                    done++;
+                    Increment(perThreadDone, p.ThreadId);
+                }
+                else if (p.ThreadId > 0)
+                {
+                    Increment(perThreadInFlight, p.ThreadId);
+                }
             }
 
-            Console.WriteLine("  ├──────────────────────────────────────────────────────────┤  ");
+            int overall = (int)(percentSum / TotalDownloads);
+            int barLen = 40;
+            int filled = overall * barLen / 100;
 
-            int totalPct = 0;
-            for (int i = 0; i < 4; i++)
-                totalPct += _progresses[i].Percent;
-            int avg = totalPct / 4;
+            Console.WriteLine("  ┌────────────────────────────────────────────────────────────┐  ");
+            Console.WriteLine("  │  📦 400 downloads / 4 threads  {0}   done {1,3}/400          │  ",
+                spinner, done);
+            Console.WriteLine("  ├────────────────────────────────────────────────────────────┤  ");
+            Console.WriteLine("  │  Overall [{0}{1}] {2,3}%                       │  ",
+                new string('█', filled), new string('░', barLen - filled), overall);
 
-            int overallFilled = avg * 20 / 100;
-            string overallBar = new string('█', overallFilled) + new string('░', 20 - overallFilled);
-
-            Console.WriteLine("  │  📊 Overall:  [{0}] {1,3}%  {2,2}/4 complete          │  ",
-                overallBar, avg, CountDone());
-            Console.WriteLine("  └──────────────────────────────────────────────────────────┘  ");
-        }
-
-        static int CountDone()
-        {
-            int count = 0;
-            for (int i = 0; i < 4; i++)
-                if (_progresses[i].Done) count++;
-            return count;
-        }
-
-        static void DrawFinal()
-        {
-            SafeSetCursor(0, 9);
-            Console.WriteLine("  ┌──────────────────────────────────────────────────────────┐  ");
-            Console.WriteLine("  │  📦 Parallel Downloads  ✅ COMPLETE                       │  ");
-            Console.WriteLine("  ├──────────────────────────────────────────────────────────┤  ");
-
-            for (int i = 0; i < 4; i++)
+            foreach (int tid in perThreadInFlight.Keys)
             {
-                Console.Write("  │  {0,-12} [{1}] 100% ✓ done          T{2:D2}    │  ",
-                    _specs[i].name, new string('█', 20), _progresses[i].ThreadId % 100);
-                Console.WriteLine();
+                int completed = perThreadDone.TryGetValue(tid, out int c) ? c : 0;
+                Console.WriteLine("  │   T{0:D2}  in flight {1,3}   completed {2,3}                     │  ",
+                    tid % 100, perThreadInFlight[tid], completed);
             }
 
-            Console.WriteLine("  ├──────────────────────────────────────────────────────────┤  ");
-            Console.WriteLine("  │  📊 Overall:  [████████████████████] 100%  4/4 complete          │  ");
-            Console.WriteLine("  └──────────────────────────────────────────────────────────┘  ");
+            for (int i = perThreadInFlight.Count; i < ThreadCount; i++)
+                Console.WriteLine("  │                                                            │  ");
+
+            Console.WriteLine("  ├────────────────────────────────────────────────────────────┤  ");
+            Console.WriteLine("  │  idle threads steal the next queued download as they        │  ");
+            Console.WriteLine("  │  finish: per-thread totals stay balanced despite uneven     │  ");
+            Console.WriteLine("  │  file sizes. Watch the completed counts converge.           │  ");
+            Console.WriteLine("  └────────────────────────────────────────────────────────────┘  ");
+        }
+
+        static void Increment(Dictionary<int, int> dictionary, int key)
+        {
+            dictionary[key] = dictionary.TryGetValue(key, out int current) ? current + 1 : 1;
+        }
+
+        static void DrawFinal(long elapsedMs, bool onCompleteFired)
+        {
+            var perThread = new Dictionary<int, int>();
+            for (int i = 0; i < TotalDownloads; i++)
+                Increment(perThread, _progresses[i].ThreadId);
+
+            var threadIds = new List<int>(perThread.Keys);
+            threadIds.Sort();
+
+            SafeSetCursor(0, 9);
+            Console.WriteLine("  ┌────────────────────────────────────────────────────────────┐  ");
+            Console.WriteLine("  │  📦 Parallel Downloads  ✅ ALL {0} COMPLETE                    │  ",
+                TotalDownloads);
+            Console.WriteLine("  ├────────────────────────────────────────────────────────────┤  ");
+            Console.WriteLine("  │  📊 Results                                                 │  ");
+
+            foreach (int tid in threadIds)
+                Console.WriteLine("  │    T{0:D2} processed {1,3} downloads                        │  ",
+                    tid % 100, perThread[tid]);
+
+            Console.WriteLine("  ├────────────────────────────────────────────────────────────┤  ");
+            Console.WriteLine("  │  elapsed (4 threads)      : {0,6} ms                        │  ", elapsedMs);
+            Console.WriteLine("  │  sequential estimate      : {0,6} ms                        │  ", _totalSequentialMs);
+            Console.WriteLine("  │  speedup                  : {0,6} x                         │  ",
+                (double)_totalSequentialMs / Math.Max(1, elapsedMs));
+            Console.WriteLine("  │  onComplete fired         : {0,-31}│  ",
+                onCompleteFired ? "yes" : "NO — unexpected!");
+            Console.WriteLine("  │  per-thread counts ~equal despite uneven sizes:            │  ");
+            Console.WriteLine("  │  that even split is the self-balancing this collection     │  ");
+            Console.WriteLine("  │  exists for. With tasks <= threads, a runner pool is       │  ");
+            Console.WriteLine("  │  the leaner choice (see Example 22).                       │  ");
+            Console.WriteLine("  └────────────────────────────────────────────────────────────┘  ");
         }
 
         static void PrintBanner()
         {
+            SafeClear();
             Console.WriteLine();
             Console.WriteLine("  ╔══════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("  ║   📦 Svelto.Tasks Example 14 — Parallel Downloads          ║");
-            Console.WriteLine("  ║   4 files × 4 threads, IParallelTask + ParallelTaskCollection║");
+            Console.WriteLine("  ║   📦 Svelto.Tasks Example 14 — Parallel Downloads           ║");
+            Console.WriteLine("  ║   {0} files × {1} threads, self-balancing steal queue         ║",
+                TotalDownloads, ThreadCount);
             Console.WriteLine("  ╚══════════════════════════════════════════════════════════════╝");
             Console.WriteLine();
-            Console.WriteLine("  ⬇ = downloading   ✓ = complete   T## = thread id");
+            Console.WriteLine("  Far more tasks than threads: runners that finish a download");
+            Console.WriteLine("  immediately claim the next queued one (work stealing), so the");
+            Console.WriteLine("  wave finishes in roughly total-work / threads time.");
             Console.WriteLine();
         }
     }

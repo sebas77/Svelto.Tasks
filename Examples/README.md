@@ -1,6 +1,6 @@
 # Svelto.Tasks Examples
 
-21 self-contained console examples, one per main feature. Each folder is an independent project you can run with `dotnet run`.
+23 self-contained console examples, one per main feature. Each folder is an independent project you can run with `dotnet run`.
 
 ## Running
 
@@ -25,17 +25,19 @@ Each example targets `net8.0` (rolls forward to newer SDKs if 8 isn't installed)
 | 8 | [`08_CancellableChain`](08_CancellableChain/README.md) | Break.AndStop | If a step fails, abort the entire chain |
 | 9 | [`09_OrderedLoading`](09_OrderedLoading/README.md) | SerialTaskCollection | download → parse → initialize, sequential |
 | 10 | [`10_ConcurrentAnimations`](10_ConcurrentAnimations/README.md) | ParallelTaskCollection | Multiple tweens progressing together |
-| 11 | [`11_AIBudgetStaggered`](11_AIBudgetStaggered/README.md) | StaggeredFlow | Limit N AI tasks per frame |
-| 12 | [`12_FrameBudgetTimeBound`](12_FrameBudgetTimeBound/README.md) | TimeBoundFlow | Process tasks for at most 20ms per frame |
+| 11 | [`11_AIBudgetStaggered`](11_AIBudgetStaggered/README.md) | StaggeredFlow | Cap of 3 tasks per step — and its starvation gotcha |
+| 12 | [`12_FrameBudgetTimeBound`](12_FrameBudgetTimeBound/README.md) | TimeBoundFlow | Cooperative ~20ms budget per frame (soft, not preemptive) |
 | 13 | [`13_BatchPathfinding`](13_BatchPathfinding/README.md) | ParallelJobCollection | 1000 units pathfind across 4 threads |
-| 14 | [`14_ParallelDownloads`](14_ParallelDownloads/README.md) | MultiThreadedParallelTaskCollection | 4 downloads on 4 threads simultaneously |
-| 15 | [`15_EntitySpawnPool`](15_EntitySpawnPool/README.md) | IteratorBlockPool | Reusable pooled iterator blocks for spawning |
+| 14 | [`14_ParallelDownloads`](14_ParallelDownloads/README.md) | MultiThreadedParallelTaskCollection | 400 downloads over 4 threads — idle runners steal queued work |
+| 15 | [`15_EntitySpawnPool`](15_EntitySpawnPool/README.md) | IteratorBlockPool | Reusable pooled iterator blocks for spawning (no new pooled iterator/data allocation after warm-up) |
 | 16 | [`16_AsyncHttpAwaiter`](16_AsyncHttpAwaiter/README.md) | Awaiter interop | `await task.RunOn(runner)` |
 | 17 | [`17_PauseMenu`](17_PauseMenu/README.md) | Pause/Resume | Freeze all game tasks when paused |
 | 18 | [`18_RecursiveTreeTraversal`](18_RecursiveTreeTraversal/README.md) | Deep continuations | Walk a tree via recursive `.Continue()` |
 | 19 | [`19_DelayedSpawn`](19_DelayedSpawn/README.md) | WaitForSecondsEnumerator | Spawn enemy 2s after start |
 | 20 | [`20_CrossThreadSignal`](20_CrossThreadSignal/README.md) | WaitForSignal | Background thread signals main thread |
 | 21 | [`21_StopRunnerNetTask`](21_StopRunnerNetTask/README.md) | TaskSynchronizationContext | Host .NET async methods on any Lean runner; dispose mid-flight → frozen + collected |
+| 22 | [`22_RunnerPoolDispatch`](22_RunnerPoolDispatch/README.md) | MultiThreadRunnerPool | 16 requests round-robin to 4 runners — lean fan-out when tasks ≤ threads |
+| 23 | [`23_ProfilerPlugin`](23_ProfilerPlugin/README.md) | TaskProfiler + ITaskProfilerDriver | Plug a custom profiling backend into the scheduler and measure per-step cost (opt-in build flag) |
 
 ## See Also
 

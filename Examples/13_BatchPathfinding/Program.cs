@@ -161,13 +161,15 @@ namespace Example13_BatchPathfinding
                 Console.Write("  {0}", cellChars[t % cellChars.Length]);
                 Console.ResetColor();
                 Console.Write(" Thread {0,2}: [", threadIds[t]);
-                int barLen = count / 10;
+
+                const int barWidth = 30;
+                int barLen = (int)Math.Min(barWidth, (long)count * barWidth / TotalUnits);
                 Console.ForegroundColor = cellColors[t % cellColors.Length];
                 Console.Write(new string('█', barLen));
                 Console.ForegroundColor = ConsoleColor.DarkGray;
-                Console.Write(new string('░', 30 - barLen));
+                Console.Write(new string('░', barWidth - barLen));
                 Console.ResetColor();
-                Console.WriteLine("] {0,4}/{1} done  ✓", count, TotalUnits / ThreadCount);
+                Console.WriteLine("] {0,4}/{1} done  ✓", count, TotalUnits);
             }
         }
 

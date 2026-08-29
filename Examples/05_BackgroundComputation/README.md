@@ -24,7 +24,8 @@ asset loading) without freezing the main thread.
 - You want a simple, allocation-aware alternative to `Task.Run` that integrates
   with Svelto's runner lifecycle.
 - You need to run several background jobs on a **single** dedicated thread (the
-  `MultiThreadRunner` processes its queue serially on one thread — create more
+  `MultiThreadRunner` owns one OS thread — its tasks are never simultaneous, but
+  yielding tasks are cooperatively interleaved on that thread; create more
   runners for more threads).
 - You want to `Stop()` / `Dispose()` the background work cleanly on shutdown.
 
@@ -63,10 +64,11 @@ runs. When done, the result is printed.
 - **You MUST `Dispose()` the runner** to stop the background thread. If you let it
   be GC'd, the finalizer logs a warning and signals termination, but cannot wait
   for the worker. Dispose explicitly for deterministic cleanup.
-- The runner processes its queue on **one** thread. If you queue 3 tasks they run
-  **serially** on that thread, not in parallel with each other. For parallelism
-  across threads, create multiple `MultiThreadRunner` instances or use
-  `MultiThreadedParallelTaskCollection`.
+- The runner owns **one** thread. If you queue 3 yielding tasks they never run
+  simultaneously, but they are **cooperatively interleaved** on that thread
+  (each gets one `MoveNext` per pass), not strictly run-to-completion one after
+  another. For parallelism across threads, create multiple `MultiThreadRunner`
+  instances or use `MultiThreadedParallelTaskCollection`.
 - `Dispose()` rejects new work, signals terminal cleanup, and waits up to two
   seconds for the worker to exit. Shutdown is cooperative: if a task is stuck in
   an infinite loop or blocking call and never returns from `MoveNext()`, the

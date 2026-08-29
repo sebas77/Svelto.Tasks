@@ -68,8 +68,9 @@ yields `Break.It`).
   whole collection first, then run.
 - Tasks run **strictly in order** — stage B's first `MoveNext` happens only after stage
   A's last `MoveNext` returns `false`. There is zero overlap.
-- A task that yields `Break.It` ends the **whole collection** for that run (the
-  `breakIt` case returns `true` from `RunTasksAndCheckIfDone`).
+- A task that yields `Break.It` completes **only that task**; the collection
+  continues with the next one. Only `Break.AndStop` unwinds the whole
+  collection/parent chain for that run.
 - `Reset()` calls `Reset()` on each task's enumerator. Compiler-generated iterators do
   **not** support `Reset()` (it throws `NotSupportedException`); use custom enumerator
   classes if you need reuse via `Reset()`.

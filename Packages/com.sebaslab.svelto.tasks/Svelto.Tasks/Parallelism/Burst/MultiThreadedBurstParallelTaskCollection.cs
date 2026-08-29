@@ -19,8 +19,7 @@ public sealed class MultiThreadedBurstParallelTaskCollection<TTask> : IEnumerato
 {
     public MultiThreadedBurstParallelTaskCollection(string name, uint numberOfThreads, bool tightTasks)
     {
-        if (numberOfThreads == 0)
-            throw new ArgumentOutOfRangeException(nameof(numberOfThreads));
+        DBC.Tasks.Check.Require(numberOfThreads > 0, "a parallel collection must run on at least one thread");
 
         _name = name;
         _workerState = new WorkerState();
@@ -38,11 +37,9 @@ public sealed class MultiThreadedBurstParallelTaskCollection<TTask> : IEnumerato
 
     public void Add(in TTask prototype, int iterations, int elementsPerTask)
     {
-        if (isRunning)
-            throw new MultiThreadedParallelTaskCollectionException(
-                "can't add tasks on a started MultiThreadedBurstParallelTaskCollection");
-        if (elementsPerTask <= 0)
-            throw new ArgumentOutOfRangeException(nameof(elementsPerTask));
+        DBC.Tasks.Check.Require(isRunning == false,
+            "can't add tasks on a started MultiThreadedBurstParallelTaskCollection");
+        DBC.Tasks.Check.Require(elementsPerTask > 0, "elementsPerTask must be greater than zero");
         if (iterations <= 0)
             return;
 
@@ -103,14 +100,17 @@ public sealed class MultiThreadedBurstParallelTaskCollection<TTask> : IEnumerato
         if (Interlocked.Exchange(ref _isDisposed, 1) != 0)
             return;
 
-        //a partially constructed object (the constructor threw before allocating the
-        //workers) can only reach this point through the finalizer: nothing to clean up
-        if (_workerState == null)
-            return;
+        //a constructor that threw (only reachable through the finalizer) leaves any of
+        //the disposable fields unassigned: check each one independently
+        if (_workerState != null)
+            _workerState.Cancel();
 
-        _workerState.Cancel();
-        _workers.Dispose();
-        _workerState.DisposeDefinitions();
+        if (_workers != null)
+            _workers.Dispose();
+
+        if (_workerState != null)
+            _workerState.DisposeDefinitions();
+
         onComplete = null;
         isRunning = false;
         GC.SuppressFinalize(this);

@@ -81,8 +81,8 @@ class BackgroundWorkSignal : WaitForSignal<BackgroundWorkSignal>
 ## Gotchas
 
 - **Must subclass** — `WaitForSignal<T>` is abstract with a self-referential generic constraint. You cannot instantiate it directly; you must create a named subclass.
-- **Timeout** — the default timeout is 1000ms. If the signal doesn't arrive in time, `MoveNext()` returns `false` anyway (timed out) and logs a warning. Set a longer timeout via the constructor: `base(name, timeout: 5000)`.
-- **Auto-reset** — by default (`autoreset: true`), the signal auto-resets after completion, making it reusable. With `autoreset: false`, you must call `Reset()` manually before reusing. Note: `isDone()` only works with `autoreset: false` (it throws otherwise).
+- **Timeout** — the default timeout is 1000ms. If the signal doesn't arrive in time, `MoveNext()` **throws `WaitForSignalException`** (it does not silently return `false`); uncaught, that faults the waiting task. Set a longer timeout via the constructor: `base(name, timeout: 5000)`.
+- **Auto-reset** — completed signals reset automatically, so waits are reusable. Note: the public `autoreset` constructor argument is currently **unused** by the implementation (both channels always auto-reset), and `isDone()` requires auto-reset to be disabled, so it is not usable with the current behavior.
 - **`startUnlocked`** — if `true`, the signal starts in the "signaled" state. Useful for initialization patterns where the first `.Wait()` should complete immediately.
 - **Volatile semantics** — `Signal()` uses `Volatile.Write` and `MoveNext()` uses `Volatile.Read`, ensuring proper memory visibility across threads without explicit locks.
 - **Bidirectional** — `SignalBack()` / `WaitBack()` provide a second channel for the reverse direction (main → background).
@@ -108,6 +108,6 @@ IEnumerator<TaskContract> WaitForLoad()
     // Signal received — proceed!
 }
 
-// 4. Constructor options:
-new WaitForSignal("name", timeout: 5000, autoreset: true, startUnlocked: false);
+// 4. Constructor options (timeout/startUnlocked are honored; autoreset is currently unused):
+new LevelLoadSignal("name", timeout: 5000, startUnlocked: false);
 ```

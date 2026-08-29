@@ -45,8 +45,12 @@ MoveNext #1:  HP[1] MP[1] XP[1]   ← all advance together
 MoveNext #2:  HP[2] MP[2] XP[2]
 MoveNext #3:  HP[3] MP[3] XP[3]
    ...
-MoveNext #N:  HP[N] MP[N] XP[N]   ← all finish together
+MoveNext #10: HP[10] MP[10] XP[10]  ← bars reach their final values
+MoveNext #11: (completion observed — each task returns false and is removed)
 ```
+
+The final values become visible on pass N; the pass after that detects natural
+completion and drains the collection.
 
 ## Key concepts
 

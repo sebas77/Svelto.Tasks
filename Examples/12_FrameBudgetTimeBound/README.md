@@ -6,6 +6,10 @@ You have **10 tasks** each taking **5 ms**. You want to cap total processing at
 **20 ms per frame**. With `TimeBoundFlow(20f)`, roughly **4 tasks** will execute before
 the budget runs out — the rest wait for the next step.
 
+This is a **cooperative budget**: elapsed time is only checked between task
+steps, so a single long `MoveNext()` can push a tick past 20 ms. Treat it as a
+soft target, not a hard guarantee.
+
 ## Feature Demonstrated
 
 `TimeBoundFlow` — an `IFlowModifier` that uses a `Stopwatch` to stop processing tasks

@@ -314,8 +314,8 @@ runner.UseFlowModifier(new TimeSlicedFlow(5f));  //keep cycling through tasks fo
 
 - **StandardFlow** is the default: every live task advances once per `Step()`.
 - **SerialFlow** advances one task until it completes, then moves to the next.
-- **StaggeredFlow(n)** advances at most `n` tasks per `Step()`; the others wait for the next one.
-- **TimeBoundFlow(milliseconds)** advances tasks until the time budget expires; the remaining tasks wait for the next `Step()`.
+- **StaggeredFlow(n)** advances at most `n` tasks per `Step()`; the others wait for the next one. The budget always restarts from the first task, so tasks that never complete starve the ones behind them — it is a cap, not a round-robin.
+- **TimeBoundFlow(milliseconds)** advances tasks until the time budget expires; the remaining tasks wait for the next `Step()`. The budget is cooperative: elapsed time is checked between task steps, so one long `MoveNext()` can overshoot it.
 - **TimeSlicedFlow(milliseconds)** does the same, but wraps to the first task when it reaches the end, so tasks can advance more than once in the same `Step()`.
 
 ## Controlling runner lifetime
@@ -331,7 +331,7 @@ runner.Flush();   //synchronously dispose running and queued tasks; runner stays
 runner.Dispose(); //dispose all tasks, terminate the worker, and reject new work
 </pre>
 
-- **Pause** freezes running and queued tasks without disposing anything. New tasks may still be queued and start after `Resume()`.
+- **Pause** freezes running and queued tasks without disposing anything. New tasks may still be queued and start after `Resume()`. Pause takes effect on the next pass: a `MoveNext()` already in flight when `Pause()` is called finishes first.
 - **Stop** is asynchronous. It stops tasks already running on the next processing pass. Tasks queued while it stops wait, then run after the runner automatically unstops.
 - **Flush** disposes both running and queued tasks and leaves the runner ready for new work. On a `MultiThreadRunner`, it blocks until cleanup completes and rejects submissions while cleanup is in progress; the same worker thread remains alive for reuse.
 - **Dispose** is terminal. It rejects further scheduling, disposes every task, signals the `MultiThreadRunner` worker to exit, and waits for that worker to terminate.
@@ -380,7 +380,7 @@ One semantic is deliberate everywhere: if the runner is disposed before a bridge
 
 ## The multithreaded runners
 
-Everything I described about lifetime controls applies to the **`MultiThreadRunner`** family, the runners that own their own background thread. Every task scheduled on the same `MultiThreadRunner` runs serially on that single worker, in submission order. Want two things to actually run in parallel? Two runners.
+Everything I described about lifetime controls applies to the **`MultiThreadRunner`** family, the runners that own their own background thread. Tasks on the same `MultiThreadRunner` can never run simultaneously — there is only one worker — but yielding tasks are cooperatively interleaved on it, each advancing one step per pass, not run-to-completion in submission order. Want two things to actually run in parallel? Two runners.
 
 The Lean `MultiThreadRunner` comes in a few flavors. The default constructor spins up a reactive worker that wakes essentially instantly when a task is queued. `relaxed: true` trades some wake-up latency for a quieter thread, and the `intervalInMs` constructor builds the low-CPU variant: the worker ticks at fixed intervals and sleeps in between. On the other axis, `tightTasks: true` tells the worker to never volunteer a pause — ideal for cache-friendly loops you know will occupy the thread — while the default behavior yields periodically so other threads can breathe. `initialNumberOfTasks` pre-sizes the internal containers so even submitting a burst of tasks stays allocation-free. The same machinery exists in the ExtraLean flavors — `ExtraLean.MultiThreadRunner` and its struct-typed variant — for when the task itself must be as lean as the scheduler:
 
@@ -668,7 +668,7 @@ while (parallel.MoveNext()) //one MoveNext advances ALL bars by one tick
 
 ### 11 — AIBudgetStaggered: StaggeredFlow
 
-Ten AI units, at most three thinking per tick. One line caps CPU spikes. The demo honestly documents the flip side: excess tasks starve until slots free up.
+Ten AI units, at most three thinking per tick. One line caps CPU spikes. The demo honestly documents the flip side: the budget restarts from the first task every tick, so with never-ending tasks the same first three win and the rest starve indefinitely — a cap, not a rotation.
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 runner.UseFlowModifier(new StaggeredFlow(3)); //max 3 AI tasks processed per tick
@@ -676,10 +676,10 @@ runner.UseFlowModifier(new StaggeredFlow(3)); //max 3 AI tasks processed per tic
 
 ### 12 — FrameBudgetTimeBound: TimeBoundFlow
 
-Instead of counting tasks, count milliseconds: process background work for at most 20ms per tick, wall-clock measured. The demo shows who ran and who starved each tick, and explains when to prefer completing tasks versus switching to fairer strategies.
+Instead of counting tasks, count milliseconds: process background work within a ~20ms wall-clock budget per tick. The budget is cooperative — checked between task steps, so a single long step can overshoot. The demo shows who ran and who starved each tick, and explains when to prefer completing tasks versus switching to fairer strategies.
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
-runner.UseFlowModifier(new TimeBoundFlow(20f)); //at most 20ms per tick
+runner.UseFlowModifier(new TimeBoundFlow(20f)); //~20ms cooperative budget per tick
 </pre>
 
 ### 13 — BatchPathfinding: ParallelJobCollection
@@ -707,16 +707,16 @@ collection.Complete();           //wait for all slices to finish
 
 ### 14 — ParallelDownloads: MultiThreadedParallelTaskCollection
 
-Four downloads on four real threads simultaneously, with a monitor thread redrawing progress bars while workers advance. Overlap is visible, not claimed.
+Four hundred downloads on four real threads, with a monitor thread redrawing aggregate progress while workers advance. Download sizes are deliberately uneven and tasks far outnumber threads — the whole point: a runner that finishes a download immediately steals the next queued one, so per-thread totals stay balanced and the wave finishes in roughly total-work / threads time. With tasks ≤ threads, a bare `MultiThreadRunnerPool` is the leaner tool (Example 22).
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 using var downloads = new MultiThreadedParallelTaskCollection("Downloads", 4, false);
-downloads.Add(new DownloadTask("File_1.zip", progress1));
-downloads.Add(new DownloadTask("File_2.zip", progress2));
-downloads.Add(new DownloadTask("File_3.zip", progress3));
-downloads.Add(new DownloadTask("File_4.zip", progress4));
+downloads.onComplete += () =&gt; Console.WriteLine("wave done");
 
-downloads.Complete(); //four OS threads downloading simultaneously
+foreach (var file in files)
+    downloads.Add(new DownloadTask(file)); //400 tasks queued
+
+downloads.Complete(); //4 runners, idle ones steal queued downloads
 </pre>
 
 ### 15 — EntitySpawnPool: IteratorBlockPool visualized
@@ -750,10 +750,11 @@ async Task SimulateHttpRequest()
 
 ### 17 — PauseMenu: Pause/Resume
 
-Opening the pause menu freezes a `MultiThreadRunner` dead in its tracks; closing it resumes every task exactly where it stopped. Snapshot checks in the demo prove nothing advanced while paused.
+Opening the pause menu freezes a `MultiThreadRunner`; closing it resumes every task exactly where it stopped. Pause stops new passes but does not preempt a step already in flight, so the demo lets the worker settle before snapshotting — then proves nothing advanced while paused.
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 runner.Pause();
+...give the worker a moment to settle, then:
 Debug.Assert(counterBeforePause == ReadCounter()); //frozen solid
 runner.Resume();
 </pre>
@@ -787,7 +788,7 @@ SpawnEnemy();                                //exactly 2s later
 
 ### 20 — CrossThreadSignal: WaitForSignal
 
-A background thread computes and signals; the main-thread task waits through the same signal. A tiny typed subclass gives a clean producer/consumer handshake between runners.
+A background thread computes and signals; the main-thread task waits through the same signal. A tiny typed subclass gives a clean producer/consumer handshake between runners. The wait auto-times-out (default 1000ms): when the deadline expires, `MoveNext()` throws and faults the waiting task, so pick a timeout that fits the producer.
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 class DataReadySignal : WaitForSignal&lt;DataReadySignal&gt; {}
@@ -814,6 +815,32 @@ context.Run(async () =&gt;
 });
 
 //runner.Dispose() mid-await: hosted work abandoned deterministically
+</pre>
+
+### 22 — RunnerPoolDispatch: MultiThreadRunnerPool
+
+The lean alternative for independent work when tasks don't outnumber threads: 16 requests dispatched round-robin to 4 pooled runners (4 per runner, all in flight). No feed queue, no wrapper, no wave counter — `AddTask` is one atomic increment and a direct hand-off, and the host counts completions itself. The demo prints the deterministic dispatch table and the honest trade: dispatch never rebalances, so a slow request lags its own runner while others idle. That is exactly why Example 14 exists for the tasks > threads case.
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+var pool = new MultiThreadRunnerPool("request-pool", 4);
+
+foreach (var request in requests)
+    request.RunOn(pool); //request i → runner i % 4, that's the whole dispatch
+
+//no Complete(), no onComplete: poll your own completion counter
+</pre>
+
+### 23 — ProfilerPlugin: installing a profiler driver
+
+Measurement as a plugin: implement `ITaskProfilerDriver` and assign it to `TaskProfiler.Driver`, and every task step on every runner — main thread or worker — flows through your backend with balanced `Begin/End` scopes. The demo ships a console driver that aggregates per-step avg/max per task and prints the table; Unity ships its own driver that bridges the same scopes into the Unity Profiler. The instrumentation is opt-in (`TASKS_PROFILER_ENABLED`, zero-cost when off) — on plain .NET that is the `EnableTasksProfiler` build flag.
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+TaskProfiler.Driver = new ConsoleProfilerDriver(); //install the plugin
+
+//... run tasks on any runners; EndTask(runner, task, elapsedMs) arrives per step,
+//    possibly from worker threads, so the driver must be thread-safe
+
+TaskProfiler.CopyAndUpdate(ref infos); //built-in per-pass min/avg/max aggregate
 </pre>
 
 ## Conclusions

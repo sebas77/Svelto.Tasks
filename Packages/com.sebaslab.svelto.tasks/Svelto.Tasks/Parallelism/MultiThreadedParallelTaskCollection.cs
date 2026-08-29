@@ -56,12 +56,11 @@ namespace Svelto.Tasks.Parallelism
         /// I can't allow adding more tasks.
         /// </summary>
         /// <param name="enumerator"></param>
-        /// <exception cref="MultiThreadedParallelTaskCollectionException"></exception>
+        /// <exception cref="DBC.Tasks.PreconditionException">debug builds only</exception>
         public void Add(in TTask enumerator)
         {
-            if (isRunning == true)
-                throw new MultiThreadedParallelTaskCollectionException(
-                    "can't add tasks on a started MultiThreadedParallelTaskCollection");
+            DBC.Tasks.Check.Require(isRunning == false,
+                "can't add tasks on a started MultiThreadedParallelTaskCollection");
 
             _parallelTasks.Add(enumerator);
         }

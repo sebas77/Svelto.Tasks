@@ -5,7 +5,9 @@
 An entity spawn manager that **pools iterator blocks** instead of allocating new ones
 every time an entity spawns. Entities are taken from the pool, run a few steps, then
 return themselves via `Break.It`. When a new entity is needed, the pool hands back the
-**same recycled block** — zero allocations after warm-up.
+**same recycled block** — no new pooled iterator/data-object allocation after warm-up
+(the demo's console rendering still allocates strings each frame, which is unrelated
+to the pooling path).
 
 ## Feature Demonstrated
 

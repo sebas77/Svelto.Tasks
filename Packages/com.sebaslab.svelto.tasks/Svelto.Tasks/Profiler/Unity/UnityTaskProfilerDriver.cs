@@ -1,4 +1,6 @@
-#if TASKS_PROFILER_ENABLED
+//Unity-only backend: the UNITY_* symbol keeps this file out of plain .NET builds,
+//where the profiling define can still be used by custom ITaskProfilerDriver plugins
+#if (UNITY_5 || UNITY_5_3_OR_NEWER) && TASKS_PROFILER_ENABLED
 using System;
 using System.Collections.Concurrent;
 using Unity.Profiling;

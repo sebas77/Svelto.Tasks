@@ -51,8 +51,9 @@ namespace GameLoop
 
             SafeSetCursor(0, 16);
             Console.WriteLine("  ┌──────────────────────────────────────────────────────────┐");
-            Console.WriteLine("  │  ✅ Task complete! Counted 10 frames across 10 steps.    │");
-            Console.WriteLine("  │  💡 Each runner.Step() advanced the task by one Yield.It  │");
+            Console.WriteLine("  │  ✅ Task complete! Counted to 10 across 11 Step() calls. │");
+            Console.WriteLine("  │  💡 The final Step() observes completion and drains the   │");
+            Console.WriteLine("  │     runner, so completion detection costs one extra step. │");
             Console.WriteLine("  └──────────────────────────────────────────────────────────┘");
             Console.WriteLine();
         }

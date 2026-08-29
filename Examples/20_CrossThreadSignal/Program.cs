@@ -11,12 +11,16 @@ class Program
 {
     class BackgroundWorkSignal : WaitForSignal<BackgroundWorkSignal>
     {
-        public BackgroundWorkSignal(string name) : base(name, timeout: 5000, autoreset: true) { }
+        public const int TimeoutMs = 5000;
+
+        public BackgroundWorkSignal(string name) : base(name, timeout: TimeoutMs) { }
     }
 
+    static int BackgroundSignalTimeoutMs => BackgroundWorkSignal.TimeoutMs;
+
     static BackgroundWorkSignal _signal;
-    static int _workProgress;
-    static bool _signalReceived;
+    static volatile int _workProgress;
+    static volatile bool _signalReceived;
 
     static void Main()
     {
@@ -77,8 +81,17 @@ class Program
         const int barWidth = 20;
         int frame = 0;
 
+        //WaitForSignal throws WaitForSignalException (internal) from MoveNext once the
+        //configured timeout expires, which would fault the waiting task mid-Step. To keep
+        //this demo's outcome explicit we stop driving the runner at the same deadline and
+        //report the timeout ourselves instead of letting the exception surface.
+        var waitDeadline = DateTime.UtcNow.AddMilliseconds(BackgroundSignalTimeoutMs);
+
         while (!_signalReceived && mainRunner.hasTasks)
         {
+            if (DateTime.UtcNow > waitDeadline)
+                break;
+
             mainRunner.Step();
 
             int prog = _workProgress;
@@ -101,15 +114,20 @@ class Program
         Console.WriteLine();
         Console.WriteLine("  ┌──────────────────────────┬──────────────────────────┐");
         Console.WriteLine("  │   [MAIN THREAD]          │   [BG THREAD]            │");
-        Console.WriteLine("  │   ✓ RECEIVED SIGNAL! 🔔  │  done [{0}] 100%", new string('█', barWidth));
+        Console.WriteLine("  │   {0,-24}│  done [{1}] {2,3}%",
+            _signalReceived ? "✓ RECEIVED SIGNAL! 🔔" : "❌ WAIT TIMED OUT",
+            new string('█', barWidth), _workProgress);
         Console.WriteLine("  └──────────────────────────┴──────────────────────────┘");
         Console.WriteLine();
-        Console.WriteLine("  Main thread woke up after {0} steps!", frame);
-        Console.WriteLine("  BG work complete: 100%  Signal fired: ✓");
+        Console.WriteLine("  Main thread finished waiting after {0} steps.", frame);
+        Console.WriteLine("  BG work progress: {0}%  Signal fired: {1}", _workProgress,
+            _signalReceived ? "✓" : "✗ (timeout)");
         Console.WriteLine();
 
         Console.WriteLine("  ╔═══════════════════════════════════════════════════════════╗");
-        Console.WriteLine("  ║  🔔  Cross-thread signal received!                         ║");
+        Console.WriteLine(_signalReceived
+            ? "  ║  🔔  Cross-thread signal received!                         ║"
+            : "  ║  ⚠  WaitForSignal timed out before Signal() arrived.      ║");
         Console.WriteLine("  ║  Background thread → Signal() → Main thread .Wait() done   ║");
         Console.WriteLine("  ╚═══════════════════════════════════════════════════════════╝");
         Console.WriteLine();
@@ -125,6 +143,9 @@ class Program
         Console.WriteLine("  │                                                            │");
         Console.WriteLine("  │  4. When BG signals, the volatile bool flips → MoveNext    │");
         Console.WriteLine("  │     returns false → main task continues past the wait     │");
+        Console.WriteLine("  │                                                            │");
+        Console.WriteLine("  │  5. If the configured timeout expires first, MoveNext      │");
+        Console.WriteLine("  │     throws WaitForSignalException and faults the task      │");
         Console.WriteLine("  └────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
         Console.WriteLine("  ⚠ Gotcha: WaitForSignal<T> is abstract with a self-referential");
@@ -133,8 +154,8 @@ class Program
         Console.WriteLine("  readability and debugging — you cannot use it anonymously.");
         Console.WriteLine();
         Console.WriteLine("  Other WaitForSignal features:");
-        Console.WriteLine("    • timeout (default 1000ms) — auto-completes if exceeded");
-        Console.WriteLine("    • autoreset (default true) — reusable after completion");
+        Console.WriteLine("    • timeout (default 1000ms) — throws WaitForSignalException");
+        Console.WriteLine("    • signals auto-reset after completion (the public autoreset argument is currently unused)");
         Console.WriteLine("    • startUnlocked — begins in the signaled state");
         Console.WriteLine("    • SignalBack()/WaitBack() — bidirectional signaling");
         Console.WriteLine();

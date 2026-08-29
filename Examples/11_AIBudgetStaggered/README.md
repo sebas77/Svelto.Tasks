@@ -3,8 +3,13 @@
 ## Scenario
 
 You have **10 AI units** in a game. Each frame, every unit wants to "think" (run its
-AI decision logic). But if all 10 think at once you get a frame spike. The solution is
+AI decision logic). But if all 10 think at once you get a frame spike. The idea is
 to limit processing to **3 units per step** — a staggered update.
+
+This demo uses tasks that **never complete**, so it also demonstrates
+`StaggeredFlow`'s central gotcha: the same first 3 units run every step and the
+remaining 7 are **starved indefinitely**. See the Gotchas section before copying
+this pattern for periodic AI.
 
 ## Feature Demonstrated
 
@@ -42,9 +47,12 @@ single `Step()` call** on a `SteppableRunner`.
 
 ## Gotchas
 
-- **StaggeredFlow limits tasks per step.** Extra tasks are *starved* until earlier ones
-  complete. If every task yields every step (`yield return TaskContract.Yield.It`),
-  the same first N tasks will run every step while later tasks may never get a turn.
+- **StaggeredFlow limits tasks per step but does NOT rotate.** The budget restarts
+  from the **first** task in the list every step. If every task yields every step
+  (`yield return TaskContract.Yield.It`), the same first N tasks run every step
+  and later tasks are **starved forever** — exactly what this demo shows. This is
+  a budget cap, not a round-robin scheduler; let tasks complete to free their
+  front slots, or use `TimeSlicedFlow` for fairness.
 - `TaskCollection`s count as a **single task** — staggering does not look inside a
   collection.
 - The counter inside `StaggeredFlow` resets at the start of each `Step()` (via

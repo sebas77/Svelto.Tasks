@@ -8,8 +8,8 @@ using Svelto.Tasks.Lean;
 
 class Program
 {
-    static int _counter;
-    static bool _stop;
+    static volatile int _counter;
+    static volatile bool _stop;
     static MultiThreadRunner _runner;
 
     static IEnumerator<TaskContract> CountingTask()
@@ -58,14 +58,22 @@ class Program
         Console.WriteLine("  └─────────────────────────────────────────────────────────┘");
 
         _runner.Pause();
+        //Pause() is not an in-flight MoveNext barrier: give the worker one scheduling
+        //slot to settle before taking the snapshot we compare while paused.
+        Thread.Sleep(20);
         int frozen = _counter;
+        bool stayedFrozen = true;
         for (int i = 0; i < 20; i++)
         {
-            Console.Write("\r  ❄ PAUSED  [{0,4}] ❄ snapshot {1} == live {2} → stable: {3}     ", frozen, frozen, _counter, frozen == _counter);
+            int live = _counter;
+            stayedFrozen &= live == frozen;
+            Console.Write("\r  ❄ PAUSED  [{0,4}] ❄ snapshot {1} == live {2} → stable: {3}     ", frozen, frozen, live, live == frozen);
             Thread.Sleep(25);
         }
         Console.WriteLine();
-        Console.WriteLine("  ✓ Counter frozen at {0} — did NOT change while paused!", frozen);
+        Console.WriteLine(stayedFrozen
+            ? "  ✓ Counter frozen at {0} — did NOT change while paused!"
+            : "  ❌ Counter changed while paused — pause is not an immediate in-flight barrier.", frozen);
 
         Console.WriteLine();
         Console.WriteLine("  ┌─────────────────────────────────────────────────────────┐");
@@ -77,17 +85,18 @@ class Program
         RunPhase(spinners, ref frame, "RESUMED  ", "▶", "🔥", 25, "Tasks resumed — counter climbs again");
 
         _stop = true;
-        _runner.WaitForTasksDone(1000);
+        bool stoppedCleanly = _runner.WaitForTasksDone(1000);
 
         Console.WriteLine();
         Console.WriteLine("  ╔═══════════════════════════════════════════════════════════╗");
-        Console.WriteLine("  ║  ✅  Final counter: {0,5}                              ║", _counter);
+        Console.WriteLine("  ║  {0}  Final counter: {1,5}                              ║",
+            stoppedCleanly ? "✅" : "⚠️", _counter);
         Console.WriteLine("  ║  Pause froze the task state; Resume continued it.        ║");
         Console.WriteLine("  ╚═══════════════════════════════════════════════════════════╝");
         Console.WriteLine();
-        Console.WriteLine("  Pause = freeze task states (they stay in the queue).");
-        Console.WriteLine("  Stop  = cancel in-flight tasks; queued ones run after auto-unstop.");
-        Console.WriteLine("  The difference: pause keeps state, stop abandons the current pass.");
+        Console.WriteLine("  Pause = freeze task states (they stay in the queue), but does not cancel");
+        Console.WriteLine("        a MoveNext already running when Pause() is called.");
+        Console.WriteLine("  Stop  = cancel in-flight tasks on their next yield; queued ones run after auto-unstop.");
         Console.WriteLine();
 
         try { Console.CursorVisible = true; } catch {}

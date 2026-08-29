@@ -69,6 +69,7 @@ namespace Svelto.Tasks.Tests
             }
         }
 
+#if DEBUG && !DISABLE_DBC && !PROFILE_SVELTO
         [Test]
         public void MultiThreadedParallelTaskCollection_AddWhileRunning_Throws()
         {
@@ -81,7 +82,7 @@ namespace Svelto.Tasks.Tests
 
                 Assert.That(collection.isRunning, Is.True);
 
-                Assert.Throws<MultiThreadedParallelTaskCollectionException>(() =>
+                Assert.Throws<DBC.Tasks.PreconditionException>(() =>
                 {
                     collection.Add(new WaitEnumerator(1));
                 });
@@ -90,6 +91,7 @@ namespace Svelto.Tasks.Tests
                 collection.Complete(2000);
             }
         }
+#endif
         
         [Test]
         public void MultiThreadedParallelTaskCollection_Stop_StopsExecution()

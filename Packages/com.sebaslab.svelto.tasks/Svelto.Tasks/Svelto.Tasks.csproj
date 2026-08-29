@@ -9,6 +9,15 @@
         <Nullable>disable</Nullable>
     </PropertyGroup>
 
+    <!--Opt-in profiling instrumentation (TaskProfiler + runner hooks). Debug builds are
+        instrumented automatically so IDE F5 runs (e.g. Examples/23_ProfilerPlugin) can
+        measure; pass -p:EnableTasksProfiler=true to instrument a Release build. The
+        global property flows to referencing projects, so one flag covers both halves.
+        Release default stays uninstrumented: the hooks add a lock + stopwatch per step.-->
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' Or '$(EnableTasksProfiler)' == 'true' ">
+        <DefineConstants>$(DefineConstants);TASKS_PROFILER_ENABLED</DefineConstants>
+    </PropertyGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\..\com.sebaslab.svelto.common\Svelto.Common\Svelto.Common.csproj" />
     </ItemGroup>

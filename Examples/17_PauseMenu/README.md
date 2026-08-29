@@ -2,7 +2,7 @@
 
 ## Scenario
 
-A game runs tasks on a `MultiThreadRunner`. When the pause menu opens, all task processing freezes. When it closes, tasks resume exactly where they left off — no state lost, no tasks dropped.
+A game runs tasks on a `MultiThreadRunner`. When the pause menu opens, task processing freezes. When it closes, tasks resume exactly where they left off — no state lost, no tasks dropped. (Pause stops *new* passes; a step already in flight when `Pause()` is called finishes first.)
 
 ## Feature
 
@@ -35,7 +35,7 @@ A game runs tasks on a `MultiThreadRunner`. When the pause menu opens, all task 
 ```
 
 1. A counting task runs on a `MultiThreadRunner`, incrementing a shared counter each tick.
-2. `runner.Pause()` sets an internal volatile flag. The runner's background thread enters a spin/wait lock — tasks don't execute.
+2. `runner.Pause()` sets an internal volatile flag. The runner's background thread enters a spin/wait lock — tasks don't execute. Note that `Pause()` is not an in-flight barrier: a `MoveNext()` already running when `Pause()` is called finishes first, so the demo lets the worker settle before snapshotting.
 3. While paused, the counter stays **frozen** at whatever value it had. We verify this by snapshotting and checking it doesn't change.
 4. `runner.Resume()` clears the flag. The thread unlocks, tasks resume, and the counter climbs again.
 
@@ -67,6 +67,7 @@ A game runs tasks on a `MultiThreadRunner`. When the pause menu opens, all task 
 ## Gotchas
 
 - `Pause()` is **thread-safe** — you can call it from any thread. The runner uses a lock-free spin mechanism (`_quickThreadSpinning`) for reactive pause/resume.
+- `Pause()` prevents *new* task passes but does **not** preempt a `MoveNext()` that is already executing; the current step runs to its next yield first. Snapshot shared state only after giving the worker a moment to settle (as the demo does), and mark cross-thread fields `volatile`.
 - After `Pause()`, the background thread doesn't die — it enters a low-CPU spin/wait state, ready to resume instantly.
 - `Pause()` does NOT dispose tasks. If you want to restart cleanly, use `Flush()` (disposes running and queued tasks, keeps the worker) then add new tasks — or `Dispose()` and create a new runner.
 - The `MultiThreadRunner` constructor starts the background thread immediately. It begins in a **paused** state internally until `UseFlowModifier` is called (which the Lean variant does in its constructor).

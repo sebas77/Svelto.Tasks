@@ -135,7 +135,7 @@ namespace Example11_AIBudgetStaggered
             Console.WriteLine();
             Console.WriteLine("  ╔══════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║   ⚡ Svelto.Tasks Example 11 — AI Budget (Staggered)    ║");
-            Console.WriteLine("  ║   10 AI units, max 3 think per frame                    ║");
+            Console.WriteLine("  ║   10 AI units, max 3 think per frame (first 3 win)     ║");
             Console.WriteLine("  ╚══════════════════════════════════════════════════════════╝");
             Console.WriteLine();
             Console.WriteLine("  🤖 = thinking this frame   💤 = idle / starved");

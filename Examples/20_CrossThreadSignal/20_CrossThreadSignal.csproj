@@ -8,6 +8,8 @@
     <LangVersion>10</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <Configurations>Debug;Release</Configurations>
+    <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Packages\com.sebaslab.svelto.tasks\Svelto.Tasks\Svelto.Tasks.csproj" />

@@ -45,8 +45,7 @@ namespace ReusableSpawnLoop
 
             var (data1, block1) = pool.Get();
             data1.kind = "Goblin";
-            int hash1 = block1.GetHashCode();
-            Console.WriteLine($"  ┌─ pool.Get()   → data.kind = '{data1.kind}'  block hash = {hash1}");
+            Console.WriteLine($"  ┌─ pool.Get()   → data.kind = '{data1.kind}'");
             RunBlock(block1);
             Console.WriteLine($"  └─ Break.It hit → Dispose() returned the block to pool (state machine kept alive)");
 
@@ -60,7 +59,7 @@ namespace ReusableSpawnLoop
             var (data2, block2) = pool.Get();
             data2.kind = "Orc";
             int hash2 = block2.GetHashCode();
-            bool sameBlock = hash1 == hash2;
+            bool sameBlock = ReferenceEquals(block1, block2);
             bool sameData = ReferenceEquals(data1, data2);
             Console.WriteLine($"  ┌─ pool.Get()   → data.kind = '{data2.kind}'  block hash = {hash2}");
             Console.WriteLine($"  │  SAME block instance? {(sameBlock ? "✅ YES" : "❌ NO")}   SAME data instance? {(sameData ? "✅ YES" : "❌ NO")}");

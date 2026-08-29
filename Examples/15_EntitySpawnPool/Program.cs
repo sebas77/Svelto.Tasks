@@ -51,7 +51,7 @@ namespace Example15_EntitySpawnPool
                     var (data, block) = _pool.Get();
                     data.EntityId = ++_totalSpawned;
                     data.Step = 0;
-                    data.TotalSteps = 4 + (frame % 3);
+                    data.TotalSteps = 4;
                     data.Status = "SPAWNING";
                     activeEntities.Add((data, block));
                     _poolAvailable = _pool.count;
@@ -69,7 +69,8 @@ namespace Example15_EntitySpawnPool
                     bool alive = block.MoveNext();
                     if (alive)
                     {
-                        data.Step++;
+                        //EntityLifecycle increments data.Step; the host only tracks that the
+                        //block yielded and remains active.
                         data.Status = "ACTIVE";
                         stillActive.Add((data, block));
                     }
@@ -209,11 +210,12 @@ namespace Example15_EntitySpawnPool
             data1.TotalSteps = 1;
             data1.Status = "TEST";
 
-            //the first MoveNext runs the body up to the first Yield.It, the second one hits
-            //Break.It: the wrapper detects the break, recycles the block into the pool and
-            //reports the enumerator as finished
+            //The first MoveNext runs the body up to the first Yield.It; the second hits
+            //Break.It. Break only flags the block: manual users must call Dispose() before
+            //the object is actually available to the next Get().
             block1.MoveNext();
             bool stillAlive = block1.MoveNext();
+            block1.Dispose();
 
             var (data2, block2) = _pool.Get();
 
