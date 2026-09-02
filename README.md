@@ -39,7 +39,7 @@ using (var runner = new SteppableRunner("GameLoopRunner")) //this is the runner!
 }
 </pre>
 
-You can decide when to step any `SteppableRunner`, while `MultiThreadRunner`s handle the ticking themselves.
+You can decide when to step any `SteppableRunner` and thus, when not to step them.
 
 ## How is this different from the Task pattern?
 
@@ -113,12 +113,11 @@ THE SVELTO.TASKS PATTERN - your code is PULLED forward by your runner
 |                          | **hand-over (`async`/`await`) — push**  | **ticking (iterators + runners) — pull**       |
 |--------------------------|-----------------------------------------|------------------------------------------------|
 | cost while waiting       | none: the method sleeps till the event  | parked parents cost zero;                      |
-| reaction latency         | immediate, event-driven                 | at best, the next `Step()`                     |
+| reaction latency         | cost of resuming a thread, event-driven | at best, the next `Step()`, polling            |
 | who chooses the context  | the runtime (or awaiter/context author) | you, via the runner passed to `RunOn()`        |
 | stopping mid-flight      | cooperative: tokens must be honored     | absolute: stop stepping, or dispose the runner |
 | pacing / budgets         | cannot be imposed centrally             | flow modifiers see every step                  |
 | profiling                | scattered wherever the runtime ran you  | one uniform hook inside the runner             |
-| ecosystem                | the whole .NET speaks its language      | interop bridges needed                         |
 
 Inside a world that already ticks 60 times a second, my coroutines' overhead is a handful of extra calls per frame — noise compared to what gameplay code does — and in exchange I get things the hand-over model cannot give me:
 
@@ -128,7 +127,7 @@ Inside a world that already ticks 60 times a second, my coroutines' overhead is 
 
 ## When continuations make sense in a game
 
-Continuations were introduced to kill **callback hell**, and they deliver. Instead of nested callbacks reading upside-down:
+Continuations were introduced to eliminate the so called **callback hell**, and they deliver. Instead of nested callbacks reading upside-down:
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 //callback hell
@@ -204,7 +203,7 @@ int        answer = child.Current.ToInt();
 GameConfig cfg    = child.Current.ToRef&lt;GameConfig&gt;();
 </pre>
 
-Three TaskContract members are unique to this design. **`Continue.It`** tells the wrapper to call `MoveNext()` again immediately instead of waiting for the next runner step: instant instructions chain within one step without paying a tick each. **`Break.It`** and **`Break.AndStop`**, instead, play a trick on the C# language itself, and get their own subsections.
+Three TaskContract members are unique to this design. **`Continue.It`** tells the wrapper to call `MoveNext()` again immediately instead of waiting for the next runner step: instant instructions chain within one step without paying a tick each. **`Break.It`** and **`Break.AndStop`**, instead, play a trick on the C# language itself, and get their own article subsections.
 
 ### Break.It: the state machine that refuses to die
 
@@ -318,6 +317,8 @@ runner.UseFlowModifier(new TimeSlicedFlow(5f));  //keep cycling through tasks fo
 - **TimeBoundFlow(milliseconds)** advances tasks until the time budget expires; the remaining tasks wait for the next `Step()`. The budget is cooperative: elapsed time is checked between task steps, so one long `MoveNext()` can overshoot it.
 - **TimeSlicedFlow(milliseconds)** does the same, but wraps to the first task when it reaches the end, so tasks can advance more than once in the same `Step()`.
 
+You can create your own, pluggable, flor modifier if you ever need to.
+
 ## Controlling runner lifetime
 
 Tasks belong to their runner, so runner lifetime controls task lifetime:
@@ -342,7 +343,7 @@ Runner shutdown is cooperative: a task must return from its current `MoveNext()`
 
 The boundaries are thread-safe by construction: submitting a task to any runner from any thread is safe — admission is serialized and queued through a concurrent structure. So are the iterator pools, the continuation handles you may poll from a foreign thread, and the `WaitForSignal<T>` handshake.
 
-Task bodies are not magic: a task runs on the thread of its runner, and if it touches data shared with other threads, synchronizing that data is my job, not the library's — `volatile`, `Interlocked` and locks as usual. In return the library guarantees the useful half: a task's state machine is only ever touched by its owning runner, so a task that keeps its state to itself is thread-safe without a single lock. On the steppable runners the same rule takes a specific form: submit from anywhere, but step from one thread only — the owner of the loop. One hook carries a threading contract of its own: a custom `ITaskExceptionStrategy` must be thread-safe, since several multithreaded runners can report concurrently.
+Task bodies are not magic: a task runs on the thread of its runner, and if it touches data shared with other threads, synchronizing that data is your job, not the library's — `volatile`, `Interlocked` and locks as usual. In return the library guarantees the useful half: a task's state machine is only ever touched by its owning runner, so a task that keeps its state to itself is thread-safe without a single lock. On the steppable runners the same rule takes a specific form: submit from anywhere, but step from one thread only — the owner of the loop.
 
 # .Net Tasks and Svelto.Tasks interop
 
@@ -420,7 +421,7 @@ IEnumerator&lt;TaskContract&gt; MainTask()
 MainTask().RunOn(mainRunner); //my game loop just calls mainRunner.Step() every frame
 </pre>
 
-The first batch kept worker2 idle — dispatch and wait, one at a time. The next two were dispatched together, so they computed side by side, and the wait lasted as long as the slower chunk, not their sum. Dispatch before you yield, zero locks, and the main loop never stopped ticking: a main-thread task fanning work out to multithreaded runners and suspending on their continuations.
+The first batch kept `worker2` idle — dispatch and wait, one at a time. The next two were dispatched together, so they computed side by side, and the wait lasted as long as the slower chunk, not their sum. Dispatch before you yield, zero locks, and the main loop never stopped ticking: a main-thread task fanning work out to multithreaded runners and suspending on their continuations.
 
 When one thread is not enough but a runner-per-producer is too blunt, **`MultiThreadRunnerPool`** dispatches each scheduled root task round-robin to one of N inner runners: a fixed set of worker threads shared by independent jobs. The pool is designed for independently scheduled root tasks and the sub-tasks can still run on other runners.
 
@@ -429,11 +430,49 @@ When one thread is not enough but a runner-per-producer is too blunt, **`MultiTh
 When I need a bounded burst of work to actually run in parallel, I reach for the **`MultiThreadedParallelTaskCollection`** implementations (Lean, ExtraLean, plain or struct-typed): a collection owns N internal `MultiThreadRunner`s and behaves as a single reusable unit of work. I fill it with tasks — each one implements `IParallelTask`, so it is an iterator that disposes its own state — then drive it like any other task: poll `MoveNext()`, call `Complete()`, or `yield return collection.Run()`. The tasks wait in a concurrent queue and each runner claims the next one the moment it frees up, so uneven durations self-balance instead of matching a static split. The lifecycle is deliberately strict: `Add()` throws once the batch is running (compose first, run second); `onComplete` fires exactly once, when the last task finishes; `Stop()` ends the run cooperatively but keeps the tasks, so the collection can run again as-is; `Reset()` empties it; and `Dispose()` disposes every task — including the ones no thread ever claimed — together with its runners. The Burst sibling, `MultiThreadedBurstParallelTaskCollection<T>`, scales the same batch idea to data-parallel range tasks: `Add(prototype, iterations, elementsPerTask)` stores one immutable prototype and splits the range into fixed-size chunks that one reusable dispatcher per thread claims atomically — no per-chunk wrappers to allocate, a cooperative `Stop()` whose latency is bounded to one chunk, and Burst code that stays hot on the workers.
 The MultiThreadedParallelTaskCollection come both in `Lean` and `ExtraLean` version, but I actually do not expect it to be used with complex `Lean` tasks.
 
+### The work stealing behind MultiThreadedParallelTaskCollection
+
+The collection owns N internal ExtraLean `MultiThreadRunner`s, each with its own worker thread, and the balancing trick lives in how they are fed. The tasks you `Add()` sit in a plain list — the source of truth, kept so the same batch can run again — while a concurrent queue fed from that list is what the runners actually consume. When a run starts, the queue is refilled and just one task is scheduled per runner: everything else stays queued. The moment a worker runs out of work, before parking its thread, it fires an idle callback, and that callback claims the next task from the shared queue. So this is not a static split computed upfront, and not classic work-stealing either (there are no per-worker deques to steal from): it is one shared queue that the first runner to free up pulls from. The effect is what matters — uneven task durations self-balance, and the wave finishes in roughly total-work / threads time instead of matching the worst static partition. Once claimed, a task runs to completion on its runner: no preemption, no migration. If a runner is being stopped exactly when a task is handed over, the task is returned to the queue instead of lost, and `Dispose()` drains whatever comes back after every in-flight claim has exited.
+
+```text
+ADD:  task0 task1 task2 ... taskM   ->   list  (source of truth, survives re-runs)
+                                          |
+RUN:  queue := list, one task per runner, the rest stay queued
+                                          |
+          +---------------+---------------+
+          v               v               v
+      runner#0        runner#1        runner#2        (N worker threads)
+       task A          task B          task C
+          |               |               |
+        done            done            done
+          |               |               |
+          +---------------+---------------+
+                          |
+     a runner with no work fires its idle callback BEFORE parking:
+     claim the next queued task  <------ first free runner wins
+                          |
+     every completion atomically decrements the wave counter;
+     counter == 0 -> the next MoveNext() returns false,
+     onComplete fires exactly once, on the polling thread
+```
+
+No signals and no blocking waits drive any of this: the host picks the cadence — polling `MoveNext()`, calling `Complete()` or yielding `collection.Run()` — and completion is simply the counter reaching zero between two polls.
+
+### Taking advantage of work stealing
+
+Taking advantage of it means shaping the batch so the claim mechanism can do its job:
+
+- **Many tasks, more than threads.** Tasks are the unit of balancing: the more of them per wave, the finer the self-balancing. Example 14 runs 400 deliberately uneven downloads on four threads; the MillionPoints demo splits one million iterations into 8192-particle chunks claimed by `ProcessorCount - 1` workers. With tasks ≤ threads there is nothing to balance and the leaner `MultiThreadRunnerPool` is the better tool (Example 22).
+- **Chunky, not microscopic.** Every claim pays a queue hop and a task start, and `Stop()` is cooperative: it waits for the tasks in flight, so its latency is bounded by the longest one currently running. Hundreds of meaty tasks balance perfectly; thousands of micro-tasks just move the time from the work to the scheduling.
+- **Enqueue the heaviest tasks first.** The queue is consumed in order, so a long task claimed last runs while every other runner is already idle — that lone task becomes the tail of the wave. Long tasks first let the short ones fill the gaps behind them.
+- **Keep tasks self-contained.** They implement `IParallelTask` — an iterator that disposes its own state — and must never assume which runner's thread claims them, because any of them can. Data shared between genuinely parallel tasks needs your synchronization, like everywhere else in the library.
+- **Compose first, run second.** `Add()` throws once the batch is running; the list survives `Stop()`, so the same collection runs again as-is. `Reset()` empties it and `Dispose()` disposes every task, including the ones no thread ever claimed.
+
 ## Taking over coroutines, Tasks and Unity Jobs patterns
 
 One way to look at 2.0: whatever concurrency pattern you use today, Svelto.Tasks has a proposed counterpart designed to mimic it.
 
-- **Unity coroutines**: iterator tasks *are* Unity-coroutine-shaped, minus the engine lock. Yield `Yield.It` instead of `null`, run them on a runner instead of a `MonoBehaviour`, and they keep working outside the editor, on dedicated servers, in tests. Unity-specific glue (like yield-instruction interop) exists behind defines for when you need it.
+- **Unity coroutines**: iterator tasks *are* Unity-coroutine-shaped, minus the engine lock. Yield `Yield.It` or `null`, run them on a runner instead of a `MonoBehaviour`, and they keep working outside the editor, on dedicated servers, in tests. Unity-specific glue (like yield-instruction interop) exists behind defines for when you need it.
 - **Tasks / async-await**: await a Svelto runner directly so continuations resume on *your* thread, not the ThreadPool; or go the other way around and host entire `async` methods on a runner through the experimental `TaskSynchronizationContext`. Both directions are shown in the examples.
 - **Unity Jobs**: the data-parallel pattern maps onto `ISveltoJob` + `MultiThreadedParallelJobCollection<T>`, which splits N iterations across M worker threads exactly like an `IJobParallelFor` would. On Unity these job structs can be Burst-compiled — that path is marked experimental.
 
@@ -441,16 +480,18 @@ One way to look at 2.0: whatever concurrency pattern you use today, Svelto.Tasks
 
 ## The MillionPoints Unity demo: how Svelto.Tasks can be used for massive parallelism
 
-The companion *Unity* project [`Svelto.Tasks.Examples`](https://github.com/sebas77/Svelto.Tasks.Examples) contains my favourite stress case: animating **one million rotating points** at full framerate. Every implementation lives in the `Assets/MillionPoints` folder of the repo and renders identically — a one-vertex point mesh drawn through `Graphics.DrawMeshInstancedIndirect`, with positions streamed every frame into a mapped (`SubUpdates`) `ComputeBuffer`. Uploading buffers from the CPU to the GPU is a tricky task because of the asynchronous nature of the operation: the various examples show different forms of synchronization achievable with Svelto.Tasks and compare their performance against the fully native version (everything running on the GPU through compute shaders) and the Unity Jobs version. All the Svelto.Tasks examples use Unity Burst to vectorise the code and write straight into the driver-mapped `ComputeBuffer` memory exposed by Unity's modern `ComputeBuffer.BeginWrite` API.
+The companion *Unity* project [`Svelto.Tasks.Examples`](https://github.com/sebas77/Svelto.Tasks.Examples) (https://github.com/sebas77/Svelto.Tasks.Examples) contains my favourite stress case: animating **one million rotating points** at full framerate. Every implementation lives in the `Assets/MillionPoints` folder of the repo and renders identically — a one-vertex point mesh drawn through `Graphics.DrawMeshInstancedIndirect`, with positions streamed every frame into a mapped (`SubUpdates`) `ComputeBuffer`. Uploading buffers from the CPU to the GPU is a tricky task because of the asynchronous nature of the operation: the various examples show different forms of synchronization achievable with Svelto.Tasks and compare their performance against the fully native version (everything running on the GPU through compute shaders) and the Unity Jobs version. All the Svelto.Tasks examples use Unity Burst to vectorise the code and write straight into the driver-mapped `ComputeBuffer` memory exposed by Unity's modern `ComputeBuffer.BeginWrite` API.
 
 ![The MillionPoints demo: one million points animated at full framerate](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/Screenshot.png)
 
 ### The comparison baselines
 
-`MillionPointsGPU` moves the whole simulation to the GPU through a compute shader — the best tool for this job, and the quality reference. `MillionPointsCPUUnityJobs` is the classic Unity `IJobParallelFor` path, `Schedule()`/`Complete()` once per frame, which I keep around as the baseline to beat. Both matter for measurements, neither teaches anything about Svelto.Tasks, so let me jump straight to the interesting part: the three Svelto strategies and their synchronization. All three drive `MultiThreadedBurstParallelTaskCollection<T>` identically — one prototype range task, the million iterations split into 8192-particle chunks, `ProcessorCount - 1` workers claiming chunks through the collection's idle callbacks — so the only thing that changes from one strategy to the next is *who waits for whom*.
+`MillionPointsGPU` moves the whole simulation to the GPU through a compute shader — the best tool for this job, and the quality reference. `MillionPointsCPUUnityJobs` is the classic Unity `IJobParallelFor` path, `Schedule()`/`Complete()` once per frame, which I keep around as the baseline to beat. Both matter for measurements, neither teaches anything about Svelto.Tasks, so let me jump straight to the interesting part: the three Svelto strategies and their synchronization. All three drive `MultiThreadedBurstParallelTaskCollection<T>` identically — one prototype range task, the million iterations split into 8192-particle chunks, `ProcessorCount - 1` workers claiming chunks through the collection's idle callbacks — so the only thing that changes from one strategy to the next is *what waits for what*.
 
+**Compute Shader version profiling capture:**
 ![Profiler capture of the GPU compute shader version](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/GPUCS.png)
 
+**Unity Jobs version profiling capture:**
 ![Profiler capture of the Unity Jobs version](https://raw.githubusercontent.com/sebas77/Svelto.Tasks.Examples/master/Captures/CPUJOBS.png)
 
 ### Svelto Burst — BurstSync: double-buffered frames

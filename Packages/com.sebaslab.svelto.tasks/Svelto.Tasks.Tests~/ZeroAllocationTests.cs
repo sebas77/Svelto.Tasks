@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using Svelto.Tasks;
+using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.ExtraLean;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;

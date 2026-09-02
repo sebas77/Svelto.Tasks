@@ -85,11 +85,11 @@ namespace Svelto.Common
             var signedCapacity = (int) SignedCapacity(newCapacityInBytes);
             IntPtr newPointer = IntPtr.Zero;
 #if UNITY_COLLECTIONS
-            var castedAllocator = (Unity.Collections.Allocator) allocator;
+            var unityAllocator = ToUnityAllocator(allocator);
             unsafe
             {
                 newPointer = (IntPtr) Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Malloc(
-                    signedCapacity, (int) OptimalAlignment.alignment, castedAllocator);
+                    signedCapacity, (int) OptimalAlignment.alignment, unityAllocator);
             }
 #else
             newPointer = Marshal.AllocHGlobal(signedCapacity); //this is guaranteed to be aligned by design
@@ -166,7 +166,7 @@ namespace Svelto.Common
             unsafe
             {
                 Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free(
-                    (void*) ptr, (Unity.Collections.Allocator) allocator);
+                    (void*) ptr, ToUnityAllocator(allocator));
             }
 #else
             Marshal.FreeHGlobal(ptr);
@@ -253,6 +253,20 @@ namespace Svelto.Common
         }
 
 #if UNITY_COLLECTIONS
+        static Unity.Collections.Allocator ToUnityAllocator(Allocator allocator)
+        {
+            switch (allocator)
+            {
+                case Allocator.Invalid: return Unity.Collections.Allocator.Invalid;
+                case Allocator.None: return Unity.Collections.Allocator.None;
+                case Allocator.Temp: return Unity.Collections.Allocator.Temp;
+                case Allocator.TempJob: return Unity.Collections.Allocator.TempJob;
+                case Allocator.Persistent: return Unity.Collections.Allocator.Persistent;
+                case Allocator.Managed: return Unity.Collections.Allocator.Persistent;
+                default: throw new ArgumentOutOfRangeException(nameof(allocator), allocator, null);
+            }
+        }
+
         static class OptimalAlignment
         {
             internal static readonly uint alignment;

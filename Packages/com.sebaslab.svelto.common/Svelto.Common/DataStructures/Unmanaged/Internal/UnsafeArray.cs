@@ -95,12 +95,14 @@ namespace Svelto.DataStructures
                 var structSize = (uint) MemoryUtilities.SizeOf<T>();
 
                 uint newCapacityInBytes = structSize * newCapacity;
+                var newCount = Math.Min(_writeIndex, newCapacityInBytes);
                 if (_ptr == null)
                     _ptr = (byte*) MemoryUtilities.NativeAlloc(newCapacityInBytes, allocator);
                 else
-                    _ptr = (byte*) MemoryUtilities.NativeRealloc((IntPtr) _ptr, newCapacityInBytes, allocator, (uint) count);
+                    _ptr = (byte*) MemoryUtilities.NativeRealloc((IntPtr) _ptr, newCapacityInBytes, allocator, newCount);
 
                 _capacity = newCapacityInBytes;
+                _writeIndex = newCount;
             }
         }
 

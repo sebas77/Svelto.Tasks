@@ -158,13 +158,14 @@ namespace Svelto.DataStructures
     }
 
     /// <summary>
-    /// Note: this struct should be ref, however with jobs is a common pattern to use NB as a field of a struct. This pattern should be replaced
+    /// Todo: this struct should be ref, however with jobs is a common pattern to use NB as a field of a struct. This pattern should be replaced
     /// with the introduction of new structs that can be hold but must be requested through some contracts like:
     /// AsReader, AsWriter, AsReadOnly, AsParallelReader, AsParallelWriter and so on. In this way NB can keep track about how the buffer is used
     /// and can throw exceptions if the buffer is used in the wrong way.
+    /// the change is too large at the moment, we should introduce a new NB and deprecate this
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public ref struct NB<T> where T : struct
+    public struct NB<T> where T : struct
     {
         NBInternal<T> _bufferImplementation;
 

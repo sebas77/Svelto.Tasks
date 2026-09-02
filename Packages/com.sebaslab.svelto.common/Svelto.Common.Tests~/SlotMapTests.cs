@@ -3,7 +3,7 @@
 namespace Svelto.Common.Tests
 {
     [TestFixture]
-    public class ValueContainerTests
+    public partial class SlotMapTests
     {
         [Test]
         public void ManagedSlotMap_Count_DecrementsOnRemove_AndReusesFreeSlots()

@@ -33,10 +33,33 @@ namespace Svelto.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Clear()
         {
+            if (_count == 0)
+            {
+                _dense.Clear();
+                return;
+            }
+
             _count = 0;
+            _freeList = default;
 
             _dense.Clear();
-            _sparse.Clear();
+
+            for (uint index = 0; index < _nextUnused; index++)
+            {
+                var sparseIndex = _sparse[index];
+                if (sparseIndex.IsValid() == false)
+                    continue;
+
+                if (sparseIndex.version == byte.MaxValue)
+                {
+                    _sparse[index] = default;
+                    continue;
+                }
+
+                var freeIndex = new SparseIndex(sparseIndex, _freeList);
+                _sparse[index] = freeIndex;
+                _freeList = freeIndex;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -63,17 +86,17 @@ namespace Svelto.DataStructures
                 return ret;
             }
 
-            var index = (uint)_dense.capacity;
+            var index = _nextUnused;
             if (index >= capacity)
                 Reserve((uint)Math.Ceiling((capacity + 1) * 1.5f));
 
+            ++_nextUnused;
             ++_count;
 
             _dense[index] = val;
-            var version = (byte)(_sparse[index].version + 1);
-            _sparse[index] = new SparseIndex(index, version); //base count is 1 so 0 can be used as invalid
+            _sparse[index] = new SparseIndex(index, 1); //base count is 1 so 0 can be used as invalid
 
-            return new ValueIndex(index, version);
+            return new ValueIndex(index, 1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -81,13 +104,21 @@ namespace Svelto.DataStructures
         {
             DBC.Common.Check.Require(Has(index) == true, $"SparseSet - invalid index: index {index}");
 
-            ref var sparseIndex = ref _sparse[index.sparseIndex];
+            var sparseIndex = _sparse[index.sparseIndex];
 
-            //invalidate value index as the sparse index version will increment
-            //store the current _freelist to create a list of free spots
-            _sparse[index.sparseIndex] = new SparseIndex(sparseIndex, _freeList);
-            //set the new free list to the just cleared spot
-            _freeList = sparseIndex;
+            if (sparseIndex.version == byte.MaxValue)
+            {
+                _sparse[index.sparseIndex] = default;
+            }
+            else
+            {
+                //invalidate value index as the sparse index version will increment
+                //store the current _freelist to create a list of free spots
+                var freeIndex = new SparseIndex(sparseIndex, _freeList);
+                _sparse[index.sparseIndex] = freeIndex;
+                //set the new free list to the just cleared spot
+                _freeList = freeIndex;
+            }
 
             --_count;
         }
@@ -113,6 +144,7 @@ namespace Svelto.DataStructures
         StrategyD _dense;  //Dense set of elements (stable index == handle.sparseIndex)
         StrategyS _sparse; //Per-slot metadata + freelist links
         uint _count;       //LIVE elements count
+        uint _nextUnused;  //First slot that has never been issued
         SparseIndex _freeList;
 
         static int MAX_SIZE = (int)Math.Pow(2, 24);

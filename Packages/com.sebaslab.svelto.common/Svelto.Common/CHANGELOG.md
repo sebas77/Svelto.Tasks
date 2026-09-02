@@ -3,7 +3,19 @@ All notable changes to this project will be documented in this file. Changes are
 
 ## [3.7.1] - 08-2026
 
+### Breaking changes
+
+* `SveltoDictionaryKeyValueEnumerator<...>` is now the nested `SveltoDictionary<...>.SveltoDictionaryKeyValueEnumerator` type. Update explicit enumerator declarations accordingly.
+
+### Added
+
 * Add cached full type names through `TypeCache<T>.fullName`
+
+### Fixed
+
+* Debug SveltoDictionary enumerators now track a shared structural revision and reject mutations made through copied dictionary values.
+* SlotMap handles cannot become valid again after generation exhaustion or a clear operation.
+* Map managed-allocation metadata to Unity's persistent allocator, avoiding Unity's reserved audio-kernel allocator.
 
 ## [3.7.0] - 08-2026
 
@@ -18,10 +30,11 @@ All notable changes to this project will be documented in this file. Changes are
 * Improve SveltoDictionary, FasterList, tombstone lists, streams, native containers and the Unity logger
 * Simplify ThreadSafeStack synchronization
 * Reorganize common utilities, data structures and logger sources into dedicated folders
+* Renamed ValueContainer to SlotMap
 
 ### Removed
 
-* Remove the ObjectPool APIs, Unity pool debugger, command abstractions, ValueContainer and ThreadSafeQueue
+* Remove the ObjectPool APIs, Unity pool debugger, command abstractions and ThreadSafeQueue
 
 ## [3.5.2] - 07-2024
 

@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Svelto.Tasks.Parallelism.ExtraLean;
 
 namespace Svelto.Tasks.Parallelism.Internal
 {

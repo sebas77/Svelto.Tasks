@@ -5,29 +5,31 @@ using Svelto.Tasks.Parallelism.Internal;
 /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
 /// </summary>
 ///
-public class
-        MultiThreadedParallelJobCollection<TJob> :  Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<ParallelRunEnumerator<TJob>>
-        where TJob : struct, ISveltoJob
+namespace Svelto.Tasks.Parallelism.ExtraLean
 {
-    //works similarly to Unity Jobs, the same job is split into different iterations, the work is then divided according to the indexed iterations
-    public void Add(in TJob job, int iterations)
+    public class
+            MultiThreadedParallelJobCollection<TJob> :  MultiThreadedParallelTaskCollection<
+        ParallelRunEnumerator<TJob>>
+            where TJob : struct, ISveltoJob
     {
-        DBC.Tasks.Check.Require(isRunning == false,
-            "can't add tasks on a started MultiThreadedParallelJobCollection");
+        //works similarly to Unity Jobs, the same job is split into different iterations, the work is then divided according to the indexed iterations
+        public void Add(in TJob job, int iterations)
+        {
+            DBC.Tasks.Check.Require(isRunning == false,
+                "can't add tasks on a started MultiThreadedParallelJobCollection");
 
-        var runnersLength   = _runners.Length;
-        int tasksPerThread     = (int)System.MathF.Floor((float)iterations / runnersLength);
-        int reminder           = iterations % runnersLength;
+            var runnersLength   = _runners.Length;
+            int tasksPerThread     = (int)System.MathF.Floor((float)iterations / runnersLength);
+            int reminder           = iterations % runnersLength;
 
-        for (int i = 0; i < runnersLength; i++)
-            Add(new ParallelRunEnumerator<TJob>(job, tasksPerThread * i, tasksPerThread));
+            for (int i = 0; i < runnersLength; i++)
+                Add(new ParallelRunEnumerator<TJob>(job, tasksPerThread * i, tasksPerThread));
 
-        if (reminder > 0)
-            Add(new ParallelRunEnumerator<TJob>(job, tasksPerThread * runnersLength, reminder));
-    }
+            if (reminder > 0)
+                Add(new ParallelRunEnumerator<TJob>(job, tasksPerThread * runnersLength, reminder));
+        }
 
-    public MultiThreadedParallelJobCollection(string name, uint numberOfThreads, bool tightTasks) : base(name,
-        numberOfThreads, tightTasks)
-    {
+        public MultiThreadedParallelJobCollection(string name, uint numberOfThreads, bool tightTasks) : base(name,
+            numberOfThreads, tightTasks) { }
     }
 }

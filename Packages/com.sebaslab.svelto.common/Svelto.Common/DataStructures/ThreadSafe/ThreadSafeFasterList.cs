@@ -55,7 +55,7 @@ namespace Svelto.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public FasterListEnumerator<T> GetEnumerator()
         {
-            return GetEnumerator();
+            return _list.GetEnumerator();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -15,7 +15,7 @@ namespace Svelto.DataStructures.Native
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
-    public struct SharedSveltoDictionaryNative<TKey, TValue> : global::Svelto.DataStructures.ISveltoDictionary<TKey, TValue>
+    public struct SharedSveltoDictionaryNative<TKey, TValue> : ISveltoDictionary<TKey, TValue>
         where TKey : unmanaged, IEquatable<TKey> where TValue : struct
     {
         public static SharedSveltoDictionaryNative<TKey, TValue> Create
@@ -53,8 +53,8 @@ namespace Svelto.DataStructures.Native
             get => dictionary._values.ToRealBuffer();
         }
 
-        public SveltoDictionaryKeyValueEnumerator<TKey, TValue, NativeStrategy<SveltoDictionaryNode<TKey>>,
-            NativeStrategy<TValue>, NativeStrategy<int>> GetEnumerator() => dictionary.GetEnumerator();
+        public SveltoDictionary<TKey, TValue, NativeStrategy<SveltoDictionaryNode<TKey>>,
+            NativeStrategy<TValue>, NativeStrategy<int>>.SveltoDictionaryKeyValueEnumerator GetEnumerator() => dictionary.GetEnumerator();
 
         public int count
         {

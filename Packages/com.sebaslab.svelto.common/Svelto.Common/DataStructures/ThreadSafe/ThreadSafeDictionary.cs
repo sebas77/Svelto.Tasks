@@ -196,7 +196,7 @@ namespace Svelto.DataStructures
             }
             finally
             {
-                _lockQ.EnterWriteLock();
+                _lockQ.ExitWriteLock();
             }
         }
 
@@ -210,7 +210,7 @@ namespace Svelto.DataStructures
             }
             finally
             {
-                _lockQ.EnterWriteLock();
+                _lockQ.ExitWriteLock();
             }
         }
 

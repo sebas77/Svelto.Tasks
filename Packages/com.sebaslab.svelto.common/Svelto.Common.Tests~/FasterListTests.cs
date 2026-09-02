@@ -5,7 +5,7 @@ using Svelto.DataStructures;
 namespace Svelto.Common.Tests
 {
     [TestFixture]
-    public class FasterListTests
+    public partial class FasterListTests
     {
         [Test]
         public void Add_And_Indexer_Work()
@@ -231,5 +231,17 @@ namespace Svelto.Common.Tests
             Assert.That(dst2[1], Is.EqualTo(2));
         }
 #endif
+
+        [Test]
+        public void Clear_ResetsCount_AndRetainsCapacity()
+        {
+            var list = new FasterList<string>(2);
+            list.Add("value");
+
+            list.Clear();
+
+            Assert.That(list.count, Is.EqualTo(0));
+            Assert.That(list.capacity, Is.EqualTo(2));
+        }
     }
 }

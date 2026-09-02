@@ -27,9 +27,9 @@ namespace Svelto.DataStructures
             }
         }
         
-        public RingBufferEnumerator GetEnumerator()
+        public CircularQueueEnumerator GetEnumerator()
         {
-            return new RingBufferEnumerator(this);   
+            return new CircularQueueEnumerator(this);   
         }
         
         public void CopyTo(Span<T> destination)
@@ -108,7 +108,7 @@ namespace Svelto.DataStructures
         uint _consumerCursor = 0;
         uint _producerCursor = 0;
         
-        public struct RingBufferEnumerator
+        public struct CircularQueueEnumerator
         {
             readonly CircularQueue<T> _circularQueue;
             readonly uint _end;
@@ -116,7 +116,7 @@ namespace Svelto.DataStructures
             uint _index;
             bool _started;
 
-            public RingBufferEnumerator(CircularQueue<T> circularQueue)
+            public CircularQueueEnumerator(CircularQueue<T> circularQueue)
             {
                 _circularQueue = circularQueue;
                 _index = _circularQueue._consumerCursor;

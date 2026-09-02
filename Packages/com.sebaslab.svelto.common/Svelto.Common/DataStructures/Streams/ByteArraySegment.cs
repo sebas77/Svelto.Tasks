@@ -37,7 +37,7 @@ namespace Svelto.DataStructures
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ByteArraySegment<T> ReadByteArraySegment<T>(this ref ManagedStream stream) where T : unmanaged
         {
-            int length = stream.Read<int>();
+            int length = stream.Read<ushort>();
 
             int readCursor = stream.AdvanceCursor(length);
 

@@ -1,5 +1,5 @@
 #if TASKS_PROFILER_ENABLED
-
+using System;
 
 //This profiler is based on the Entitas Visual Debugging tool 
 //https://github.com/sschmid/Entitas-CSharp

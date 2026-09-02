@@ -260,8 +260,8 @@ namespace Svelto.DataStructures
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public SveltoDictionaryKeyValueEnumerator<TKey, TValue, ManagedStrategy<SveltoDictionaryNode<TKey>>,
-            ManagedStrategy<TValue>, ManagedStrategy<int>> GetEnumerator()
+        public SveltoDictionary<TKey, TValue, ManagedStrategy<SveltoDictionaryNode<TKey>>,
+            ManagedStrategy<TValue>, ManagedStrategy<int>>.SveltoDictionaryKeyValueEnumerator GetEnumerator()
         {
             return _dictionary.GetEnumerator();
         }
