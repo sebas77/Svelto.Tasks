@@ -8,6 +8,10 @@ namespace SimpleCoroutine
 {
     static class Program
     {
+        const int CountdownRow = 15;
+        const int BigDigitRow = 22;
+        const int CompletionRow = 28;
+
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
@@ -46,7 +50,7 @@ namespace SimpleCoroutine
                 DrawCountdown(countdown, done, final: true);
             }
 
-            SafeSetCursor(0, 22);
+            SafeSetCursor(0, CompletionRow);
             Console.WriteLine("  ┌──────────────────────────────────────────────────────────┐");
             Console.WriteLine("  │  ✅ Countdown complete! ExtraLean task finished.          │");
             Console.WriteLine("  │  💡 yield return null = wait one Step() (no TaskContract)  │");
@@ -61,7 +65,7 @@ namespace SimpleCoroutine
             int filled = done || final ? 0 : Math.Max(0, display);
             string bar = new string('█', filled) + new string('░', barLen - filled);
 
-            SafeSetCursor(0, 12);
+            SafeSetCursor(0, CountdownRow);
             Console.WriteLine("  ╔═══════════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║  🚀 COUNTDOWN — ExtraLean IEnumerator (yield return null)     ║");
             Console.WriteLine("  ╠═══════════════════════════════════════════════════════════════╣");
@@ -70,7 +74,7 @@ namespace SimpleCoroutine
             Console.WriteLine("  ║                                                               ║");
             Console.WriteLine("  ╚═══════════════════════════════════════════════════════════════╝");
 
-            SafeSetCursor(0, 19);
+            SafeSetCursor(0, BigDigitRow);
             DrawBigDigit(display);
         }
 

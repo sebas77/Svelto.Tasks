@@ -3,6 +3,14 @@ using Svelto.Utilities;
 
 // Seqlock (sequence lock) for "many readers, rare writers" with optimistic reads.
 //
+// What it protects: a group of related shared values, not one shared variable. A writer marks
+// the sequence as odd, updates every field, then marks it even. A reader copies the fields
+// between two sequence reads and retries when the value changed.
+//
+// Practical example: a simulation thread publishes an entity's position and velocity. Rendering,
+// audio and networking threads need a consistent snapshot, so they copy the complete state and
+// only use it after ValidateRead confirms that no simulation update overlapped their copy.
+//
 // ==============================
 //  WHY THIS EXISTS (DRAWINGS)
 // ==============================
@@ -154,59 +162,59 @@ sealed class SeqLock
 /*
 USAGE EXAMPLE (pattern you should follow):
 
-// Shared mutable data:
-struct MyState
+// Shared mutable state published by a simulation thread:
+struct EntitySnapshot
 {
-    public int a;
-    public int b;
-    public float c;
+    public float positionX;
+    public float positionY;
+    public float positionZ;
+    public float velocityX;
+    public float velocityY;
+    public float velocityZ;
 }
 
-SeqLock _lock = new SeqLock();
-MyState _state;
+SeqLock _snapshotLock = new SeqLock();
+EntitySnapshot _latestSnapshot;
 
-// Writer:
-void UpdateState(int a, int b, float c)
+// Simulation thread: publish position and velocity as one coherent snapshot.
+void PublishSnapshot(EntitySnapshot snapshot)
 {
     int it = 0;
-    _lock.EnterWrite(ref it);
+    _snapshotLock.EnterWrite(ref it);
     try
     {
-        _state.a = a;
-        _state.b = b;
-        _state.c = c;
+        _latestSnapshot = snapshot;
     }
     finally
     {
-        _lock.ExitWrite();
+        _snapshotLock.ExitWrite();
     }
 }
 
-// Reader (copy + validate loop):
-bool TryReadState(out MyState snapshot)
+// Rendering, audio or networking thread: read a coherent snapshot without blocking other readers.
+bool TryReadSnapshot(out EntitySnapshot snapshot)
 {
     int it = 0;
     while (true)
     {
         int seq0;
-        if (_lock.TryBeginRead(out seq0) == false)
-            seq0 = _lock.BeginReadWait(ref it);
+        if (_snapshotLock.TryBeginRead(out seq0) == false)
+            seq0 = _snapshotLock.BeginReadWait(ref it);
 
-        // Copy EVERYTHING you need into locals first:
-        snapshot = _state;
+        // Copy every related field before validating, never one field at a time.
+        snapshot = _latestSnapshot;
 
-        // Validate after the copy:
-        if (_lock.ValidateRead(seq0))
+        if (_snapshotLock.ValidateRead(seq0))
             return true;
 
-        // Writer overlapped, retry.
+        // The simulation update overlapped the copy: retry instead of mixing old and new fields.
         ThreadUtility.Wait(ref it);
     }
 }
 
 Notes:
-- Don't access `_state` after ValidateRead fails.
+- Don't access `_latestSnapshot` after ValidateRead fails.
 - Keep the read region small (copy only what you need).
-- If `_state` contains references to mutable objects, this only validates the reference values,
+- If `_latestSnapshot` contains references to mutable objects, this only validates the reference values,
   not the internal mutation of those objects. Prefer immutable snapshots or value-type blobs.
 */

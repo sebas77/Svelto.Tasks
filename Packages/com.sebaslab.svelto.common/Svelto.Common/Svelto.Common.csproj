@@ -1,7 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
-        <BaseOutputPath>bin~\</BaseOutputPath>
         <AssemblyName>Svelto.Common</AssemblyName>
         <LangVersion>10</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

@@ -84,6 +84,12 @@ namespace Svelto.Common
 
         public FasterReadOnlyList<T> items => new FasterReadOnlyList<T>(_ordered);
 
+        public void Remove(int index)
+        {
+            if (index >= 0 && index < _ordered.count)
+                _ordered[index] = default;
+        }
+
         readonly FasterList<T> _ordered;
     }
 

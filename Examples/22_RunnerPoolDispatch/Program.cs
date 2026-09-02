@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
-using Svelto.Tasks;
 using Svelto.Tasks.ExtraLean;
 
 #pragma warning disable CS0436
@@ -69,7 +68,6 @@ namespace Example22_RunnerPoolDispatch
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch { } }
         static void SafeTitle(string title) { try { Console.Title = title; } catch { } }
-        static void SafeReadKey() { try { Console.ReadKey(); } catch { } }
 
         static void Main()
         {
@@ -124,9 +122,8 @@ namespace Example22_RunnerPoolDispatch
             Console.WriteLine("  │     MultiThreadedParallelTaskCollection (Example 14).        │");
             Console.WriteLine("  └────────────────────────────────────────────────────────────┘");
             Console.WriteLine();
-            Console.WriteLine("  ✅ Done. Press any key to exit.");
+            Console.WriteLine("  ✅ Done.");
             SafeCursorVisible(true);
-            SafeReadKey();
         }
 
         static void DrawLive()

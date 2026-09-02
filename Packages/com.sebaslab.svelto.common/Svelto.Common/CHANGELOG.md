@@ -1,6 +1,28 @@
 # Changelog
 All notable changes to this project will be documented in this file. Changes are listed in random order of importance.
 
+## [3.7.1] - 08-2026
+
+* Add cached full type names through `TypeCache<T>.fullName`
+
+## [3.7.0] - 08-2026
+
+### Added
+
+* Add MonotonicFixedBuffer, SpanList, circular queues, slot maps, SeqLock, weak actions and weak events
+* Add read-only shared native dictionaries, `ISveltoDictionary`, `RefWrapperType`, FasterList pooling and Unity player-loop utilities
+* Add string-builder and time utility helpers
+
+### Changed
+
+* Improve SveltoDictionary, FasterList, tombstone lists, streams, native containers and the Unity logger
+* Simplify ThreadSafeStack synchronization
+* Reorganize common utilities, data structures and logger sources into dedicated folders
+
+### Removed
+
+* Remove the ObjectPool APIs, Unity pool debugger, command abstractions, ValueContainer and ThreadSafeQueue
+
 ## [3.5.2] - 07-2024
 
 * Improve FasterList Enumerator safety

@@ -12,6 +12,8 @@ namespace ConcurrentAnimations
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
 
         const int Ticks = 10;
+        const int LivePanelRow = 11;
+        const int CompletionRow = 21;
 
         static int _hp, _mp, _xp;
 
@@ -69,7 +71,7 @@ namespace ConcurrentAnimations
             }
 
             DrawFrame(Ticks);
-            SafeSetCursor(0, 17);
+            SafeSetCursor(0, CompletionRow);
             Console.WriteLine("  ╔════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║  ✅ All animations completed together                  ║");
             Console.WriteLine("  ╠════════════════════════════════════════════════════════╣");
@@ -87,7 +89,7 @@ namespace ConcurrentAnimations
             string mpBar = BarString(_mp, Ticks, "█", "░");
             string xpBar = BarString(_xp, Ticks, "█", "░");
 
-            SafeSetCursor(0, 10);
+            SafeSetCursor(0, LivePanelRow);
             Console.WriteLine($"  tick {tick,2}/{Ticks}                          ");
             Console.WriteLine();
             Console.WriteLine($"   HP  ❤  [{hpBar}] {_hp * 10,3}%");

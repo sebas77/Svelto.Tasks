@@ -22,7 +22,6 @@ namespace Example11_AIBudgetStaggered
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch { } }
         static void SafeTitle(string title) { try { Console.Title = title; } catch { } }
-        static void SafeReadKey() { try { Console.ReadKey(); } catch { } }
 
         static void Main()
         {
@@ -58,7 +57,6 @@ namespace Example11_AIBudgetStaggered
             Console.WriteLine();
             Console.WriteLine("  ✅ Done. Press any key to exit.");
             SafeCursorVisible(true);
-            SafeReadKey();
         }
 
         static IEnumerator<TaskContract> AITask(int unitId)

@@ -9,7 +9,6 @@ namespace ReusableSpawnLoop
     static class Program
     {
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
-        static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
 
         sealed class SpawnData
@@ -93,18 +92,13 @@ namespace ReusableSpawnLoop
             block.Dispose(); //a runner calls Dispose automatically; manually it returns the block to the pool
         }
 
-        static int _spawnRow = 11;
-
         static void PrintSpawn(SpawnData data)
         {
-            SafeSetCursor(0, _spawnRow);
             Console.WriteLine($"  │  🟢 Enemy #{data.enemyId,2} spawned: {data.kind}    ");
-            _spawnRow++;
         }
 
         static void Animate(SpawnData data)
         {
-            SafeSetCursor(0, _spawnRow);
             Console.Write("  │    ");
             var frames = new[] { "▁", "▃", "▅", "▇", "█", "▇", "▅", "▃" };
             for (int i = 0; i < frames.Length; i++)
@@ -113,7 +107,6 @@ namespace ReusableSpawnLoop
                 Thread.Sleep(70);
             }
             Console.WriteLine("    💀 defeated              ");
-            _spawnRow++;
         }
 
         static void SpinWait(int frames, string label, string icon)
@@ -121,12 +114,10 @@ namespace ReusableSpawnLoop
             var spin = new[] { '|', '/', '─', '\\' };
             for (int i = 0; i < frames; i++)
             {
-                SafeSetCursor(0, 9);
-                Console.WriteLine($"  {icon} {label}... {spin[i % 4]}    ");
+                Console.Write($"\r  {icon} {label}... {spin[i % 4]}    ");
                 Thread.Sleep(60);
             }
-            SafeSetCursor(0, 9);
-            Console.WriteLine($"  {icon} {label}... ✓             ");
+            Console.WriteLine($"\r  {icon} {label}... ✓             ");
         }
 
         static void PrintBanner()

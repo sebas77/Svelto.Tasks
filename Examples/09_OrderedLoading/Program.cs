@@ -7,6 +7,12 @@ namespace OrderedLoading
 {
     static class Program
     {
+        const int PipelineRow = 9;
+        const int DownloadProgressRow = 15;
+        const int ParseProgressRow = 16;
+        const int InitializeProgressRow = 17;
+        const int SummaryRow = 20;
+
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
@@ -25,12 +31,12 @@ namespace OrderedLoading
                 log.Add("download-start");
                 for (int i = 0; i <= 10; i++)
                 {
-                    Bar(11, "DOWNLOAD", i, 10, "▓");
+                    Bar(DownloadProgressRow, "DOWNLOAD", i, 10, "▓");
                     Thread.Sleep(50);
                 }
                 yield return TaskContract.Yield.It;
                 log.Add("download-done");
-                StageDone(11, "DOWNLOAD");
+                StageDone(DownloadProgressRow, "DOWNLOAD");
             }
 
             IEnumerator<TaskContract> ParseStage()
@@ -38,12 +44,12 @@ namespace OrderedLoading
                 log.Add("parse-start");
                 for (int i = 0; i <= 10; i++)
                 {
-                    Bar(12, "PARSE   ", i, 10, "▒");
+                    Bar(ParseProgressRow, "PARSE   ", i, 10, "▒");
                     Thread.Sleep(45);
                 }
                 yield return TaskContract.Yield.It;
                 log.Add("parse-done");
-                StageDone(12, "PARSE   ");
+                StageDone(ParseProgressRow, "PARSE   ");
             }
 
             IEnumerator<TaskContract> InitStage()
@@ -51,12 +57,12 @@ namespace OrderedLoading
                 log.Add("init-start");
                 for (int i = 0; i <= 10; i++)
                 {
-                    Bar(13, "INIT    ", i, 10, "█");
+                    Bar(InitializeProgressRow, "INIT    ", i, 10, "█");
                     Thread.Sleep(40);
                 }
                 yield return TaskContract.Yield.It;
                 log.Add("init-done");
-                StageDone(13, "INIT    ");
+                StageDone(InitializeProgressRow, "INIT    ");
             }
 
             var serial = new SerialTaskCollection("LevelLoader");
@@ -68,7 +74,7 @@ namespace OrderedLoading
 
             serial.Complete(10000);
 
-            SafeSetCursor(0, 16);
+            SafeSetCursor(0, SummaryRow);
             Console.WriteLine("  ╔════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║  ✅ Level loaded — stages ran STRICTLY in order         ║");
             Console.WriteLine("  ╠════════════════════════════════════════════════════════╣");
@@ -83,7 +89,7 @@ namespace OrderedLoading
 
         static void DrawPipeline()
         {
-            SafeSetCursor(0, 9);
+            SafeSetCursor(0, PipelineRow);
             Console.WriteLine("   ┌──────────┐     ┌──────────┐     ┌──────────┐");
             Console.WriteLine("   │ DOWNLOAD │ ──▶ │  PARSE   │ ──▶ │   INIT   │");
             Console.WriteLine("   └──────────┘     └──────────┘     └──────────┘");

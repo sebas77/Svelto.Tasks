@@ -579,6 +579,21 @@ IEnumerator&lt;TaskContract&gt; Parent()
 }
 </pre>
 
+### 04 — PreallocatedRunner: capacity + struct task path
+
+When the peak number of simultaneous tasks is known, construct a `SteppableRunner<TTask>` with that capacity. Its internal containers avoid their initial growth during the first busy wave, while the matching struct task stays on the concrete path instead of being boxed as an interface. The demo compares first-wave allocations with a default runner, then confirms the warmed-up runner's steady-state allocation behavior.
+
+<pre class="EnlighterJSRAW" data-enlighter-language="csharp">
+const int tasksPerWave = 100;
+using var runner = new SteppableRunner&lt;WorkTask&gt;("PreallocRunner", tasksPerWave);
+
+for (int i = 0; i &lt; tasksPerWave; i++)
+    new WorkTask(i).RunOn(runner); //concrete struct path, no boxing
+
+while (runner.hasTasks)
+    runner.Step();
+</pre>
+
 ### 05 — BackgroundComputation: RunOn + Continuation
 
 Heavy math runs on a `MultiThreadRunner` (one dedicated background thread per runner) while the main thread polls. Real cross-thread parallelism with results published through volatile fields.
@@ -845,7 +860,7 @@ TaskProfiler.CopyAndUpdate(ref infos); //built-in per-pass min/avg/max aggregate
 
 ## Conclusions
 
-Svelto.Tasks 2.0 stays true to the idea the library was born with — iterators as tasks, runners as schedulers, zero surprises — while finally getting the packaging, the test suite and the 20 runnable examples it always deserved. Use it wherever C# compiles; reach for ExtraLean in hot gameplay paths; treat Lean tasks, the Tasks interop and the job path as tools for the cases that genuinely need them.
+Svelto.Tasks 2.0 stays true to the idea the library was born with — iterators as tasks, runners as schedulers, zero surprises — while finally getting the packaging, the test suite and a set of runnable examples it always deserved. Use it wherever C# compiles; reach for ExtraLean in hot gameplay paths; treat Lean tasks, the Tasks interop and the job path as tools for the cases that genuinely need them.
 
 ## FAQ
 

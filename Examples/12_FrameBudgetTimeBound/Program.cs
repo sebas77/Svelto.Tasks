@@ -24,7 +24,6 @@ namespace Example12_FrameBudgetTimeBound
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch { } }
         static void SafeTitle(string title) { try { Console.Title = title; } catch { } }
-        static void SafeReadKey() { try { Console.ReadKey(); } catch { } }
 
         static void Main()
         {
@@ -81,7 +80,6 @@ namespace Example12_FrameBudgetTimeBound
             Console.WriteLine();
             Console.WriteLine("  ✅ Done. Press any key to exit.");
             SafeCursorVisible(true);
-            SafeReadKey();
         }
 
         static IEnumerator<TaskContract> WorkTask(int taskId)

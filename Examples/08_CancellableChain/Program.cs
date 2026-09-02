@@ -7,6 +7,15 @@ namespace CancellableChain
 {
     static class Program
     {
+        const int ChainDiagramRow = 10;
+        const int LoadProgressRow = 15;
+        const int LoadCompleteRow = 16;
+        const int ValidateProgressRow = 18;
+        const int ValidationFailureRow = 19;
+        const int ProcessRow = 21;
+        const int ParentFinalRow = 23;
+        const int SummaryRow = 25;
+
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
@@ -29,25 +38,25 @@ namespace CancellableChain
             {
                 for (int i = 0; i <= 10; i++)
                 {
-                    Bar(12, "LOAD", i, 10);
+                    Bar(LoadProgressRow, "LOAD", i, 10);
                     Thread.Sleep(40);
                 }
                 loadCompleted = true;
                 yield return TaskContract.Yield.It;
-                SafeSetCursor(0, 13);
+                SafeSetCursor(0, LoadCompleteRow);
                 Console.WriteLine("  └─ LOAD completed");
             }
 
             IEnumerator<TaskContract> ValidateStep()
             {
-                Bar(14, "VALIDATE", 0, 10);
+                Bar(ValidateProgressRow, "VALIDATE", 0, 10);
                 Thread.Sleep(200);
                 for (int i = 0; i <= 4; i++)
                 {
-                    Bar(14, "VALIDATE", i, 10);
+                    Bar(ValidateProgressRow, "VALIDATE", i, 10);
                     Thread.Sleep(80);
                 }
-                SafeSetCursor(0, 15);
+                SafeSetCursor(0, ValidationFailureRow);
                 Console.WriteLine("  └─ ❌ VALIDATION FAILED: checksum mismatch!");
                 validationFailed = true;
 
@@ -58,7 +67,7 @@ namespace CancellableChain
             IEnumerator<TaskContract> ProcessStep()
             {
                 processReached = true;
-                SafeSetCursor(0, 16);
+                SafeSetCursor(0, ProcessRow);
                 Console.WriteLine("  [PROCESS] this should NEVER run");
                 yield return TaskContract.Yield.It;
             }
@@ -75,7 +84,7 @@ namespace CancellableChain
             {
                 yield return Chain().Continue();
                 parentFinalReached = true;
-                SafeSetCursor(0, 18);
+                SafeSetCursor(0, ParentFinalRow);
                 Console.WriteLine("  [PARENT] final step reached — this should NEVER happen");
                 yield return 42;
             }
@@ -87,7 +96,7 @@ namespace CancellableChain
             //the expected outcome: LOAD done, PROCESS skipped, PARENT cancelled
             bool chainSnapped = loadCompleted && validationFailed && !processReached && !parentFinalReached;
 
-            SafeSetCursor(0, 20);
+            SafeSetCursor(0, SummaryRow);
             Console.WriteLine("  ╔════════════════════════════════════════════════════════╗");
             Console.WriteLine(chainSnapped
                 ? "  ║  💥 CHAIN SNAPPED — cancellation reached every level    ║"
@@ -124,7 +133,7 @@ namespace CancellableChain
 
         static void DrawChain()
         {
-            SafeSetCursor(0, 10);
+            SafeSetCursor(0, ChainDiagramRow);
             Console.WriteLine("   ┌────────┐    ┌──────────┐    ┌─────────┐");
             Console.WriteLine("   │  LOAD  │───▶│ VALIDATE │───▶│ PROCESS │");
             Console.WriteLine("   └────────┘    └──────────┘    └─────────┘");

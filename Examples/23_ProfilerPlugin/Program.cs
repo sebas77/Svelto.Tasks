@@ -6,7 +6,6 @@ using Svelto.Tasks;
 using Svelto.Tasks.Lean;
 
 #if TASKS_PROFILER_ENABLED
-using System.Text;
 using Svelto.Tasks.Profiler;
 #endif
 
@@ -174,7 +173,6 @@ namespace Example23_ProfilerPlugin
             Console.WriteLine();
             Console.WriteLine("  ✅ Done. Press any key to exit.");
             try { Console.CursorVisible = true; } catch { }
-            try { Console.ReadKey(true); } catch { }
         }
 
         //Windows Thread.Sleep quantizes to ~15.6ms, which would flood the report with

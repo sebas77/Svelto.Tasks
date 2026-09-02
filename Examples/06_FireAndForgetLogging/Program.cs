@@ -9,7 +9,6 @@ namespace FireAndForgetLogging
     static class Program
     {
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
-        static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
 
         static void Main()
@@ -39,9 +38,6 @@ namespace FireAndForgetLogging
 
             AnimateThreeSteps(runner);
 
-            SafeSetCursor(0, 22);
-            Console.WriteLine(new string(' ', 80));
-
             //prove what actually happened instead of asserting it: the order list is filled by
             //the tasks themselves while they run
             int[] expected = { 1, 4, 2, 3 };
@@ -52,7 +48,7 @@ namespace FireAndForgetLogging
 
             Console.WriteLine($"  {(proofHolds ? "✅" : "❌")} Recorded execution order: [{string.Join(" → ", _order)}]" +
                               $"{(proofHolds ? "" : $"   (expected [{string.Join(" → ", expected)})]")}");
-            Console.WriteLine("  💡 Forget() fired the child on the SAME runner, parent kept going on the next step.");
+            Console.WriteLine("  💡 Forget() queued CHILD on this runner; PARENT ran first on step 2.");
             Console.WriteLine();
             runner.Dispose();
         }
@@ -67,27 +63,24 @@ namespace FireAndForgetLogging
             {
                 for (int s = 0; s < spinFrames; s++)
                 {
-                    SafeSetCursor(0, 17);
-                    Console.WriteLine($"  ⚙  Stepping runner...  {spinner[frame]}  step {i + 1}/3");
+                    Console.Write($"\r  ⚙  Stepping runner...  {spinner[frame]}  step {i + 1}/3");
                     frame = (frame + 1) % spinner.Length;
                     Thread.Sleep(180);
                 }
+
+                Console.WriteLine($"\r  ⚙  Stepping runner...  ✓  step {i + 1}/3");
                 runner.Step();
             }
 
-            SafeSetCursor(0, 17);
-            Console.WriteLine("  ⚙  Stepping runner...  ✓  done (3 steps)          ");
+            Console.WriteLine("  ⚙  Stepping runner...  ✓  done (3 steps)");
         }
 
-        static int _row = 7;
         static readonly List<int> _order = new List<int>();
 
         static void Step(int n, string who, string msg, string bar)
         {
             _order.Add(n);
-            SafeSetCursor(0, _row);
             Console.WriteLine($"  {who} │ {msg} {bar}");
-            _row++;
         }
 
         static void PrintBanner()
@@ -96,19 +89,19 @@ namespace FireAndForgetLogging
             Console.WriteLine("  ╔══════════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║  06 · FIRE & FORGET LOGGING  ·  .Forget()                   ║");
             Console.WriteLine("  ╠══════════════════════════════════════════════════════════════╣");
-            Console.WriteLine("  ║  Parent fires a telemetry child but does NOT wait for it.    ║");
-            Console.WriteLine("  ║  The child runs on the same runner, in the background.       ║");
+            Console.WriteLine("  ║  Parent schedules telemetry but does NOT wait for it.        ║");
+            Console.WriteLine("  ║  One runner / one thread: work is cooperative, not parallel.║");
             Console.WriteLine("  ╚══════════════════════════════════════════════════════════════╝");
             Console.WriteLine();
-            Console.WriteLine("   TIMELINE  (two lanes, same runner, stepped manually)");
+            Console.WriteLine("   ONE STEPPABLE RUNNER  (one thread, one task at a time)");
             Console.WriteLine();
-            Console.WriteLine("   PARENT  ─[1]──────────[4]──────────▶");
-            Console.WriteLine("               ╲                          ");
-            Console.WriteLine("                ╲ Forget()                ");
-            Console.WriteLine("                 ▼                        ");
-            Console.WriteLine("   CHILD  ───────[2]────[3]─────────▶     ");
+            Console.WriteLine("   runner.Step()       1                 2                 3");
+            Console.WriteLine("   PARENT          [1] jump ───────▶ [4] resume ───────▶ done");
+            Console.WriteLine("                                  │");
+            Console.WriteLine("                                  └─ Forget(): queues CHILD (not run yet)");
+            Console.WriteLine("   CHILD           ─────────────────▶ [2] buffer ──────▶ [3] flush");
             Console.WriteLine();
-            Console.WriteLine("   ─────────────────────────────────────");
+            Console.WriteLine("   CHILD starts in step 2, after PARENT resumes.");
             Console.WriteLine();
         }
     }

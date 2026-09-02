@@ -9,6 +9,9 @@ namespace GameLoop
 {
     static class Program
     {
+        const int DashboardRow = 15;
+        const int CompletionRow = 23;
+
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
@@ -49,7 +52,7 @@ namespace GameLoop
                 DrawGear(0, frameCount, done: true);
             }
 
-            SafeSetCursor(0, 16);
+            SafeSetCursor(0, CompletionRow);
             Console.WriteLine("  ┌──────────────────────────────────────────────────────────┐");
             Console.WriteLine("  │  ✅ Task complete! Counted to 10 across 11 Step() calls. │");
             Console.WriteLine("  │  💡 The final Step() observes completion and drains the   │");
@@ -65,7 +68,7 @@ namespace GameLoop
             int filled = done ? total : Math.Min(frameCount, total);
             string bar = new string('█', filled) + new string('░', total - filled);
 
-            SafeSetCursor(0, 12);
+            SafeSetCursor(0, DashboardRow);
             Console.WriteLine("  ╔═══════════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║  🎮 GAME LOOP — SteppableRunner ticking each frame             ║");
             Console.WriteLine("  ╠═══════════════════════════════════════════════════════════════╣");

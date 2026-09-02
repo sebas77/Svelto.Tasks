@@ -143,7 +143,7 @@ namespace Svelto.DataStructures.Native
             _invalidHandle = false;
             if (((IntPtr) _cachedReference == IntPtr.Zero))
             {
-                    _cachedReference = GCHandle.Alloc(_realBuffer, GCHandleType.Normal);
+                _cachedReference = GCHandle.Alloc(_realBuffer, GCHandleType.Normal);
             }
 
             return (IBuffer<T>) _cachedReference.Target;

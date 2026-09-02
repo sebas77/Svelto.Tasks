@@ -9,6 +9,9 @@ namespace LoadingPipeline
 {
     static class Program
     {
+        const int LivePanelRow = 18;
+        const int CompletionRow = 34;
+
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
@@ -78,7 +81,7 @@ namespace LoadingPipeline
                 }
             }
 
-            SafeSetCursor(0, 26);
+            SafeSetCursor(0, CompletionRow);
             Console.WriteLine("  ┌──────────────────────────────────────────────────────────────┐");
             Console.WriteLine("  │  ✅ Pipeline complete! Child returned a GameConfig to parent. │");
             Console.WriteLine("  │  💡 FromReference(cfg) → parent reads child.Current.ToRef<T>() │");
@@ -92,7 +95,7 @@ namespace LoadingPipeline
             int filled = pct * barLen / 100;
             string bar = new string('█', filled) + new string('░', barLen - filled);
 
-            SafeSetCursor(0, 12);
+            SafeSetCursor(0, LivePanelRow);
             Console.WriteLine("  ╔═══════════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║  📦 LOADING PIPELINE — child downloads + parses, parent reads  ║");
             Console.WriteLine("  ╠═══════════════════════════════════════════════════════════════╣");
@@ -104,7 +107,7 @@ namespace LoadingPipeline
 
         static void DrawResult(GameConfig cfg)
         {
-            SafeSetCursor(0, 12);
+            SafeSetCursor(0, LivePanelRow);
             Console.WriteLine("  ╔═══════════════════════════════════════════════════════════════╗");
             Console.WriteLine("  ║  📦 LOADING PIPELINE — PARSED CONFIG RECEIVED BY PARENT        ║");
             Console.WriteLine("  ╠═══════════════════════════════════════════════════════════════╣");

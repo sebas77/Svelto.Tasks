@@ -28,7 +28,6 @@ namespace Example15_EntitySpawnPool
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch { } }
         static void SafeTitle(string title) { try { Console.Title = title; } catch { } }
-        static void SafeReadKey() { try { Console.ReadKey(); } catch { } }
 
         static void Main()
         {
@@ -103,9 +102,8 @@ namespace Example15_EntitySpawnPool
             _pool.Dispose();
 
             Console.WriteLine();
-            Console.WriteLine("  ✅ Pool disposed. Press any key to exit.");
+            Console.WriteLine("  ✅ Pool disposed.");
             SafeCursorVisible(true);
-            SafeReadKey();
         }
 
         static IEnumerator<TaskContract> EntityLifecycle(EntityData data)

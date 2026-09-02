@@ -61,8 +61,6 @@ namespace Example04_PreallocatedRunner
             Console.WriteLine("  First-wave allocations may include ConcurrentQueue segment growth when the queued");
             Console.WriteLine("  burst exceeds its current segment capacity. After warm-up those segments recycle.");
             Console.WriteLine();
-
-            SafeReadKey();
         }
 
         static void WarmUpRuntime()
@@ -112,7 +110,6 @@ namespace Example04_PreallocatedRunner
         }
 
         static void SafeTitle(string title) { try { Console.Title = title; } catch { } }
-        static void SafeReadKey()           { try { Console.ReadKey(); }     catch { } }
 
         /// <summary>
         /// A struct enumerator paired with SteppableRunner&lt;WorkTask&gt;: the struct-typed RunOn

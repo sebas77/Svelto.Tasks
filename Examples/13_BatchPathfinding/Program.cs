@@ -30,7 +30,6 @@ namespace Example13_BatchPathfinding
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch { } }
         static void SafeTitle(string title) { try { Console.Title = title; } catch { } }
-        static void SafeReadKey() { try { Console.ReadKey(); } catch { } }
 
         static void Main()
         {
@@ -86,9 +85,8 @@ namespace Example13_BatchPathfinding
             Console.WriteLine("  ──────────────────────────────────────────────────────");
 
             Console.WriteLine();
-            Console.WriteLine("  ✅ Done. Press any key to exit.");
+            Console.WriteLine("  ✅ Done.");
             SafeCursorVisible(true);
-            SafeReadKey();
         }
 
         static void ShowGrid(int[] results, int[] threadAssign, System.Collections.Generic.HashSet<int> threads)

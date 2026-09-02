@@ -10,6 +10,9 @@ namespace BackgroundComputation
 {
     static class Program
     {
+        const int LivePanelRow = 15;
+        const int CompletionRow = 26;
+
         static void SafeClear() { try { Console.Clear(); } catch (System.IO.IOException) { } }
         static void SafeSetCursor(int left, int top) { try { Console.SetCursorPosition(left, top); } catch (System.IO.IOException) { } }
         static void SafeCursorVisible(bool visible) { try { Console.CursorVisible = visible; } catch (System.IO.IOException) { } }
@@ -57,7 +60,7 @@ namespace BackgroundComputation
                 DrawPanels('✓', 100, true, _bgResult, final: true);
             }
 
-            SafeSetCursor(0, 20);
+            SafeSetCursor(0, CompletionRow);
             Console.WriteLine("  ┌──────────────────────────────────────────────────────────────┐");
             Console.WriteLine($"  │  ✅ Background task complete! Result = Σ(i²) for i=1..20 = {_bgResult} │");
             Console.WriteLine("  │  💡 Main thread polled Continuation.isRunning while bg ran.   │");
@@ -72,7 +75,7 @@ namespace BackgroundComputation
             int filled = bgPct * barLen / 100;
             string bar = new string('█', filled) + new string('░', barLen - filled);
 
-            SafeSetCursor(0, 12);
+            SafeSetCursor(0, LivePanelRow);
             Console.WriteLine("  ┌──────────────────────────────┐  ┌──────────────────────────────┐");
             Console.WriteLine("  │  🧵 MAIN THREAD              │  │  ⚙  BG THREAD                │");
             Console.WriteLine("  │                              │  │                              │");
