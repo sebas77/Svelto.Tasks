@@ -1,0 +1,15 @@
+{
+  "displayName": "Svelto Common",
+  "category": "Svelto",
+  "description": "Svelto common utilities and datastructures",
+  "dependencies": {
+    "org.nuget.system.runtime.compilerservices.unsafe": "6.0.0"
+  },
+  "keywords": [
+    "svelto"
+  ],
+  "name": "com.sebaslab.svelto.common",
+  "version": "3.7.1",
+  "type": "library",
+  "unity": "2021.3"
+}
