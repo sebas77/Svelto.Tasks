@@ -15,7 +15,7 @@
     <PropertyGroup>
         <PackageId>Svelto.Tasks</PackageId>
         <Authors>Sebastiano Mandala</Authors>
-        <PackageVersion>2.0.0-preview.3</PackageVersion>
+        <PackageVersion>2.0.0-preview.4</PackageVersion>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/sebas77/Svelto.Tasks</PackageProjectUrl>
         <PackageDescription>Asynchronous Tasks handling and execution</PackageDescription>
