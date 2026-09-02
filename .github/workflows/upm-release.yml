@@ -23,10 +23,14 @@ jobs:
         run: |
           mkdir temp
           rsync -r --exclude 'Tests~' --exclude '.aiguides' --exclude '.github' \
+            --exclude '*.csproj' --exclude '*.nuspec' --exclude '*.targets' \
             Packages/com.sebaslab.svelto.common/ temp/
       - name: publish
         run: |
           VERSION=$(python3 -c "import json;print(json.load(open('Packages/com.sebaslab.svelto.common/package.json'))['version'])")
+          # package.json is the UPM version source; csproj must match (it feeds nuget.org)
+          CSPROJ_VERSION=$(python3 -c "import re;print(re.search(r'<PackageVersion>([^<]+)</PackageVersion>', open('Packages/com.sebaslab.svelto.common/Svelto.Common/Svelto.Common.csproj').read()).group(1))")
+          test "$VERSION" = "$CSPROJ_VERSION" || { echo "package.json version ($VERSION) != Svelto.Common.csproj PackageVersion ($CSPROJ_VERSION)"; exit 1; }
           git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
           git checkout -B ${{ env.UPM_COMMON_BRANCH }} origin/${{ env.UPM_COMMON_BRANCH }} 2>/dev/null || git checkout --orphan ${{ env.UPM_COMMON_BRANCH }}
           git rm -rf --ignore-unmatch .
@@ -44,7 +48,9 @@ jobs:
 
   tasks:
     needs: common
-    if: ${{ github.event.inputs.packages != 'common' }}
+    # always() + explicit input check: needs: alone would skip this job whenever
+    # the common job is skipped (packages == tasks)
+    if: ${{ always() && github.event.inputs.packages != 'common' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,10 +59,14 @@ jobs:
           mkdir temp
           rsync -r --exclude 'Tests~' --exclude 'Tests' --exclude '.aiguides' --exclude '.github' \
             --exclude 'PROPOSALS' --exclude 'AGENTS.md' \
+            --exclude '*.csproj' --exclude '*.nuspec' --exclude '*.targets' \
             Packages/com.sebaslab.svelto.tasks/ temp/
       - name: publish
         run: |
           VERSION=$(python3 -c "import json;print(json.load(open('Packages/com.sebaslab.svelto.tasks/package.json'))['version'])")
+          # package.json is the UPM version source; csproj must match (it feeds nuget.org)
+          CSPROJ_VERSION=$(python3 -c "import re;print(re.search(r'<PackageVersion>([^<]+)</PackageVersion>', open('Packages/com.sebaslab.svelto.tasks/Svelto.Tasks/Svelto.Tasks.csproj').read()).group(1))")
+          test "$VERSION" = "$CSPROJ_VERSION" || { echo "package.json version ($VERSION) != Svelto.Tasks.csproj PackageVersion ($CSPROJ_VERSION)"; exit 1; }
           git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
           git checkout -B ${{ env.UPM_TASKS_BRANCH }} origin/${{ env.UPM_TASKS_BRANCH }} 2>/dev/null || git checkout -B ${{ env.UPM_TASKS_BRANCH }}
           git rm -rf --ignore-unmatch .
