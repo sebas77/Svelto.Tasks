@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Svelto.Tasks.Parallelism;
+using Svelto.Tasks.Parallelism.ExtraLean;
 
 #pragma warning disable CS0436
 

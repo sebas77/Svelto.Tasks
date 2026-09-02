@@ -4,7 +4,9 @@
         <LangVersion>10</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <TargetFramework>netstandard2.1</TargetFramework>
-        <PackageVersion></PackageVersion>
+        <!-- NuGet package version. Single source of truth for nuget.org releases
+             (upm/nuget workflows verify it matches the package.json UPM version). -->
+        <PackageVersion>3.7.1</PackageVersion>
         <AssemblyVersion>3.4</AssemblyVersion>
         <Company>Svelto</Company>
         <IsPackable>true</IsPackable>
@@ -17,8 +19,17 @@
     <PropertyGroup>
         <PackageId>Svelto.Common</PackageId>
         <Authors>Sebastiano Mandala</Authors>
-        <RepositoryUrl>https://github.com/sebas77/Svelto.Common</RepositoryUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/sebas77/Svelto.Tasks</PackageProjectUrl>
+        <PackageDescription>Shared code between the Svelto repositories</PackageDescription>
+        <PackageTags>svelto;ecs;unity;dots</PackageTags>
+        <RepositoryUrl>https://github.com/sebas77/Svelto.Tasks</RepositoryUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
     
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <PlatformTarget>AnyCPU</PlatformTarget>

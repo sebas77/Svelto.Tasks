@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks.Parallelism;
+using Svelto.Tasks.Parallelism.ExtraLean;
 
 namespace Svelto.Tasks.Tests
 {

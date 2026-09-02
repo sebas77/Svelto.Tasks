@@ -36,7 +36,7 @@ separate thread.
 | Type | Namespace | Role |
 |------|-----------|------|
 | `ISveltoJob` | `Svelto.Tasks.Parallelism` | Interface: `Update(int)`, `Dispose()` — must be a struct |
-| `MultiThreadedParallelJobCollection<TJob>` | `Svelto.Tasks.Parallelism` | Splits job iterations across threads |
+| `MultiThreadedParallelJobCollection<TJob>` | `Svelto.Tasks.Parallelism.ExtraLean` | Splits job iterations across threads |
 | `.Add(job, iterations)` | (on collection) | Registers job with N total iterations |
 | `.Complete()` | (extension) | Runs synchronously until all parallel work is done |
 | `ParallelRunEnumerator<T>` | `Svelto.Tasks.Parallelism.Internal` | Internal struct that runs a slice of the job |

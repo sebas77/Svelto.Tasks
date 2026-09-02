@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Svelto.Tasks.Parallelism;
+using Svelto.Tasks.Parallelism.ExtraLean;
 
 namespace Svelto.Tasks.Tests
 {

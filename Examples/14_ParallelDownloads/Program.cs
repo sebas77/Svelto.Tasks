@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using Svelto.Tasks.Parallelism;
+using Svelto.Tasks.Parallelism.ExtraLean;
 
 #pragma warning disable CS0436
 
@@ -17,7 +18,6 @@ namespace Example14_ParallelDownloads
 
     class DownloadTask : IParallelTask
     {
-        readonly string _fileName;
         readonly int _stepDelayMs;
         readonly int _totalSteps;
         readonly DownloadProgress _progress;
@@ -25,7 +25,6 @@ namespace Example14_ParallelDownloads
 
         public DownloadTask(string fileName, int steps, int stepDelayMs, DownloadProgress progress)
         {
-            _fileName = fileName;
             _stepDelayMs = stepDelayMs;
             _totalSteps = steps;
             _progress = progress;

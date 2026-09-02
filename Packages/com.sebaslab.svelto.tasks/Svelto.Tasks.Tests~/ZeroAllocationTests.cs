@@ -9,6 +9,7 @@ using Svelto.Tasks.ExtraLean;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;
 using Svelto.Tasks.Parallelism;
+using Svelto.Tasks.Parallelism.ExtraLean;
 
 namespace Svelto.Tasks.Tests
 {
@@ -1159,7 +1160,7 @@ namespace Svelto.Tasks.Tests
             public void Dispose() { }
         }
 
-        sealed class ReusableParallelTask : IEnumerator, IParallelTask
+        sealed class ReusableParallelTask :  IParallelTask
         {
             internal int completedRuns { get; private set; }
 

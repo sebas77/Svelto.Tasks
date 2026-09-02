@@ -40,7 +40,7 @@ Key concepts:
 | `Svelto.Tasks.Internal` | Core engine (`SveltoTaskRunner`, `IFlowModifier`, `ContinuationPool`) |
 | `Svelto.Tasks.Enumerators` | Enumerator utilities, `Continuation`, `WaitForSecondsEnumerator`, etc. |
 | `Svelto.Tasks.Parallelism` | Parallel job/task collections, `ISveltoJob` |
-| `Svelto.Tasks.Parallelism.Lean` / `.ExtraLean` | Parallel collection variants |
+| `Svelto.Tasks.Parallelism.ExtraLean` | `MultiThreadedParallelTaskCollection`, `IParallelTask`, Burst/Job collection variants |
 
 ---
 
@@ -329,21 +329,21 @@ Interface for a parallelizable job (Unity-Jobs-like). `T : struct` not required 
 - Inherits `IDisposable`.
 
 ### `MultiThreadedParallelTaskCollection`
-Runs a collection of `IParallelTask` across N real OS threads (one `MultiThreadRunner` per thread). Tasks are distributed round-robin.
+Runs a collection of `IParallelTask` across N real OS threads (one `MultiThreadRunner` per thread). Tasks wait in a shared queue; a runner whose idle callback fires claims the next queued task, self-balancing uneven durations (NOT round-robin dispatch).
 - Default thread count: `Math.Max(1, Environment.ProcessorCount - 2)`.
 - `Add(IParallelTask)`, `MoveNext()`, `Stop()`, `Dispose()`.
 - `onComplete` event — fired when all tasks done.
 - `isRunning { get; }`.
 
 **Variants:**
-- `Lean.MultiThreadedParallelTaskCollection` / `<TTask>` — for `IEnumerator<TaskContract>` tasks.
-- `ExtraLean.MultiThreadedParallelTaskCollection` / `<TTask>` — for `IEnumerator` tasks.
+- `Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection` / `<TTask>` — the only flavor. Tasks are stepped as plain `IEnumerator`s and may yield only ExtraLean wait signals (`null`, `Break.It`, `Break.AndStop`): continuations, return values and `Continue.It` have nowhere to go on a worker thread, and compiler-generated `IEnumerator<TaskContract>` iterators box every `TaskContract` through the non-generic `Current`, so they cannot run here. Write tasks as hand-written `IParallelTask` implementations that yield only wait signals.
 
 ### `IParallelTask`
 - Inherits `IEnumerator, IDisposable`.
+- Lives in `Svelto.Tasks.Parallelism.ExtraLean`.
 
 ### `MultiThreadedParallelJobCollection<TJob>`
-Splits a single `ISveltoJob` struct into `iterations` slices distributed across threads (Unity-Jobs-like).
+Splits a single `ISveltoJob` struct into `iterations` slices distributed across threads (Unity-Jobs-like). Lives in `Svelto.Tasks.Parallelism.ExtraLean` like the other parallel collections.
 - `Add(in TJob job, int iterations)` — computes `tasksPerThread` and remainder, creates `ParallelRunEnumerator<TJob>` slices.
 - `TJob : struct, ISveltoJob`.
 

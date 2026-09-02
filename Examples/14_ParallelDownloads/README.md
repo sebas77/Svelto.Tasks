@@ -8,7 +8,7 @@ sequential it would take the sum of all durations; in parallel it takes the long
 
 ## Feature Demonstrated
 
-`MultiThreadedParallelTaskCollection` (ExtraLean variant) with custom `IParallelTask`
+`MultiThreadedParallelTaskCollection` with custom `IParallelTask`
 implementations. Each task runs on its own thread and reports progress via a shared
 state object.
 
@@ -37,7 +37,7 @@ state object.
 
 | Type | Namespace | Role |
 |------|-----------|------|
-| `IParallelTask` | `Svelto.Tasks.Parallelism` | `IEnumerator + IDisposable` interface for parallel tasks |
+| `IParallelTask` | `Svelto.Tasks.Parallelism.ExtraLean` | `IEnumerator + IDisposable` interface for parallel tasks |
 | `MultiThreadedParallelTaskCollection` | `Svelto.Tasks.Parallelism.ExtraLean` | Runs N tasks on M threads |
 | `.Add(task)` | (on collection) | Registers a task |
 | `.Complete()` | (extension) | Runs synchronously until all parallel tasks are done |

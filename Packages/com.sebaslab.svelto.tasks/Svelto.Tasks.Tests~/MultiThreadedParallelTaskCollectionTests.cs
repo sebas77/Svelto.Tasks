@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Svelto.Tasks.Parallelism;
+using Svelto.Tasks.Parallelism.ExtraLean;
 
 namespace Svelto.Tasks.Tests
 {
@@ -193,25 +194,6 @@ namespace Svelto.Tasks.Tests
                 collection.Complete(1000);
 
                 Assert.That(token.count, Is.EqualTo(1));
-            }
-        }
-
-        [Test]
-        public void MultiThreadedParallelTaskCollection_RunEnumerator_DoesNotDisposeOwnerAndAllowsReuse()
-        {
-            using (var collection =
-                   new Parallelism.Lean.MultiThreadedParallelTaskCollection("test_run_reuse", 2, false))
-            {
-                var token = new Token();
-                int completions = 0;
-                collection.onComplete += () => completions++;
-                collection.Add(new WaitEnumerator(token, 0));
-
-                collection.Run().Complete(1000);
-                collection.Run().Complete(1000);
-
-                Assert.That(token.count, Is.EqualTo(2));
-                Assert.That(completions, Is.EqualTo(2));
             }
         }
 
