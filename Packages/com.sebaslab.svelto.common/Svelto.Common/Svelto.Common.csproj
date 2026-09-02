@@ -6,7 +6,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <!-- NuGet package version. Single source of truth for nuget.org releases
              (upm/nuget workflows verify it matches the package.json UPM version). -->
-        <PackageVersion>3.7.1</PackageVersion>
+        <PackageVersion>3.7.2</PackageVersion>
         <AssemblyVersion>3.4</AssemblyVersion>
         <Company>Svelto</Company>
         <IsPackable>true</IsPackable>
@@ -20,10 +20,10 @@
         <PackageId>Svelto.Common</PackageId>
         <Authors>Sebastiano Mandala</Authors>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageProjectUrl>https://github.com/sebas77/Svelto.Tasks</PackageProjectUrl>
+        <PackageProjectUrl>https://github.com/sebas77/Svelto.Common</PackageProjectUrl>
         <PackageDescription>Shared code between the Svelto repositories</PackageDescription>
         <PackageTags>svelto;ecs;unity;dots</PackageTags>
-        <RepositoryUrl>https://github.com/sebas77/Svelto.Tasks</RepositoryUrl>
+        <RepositoryUrl>https://github.com/sebas77/Svelto.Common</RepositoryUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>obj~\</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin~\</BaseOutputPath>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <LangVersion>10</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Consumes the published nuget.org packages, NOT the local ProjectReferences:
+         this project exists to prove the NuGet release restores and runs. -->
+    <PackageReference Include="Svelto.Tasks" Version="2.0.0-preview.3" />
+  </ItemGroup>
+</Project>

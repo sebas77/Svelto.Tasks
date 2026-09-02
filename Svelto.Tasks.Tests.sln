@@ -60,6 +60,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "04_PreallocatedRunner", "Ex
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{23F94109-B5BF-4782-AFD5-D9A2BAF2998A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestNuget", "Test-Nuget\TestNuget.csproj", "{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -394,6 +396,18 @@ Global
 		{B4E1A7F6-2C93-4D05-8E7A-91F3C6D8B2A4}.Release|x64.Build.0 = Release|Any CPU
 		{B4E1A7F6-2C93-4D05-8E7A-91F3C6D8B2A4}.Release|x86.ActiveCfg = Release|Any CPU
 		{B4E1A7F6-2C93-4D05-8E7A-91F3C6D8B2A4}.Release|x86.Build.0 = Release|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Debug|x64.Build.0 = Debug|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Debug|x86.Build.0 = Debug|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Release|x64.ActiveCfg = Release|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Release|x64.Build.0 = Release|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Release|x86.ActiveCfg = Release|Any CPU
+		{CA8DBBBB-CB4E-4452-8E02-0D06AF561ADA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

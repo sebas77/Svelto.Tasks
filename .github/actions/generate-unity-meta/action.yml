@@ -1,0 +1,13 @@
+name: Generate deterministic Unity metadata
+description: Generate stable Unity .meta files from the package name and relative paths.
+
+inputs:
+  package-directory:
+    description: Directory containing the package.json to process.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: python3 "${{ github.action_path }}/generate_unity_meta.py" --package-directory "${{ inputs.package-directory }}"
