@@ -104,9 +104,9 @@ namespace Svelto.Tasks
     public class MultiThreadRunner<TTask> : IRunner<TTask> where TTask : ISveltoTask
     {
         /// <summary>
-        /// when the thread must run very tight and cache friendly tasks that won't allow the CPU to start new threads,
-        /// passing the tightTasks as true would force the thread to yield every so often. Relaxed to true
-        /// would let the runner be less reactive on new tasks added.
+        /// When the thread runs tight, cache-friendly tasks, passing tightTasks as true skips periodic waits
+        /// while tasks are active and may consume a core more aggressively. Relaxed set to true makes the
+        /// runner less reactive to newly added tasks.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="tightTasks"></param>

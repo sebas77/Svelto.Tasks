@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-preview.5] - 09-2026
+
+### Changed
+
+* Require Svelto.Common 3.7.3, which makes scheduler task-slot handles generational and rejects stale handles after slot reuse or reset.
+* Include the package AI development entry point and deep guide in NuGet and UPM distributions.
+
 ## [2.0.0-preview.3] - 08-2026
 
 This is the first changelog for Svelto.Tasks 2.0. It is a complete rewrite of the 1.5 codebase, not an incremental upgrade. The public API, package layout and runtime model have been redesigned; applications using 1.5 must migrate their task and runner code rather than expect drop-in compatibility.
