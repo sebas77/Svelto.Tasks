@@ -1,4 +1,4 @@
-# Svelto.Tasks 2.0: a multithreaded, allocation-free tasks runner for C# — massive parallelism, async/await interoperable, built for games
+# Svelto.Tasks 2.0: a multithreaded, allocation-conscious tasks runner for C# — massive parallelism, async/await interoperable, built for games
 
 ## Introduction
 
