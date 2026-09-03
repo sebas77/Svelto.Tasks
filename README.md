@@ -16,7 +16,7 @@ That is where I find the `CancellationToken` pattern awkward and impractical: to
 
 ## The mental model: tasks are iterators, runners are schedulers
 
-A task is any **iterator block** (in Unity you can call them co-routines). A **runner** ticks them according to a strategy called a **flow modifier**. That's the whole architecture, and it gives you something `async`/`await` fundamentally cannot: complete control over *when* and *where* your code executes.
+A task is any **iterator block** (in Unity you can call them co-routines). A **runner** ticks them according to a strategy called a **flow modifier**. That's the whole architecture, and it gives you something that is very hard to achieve with `async`/`await`: complete control over *when* and *where* your code executes.
 
 This is (a trimmed version of) example number 1:
 
