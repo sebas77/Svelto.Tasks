@@ -13,7 +13,7 @@ namespace Svelto.DataStructures
     {
         public NBDebugProxy(NB<T> array)
         {
-            this._array = array;
+            _array = array;
         }
 
         public T[] Items

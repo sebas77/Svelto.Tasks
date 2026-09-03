@@ -1,5 +1,4 @@
 using System;
-using NUnit.Framework;
 using Svelto.DataStructures;
 
 namespace Svelto.Common.Tests

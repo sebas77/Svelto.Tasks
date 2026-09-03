@@ -10,7 +10,7 @@ namespace Svelto.DataStructures
     {
         public FasterDictionaryDebugProxy(FasterDictionary<TKey, TValue> dic)
         {
-            this._dic = dic;
+            _dic = dic;
         }
         
         public uint count => (uint)_dic.count;

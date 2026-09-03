@@ -18,6 +18,7 @@ The deep guide is authoritative for public API behavior. Update it when source b
 - Keep a strong reference to every runner and dispose it. A `MultiThreadRunner` owns a worker thread; do not call `Flush()` or `Dispose()` from that worker.
 - Do not use Unity APIs from `MultiThreadRunner` tasks. Use `TaskSynchronizationContext` only when intentionally hosting .NET async code on a Lean runner.
 - Do not add tasks to a running task collection. Dispose parallel collections after their final use.
+- `MultiThreadedParallelTaskCollection<TTask>` tasks are structs copied on add/schedule — keep mutable or observable state in external reference holders, never in struct instance fields.
 
 ## Verification
 

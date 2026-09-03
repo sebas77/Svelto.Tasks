@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading;
-using Svelto.Tasks.Parallelism;
 using Svelto.Tasks.Parallelism.ExtraLean;
 
 namespace Svelto.Tasks.Tests
@@ -14,7 +13,7 @@ namespace Svelto.Tasks.Tests
             // What we are testing:
             // MultiThreadedParallelTaskCollection runs tasks on multiple threads.
             
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_parallel", 4, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_parallel", 4, false))
             {
                 bool done = false;
                 collection.onComplete += () => done = true;
@@ -23,10 +22,10 @@ namespace Svelto.Tasks.Tests
                 // Add 4 tasks that wait 1 second each.
                 // If run sequentially, it would take 4 seconds.
                 // If run in parallel (4 threads), it should take ~1 second.
-                collection.Add(new WaitEnumerator(token, 1));
-                collection.Add(new WaitEnumerator(token, 1));
-                collection.Add(new WaitEnumerator(token, 1));
-                collection.Add(new WaitEnumerator(token, 1));
+                collection.Add(new WaitEnumeratorExtraLean(token, 1));
+                collection.Add(new WaitEnumeratorExtraLean(token, 1));
+                collection.Add(new WaitEnumeratorExtraLean(token, 1));
+                collection.Add(new WaitEnumeratorExtraLean(token, 1));
 
                 DateTime now = DateTime.Now;
 
@@ -47,10 +46,10 @@ namespace Svelto.Tasks.Tests
             // What we are testing:
             // Reset() clears the collection and allows adding new tasks.
             
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_reset", 4, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_reset", 4, false))
             {
                 Token token = new Token();
-                collection.Add(new WaitEnumerator(token, 0)); // Instant task
+                collection.Add(new WaitEnumeratorExtraLean(token, 0)); // Instant task
 
                 collection.Complete(1000);
                 Assert.That(token.count, Is.EqualTo(1));
@@ -61,7 +60,7 @@ namespace Svelto.Tasks.Tests
                 // MultiThreadedParallelTaskCollection.Reset() clears the internal list.
                 
                 Token token2 = new Token();
-                collection.Add(new WaitEnumerator(token2, 0));
+                collection.Add(new WaitEnumeratorExtraLean(token2, 0));
                 
                 collection.Complete(1000);
                 Assert.That(token2.count, Is.EqualTo(1));
@@ -74,9 +73,9 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_AddWhileRunning_Throws()
         {
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_add_running", 4, false))
+            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_add_running", 4, false))
             {
-                collection.Add(new WaitEnumerator(1));
+                collection.Add(new WaitEnumeratorExtraLean(1));
 
                 // Start running manually to control state
                 collection.MoveNext(); 
@@ -85,7 +84,7 @@ namespace Svelto.Tasks.Tests
 
                 Assert.Throws<DBC.Tasks.PreconditionException>(() =>
                 {
-                    collection.Add(new WaitEnumerator(1));
+                    collection.Add(new WaitEnumeratorExtraLean(1));
                 });
                 
                 // Finish execution
@@ -97,11 +96,11 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_Stop_StopsExecution()
         {
-             using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_stop", 4, false))
+             using (var collection = new MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_stop", 4, false))
              {
                  // Add long running tasks
-                 collection.Add(new WaitEnumerator(5)); 
-                 collection.Add(new WaitEnumerator(5));
+                 collection.Add(new WaitEnumeratorExtraLean(5)); 
+                 collection.Add(new WaitEnumeratorExtraLean(5));
 
                  // Start
                  collection.MoveNext();
@@ -121,7 +120,7 @@ namespace Svelto.Tasks.Tests
             // What we are testing:
             // MultiThreadedParallelTaskCollection (ExtraLean) runs tasks on multiple threads.
             
-            using (var collection = new Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_parallel_extralean", 4, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_parallel_extralean", 4, false))
             {
                 bool done = false;
                 collection.onComplete += () => done = true;
@@ -155,7 +154,7 @@ namespace Svelto.Tasks.Tests
             // static distribution would give one thread the slow task plus 4 quick ones (~1.4s),
             // cursor claiming lets the other thread absorb all quick tasks (~1.0s).
 
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_self_balance", 2, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_self_balance", 2, false))
             {
                 Token token = new Token();
 
@@ -178,10 +177,10 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_Stop_DoesNotClearAndAllowsReuse()
         {
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("test_stop_reuse", 2, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<WaitEnumeratorExtraLean>("test_stop_reuse", 2, false))
             {
                 var token = new Token();
-                collection.Add(new WaitEnumerator(token, 0));
+                collection.Add(new WaitEnumeratorExtraLean(token, 0));
 
                 collection.MoveNext();
                 Assert.That(collection.isRunning, Is.True);
@@ -200,12 +199,12 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_DisposeWithoutStarting_DisposesTasks()
         {
-            var counter = new DisposeCounter();
+            var counter = new DisposeCounter(2);
 
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("dispose_without_start", 2, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<DisposableParallelTask>("dispose_without_start", 2, false))
             {
-                collection.Add(new DisposableParallelTask(counter));
-                collection.Add(new DisposableParallelTask(counter));
+                collection.Add(new DisposableParallelTask(counter, 0));
+                collection.Add(new DisposableParallelTask(counter, 1));
 
                 // Dispose without ever calling MoveNext/Complete
                 collection.Dispose();
@@ -217,12 +216,12 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_DisposeWhileRunning_DisposesTasks()
         {
-            var counter = new DisposeCounter();
+            var counter = new DisposeCounter(2);
 
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("dispose_while_running", 2, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<DisposableBlockingParallelTask>("dispose_while_running", 2, false))
             {
-                collection.Add(new DisposableBlockingParallelTask(counter));
-                collection.Add(new DisposableBlockingParallelTask(counter));
+                collection.Add(new DisposableBlockingParallelTask(counter, 0));
+                collection.Add(new DisposableBlockingParallelTask(counter, 1));
 
                 // Start
                 collection.MoveNext();
@@ -238,14 +237,14 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_DisposeWhileRunning_DisposesUnclaimedTasks()
         {
-            var counter = new DisposeCounter();
+            var counter = new DisposeCounter(6);
 
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("dispose_unclaimed", 2, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<DisposableBlockingParallelTask>("dispose_unclaimed", 2, false))
             {
                 // More tasks than threads: only the first two get claimed by the runners,
                 // the rest sit beyond the cursor when Dispose is called.
                 for (int i = 0; i < 6; i++)
-                    collection.Add(new DisposableBlockingParallelTask(counter));
+                    collection.Add(new DisposableBlockingParallelTask(counter, i));
 
                 collection.MoveNext();
                 Assert.That(collection.isRunning, Is.True);
@@ -260,12 +259,12 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void MultiThreadedParallelTaskCollection_StopThenDispose_DisposesTasks()
         {
-            var counter = new DisposeCounter();
+            var counter = new DisposeCounter(2);
 
-            using (var collection = new Parallelism.ExtraLean.MultiThreadedParallelTaskCollection("stop_then_dispose", 2, false))
+            using (var collection = new MultiThreadedParallelTaskCollection<DisposableBlockingParallelTask>("stop_then_dispose", 2, false))
             {
-                collection.Add(new DisposableBlockingParallelTask(counter));
-                collection.Add(new DisposableBlockingParallelTask(counter));
+                collection.Add(new DisposableBlockingParallelTask(counter, 0));
+                collection.Add(new DisposableBlockingParallelTask(counter, 1));
 
                 collection.MoveNext();
                 Assert.That(collection.isRunning, Is.True);
@@ -281,15 +280,21 @@ namespace Svelto.Tasks.Tests
 
         sealed class DisposeCounter
         {
-            public int count;
+            public DisposeCounter(int tasks)
+            {
+                disposedFlags = new int[tasks];
+            }
+
+            public          int   count;
+            public readonly int[] disposedFlags; //one dedup slot per logical task, shared by every struct copy
         }
 
         struct DisposableParallelTask : IParallelTask
         {
-            public DisposableParallelTask(DisposeCounter counter)
+            public DisposableParallelTask(DisposeCounter counter, int id)
             {
                 _counter = counter;
-                _disposed = 0;
+                _id      = id;
             }
 
             public object Current => null;
@@ -300,20 +305,20 @@ namespace Svelto.Tasks.Tests
 
             public void Dispose()
             {
-                if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                if (Interlocked.Exchange(ref _counter.disposedFlags[_id], 1) == 0)
                     Interlocked.Increment(ref _counter.count);
             }
 
             readonly DisposeCounter _counter;
-            int _disposed;
+            readonly int            _id;
         }
 
         struct DisposableBlockingParallelTask : IParallelTask
         {
-            public DisposableBlockingParallelTask(DisposeCounter counter)
+            public DisposableBlockingParallelTask(DisposeCounter counter, int id)
             {
                 _counter = counter;
-                _disposed = 0;
+                _id      = id;
             }
 
             public object Current => null;
@@ -329,12 +334,12 @@ namespace Svelto.Tasks.Tests
 
             public void Dispose()
             {
-                if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                if (Interlocked.Exchange(ref _counter.disposedFlags[_id], 1) == 0)
                     Interlocked.Increment(ref _counter.count);
             }
 
             readonly DisposeCounter _counter;
-            int _disposed;
+            readonly int            _id;
         }
     }
 }

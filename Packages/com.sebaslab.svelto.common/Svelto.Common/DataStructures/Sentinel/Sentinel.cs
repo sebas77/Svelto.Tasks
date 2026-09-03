@@ -3,7 +3,9 @@
 #endif
 
 using System;
-using System.Threading;
+#if ENABLE_DEBUG_CHECKS
+using System.Threading; //Interlocked and Volatile are used only in debug builds
+#endif
 
 namespace Svelto.DataStructures
 {

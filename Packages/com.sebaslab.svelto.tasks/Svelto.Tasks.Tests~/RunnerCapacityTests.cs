@@ -146,7 +146,7 @@ namespace Svelto.Tasks.Tests
         {
             public int count;
 
-            public System.Collections.IEnumerator Task()
+            public IEnumerator Task()
             {
                 count++;
                 yield break;

@@ -73,7 +73,7 @@ namespace Svelto.DataStructures
             }
         }
 
-        public ThreadSafeValues GetValues => new ThreadSafeValues(_lockQ, this._dict);
+        public ThreadSafeValues GetValues => new ThreadSafeValues(_lockQ, _dict);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add(TKey key, in TValue value)

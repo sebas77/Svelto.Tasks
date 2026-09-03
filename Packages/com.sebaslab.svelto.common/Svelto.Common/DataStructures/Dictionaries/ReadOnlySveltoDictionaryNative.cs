@@ -15,7 +15,7 @@ namespace Svelto.DataStructures.Native
     /// </summary>
     /// <typeparam name="TKey"></typeparam>
     /// <typeparam name="TValue"></typeparam>
-    public struct ReadonlySveltoDictionaryNative<TKey, TValue> : global::Svelto.DataStructures.IReadOnlySveltoDictionary<TKey, TValue>
+    public struct ReadonlySveltoDictionaryNative<TKey, TValue> : IReadOnlySveltoDictionary<TKey, TValue>
         where TKey : unmanaged, IEquatable<TKey> where TValue : unmanaged
     {
         public ReadonlySveltoDictionaryNative(uint size) : this(size, Allocator.Persistent) { }

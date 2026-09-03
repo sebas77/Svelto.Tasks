@@ -8,9 +8,9 @@ sequential it would take the sum of all durations; in parallel it takes the long
 
 ## Feature Demonstrated
 
-`MultiThreadedParallelTaskCollection` with custom `IParallelTask`
-implementations. Each task runs on its own thread and reports progress via a shared
-state object.
+`MultiThreadedParallelTaskCollection<TTask>` with custom `IParallelTask`
+struct implementations. Each task runs on its own thread and reports progress via a
+shared state object (the struct holds a reference to it — see the last gotcha).
 
 ## When / Why Use It
 
@@ -22,11 +22,11 @@ state object.
 
 ## How It Works
 
-1. Define a class implementing `IParallelTask` (which is `IEnumerator + IDisposable`):
+1. Define a struct implementing `IParallelTask` (which is `IEnumerator + IDisposable`):
    - `MoveNext()` returns `true` while the task is still running, `false` when done.
    - `Current` returns `null` (ExtraLean).
    - `Dispose()` for cleanup.
-2. Create `new Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection(
+2. Create `new Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<DownloadTask>(
    "name", threadCount, tightTasks)`.
 3. Add tasks with `collection.Add(task)`.
 4. Call `collection.Complete()` — runs synchronously until all tasks finish.
@@ -38,7 +38,7 @@ state object.
 | Type | Namespace | Role |
 |------|-----------|------|
 | `IParallelTask` | `Svelto.Tasks.Parallelism.ExtraLean` | `IEnumerator + IDisposable` interface for parallel tasks |
-| `MultiThreadedParallelTaskCollection` | `Svelto.Tasks.Parallelism.ExtraLean` | Runs N tasks on M threads |
+| `MultiThreadedParallelTaskCollection<TTask>` | `Svelto.Tasks.Parallelism.ExtraLean` | Runs N struct tasks on M threads |
 | `.Add(task)` | (on collection) | Registers a task |
 | `.Complete()` | (extension) | Runs synchronously until all parallel tasks are done |
 | `onComplete` | (event on collection) | Fired when all tasks finish |
@@ -59,8 +59,9 @@ state object.
   `volatile`) — this includes the host's monitor loop: stop flags shared with
   other threads must be `volatile` (as `_monitoring` is here) or the final
   `Thread.Join()` can hang.
-- The non-generic `MultiThreadedParallelTaskCollection` stores tasks in a non-generic
-  list, so an `IParallelTask` implementing the interface through a `struct` is
-  boxed when it is stored/scheduled; subsequent interface calls go through that
-  boxed object. Use a **class** here, or the generic struct-constrained variant
-  for value-type tasks.
+- **Tasks are structs** (`TTask : struct, IParallelTask`), so they are never boxed —
+  but they are *copied* when added to the collection and again when claimed by a
+  runner. Any state the task must mutate or report (progress, results, a dispose
+  dedup flag) has to live in an external reference holder the struct points to —
+  like `DownloadProgress` here — never in the struct's own instance fields: writes
+  to those would stay on a copy and never be visible to the caller.

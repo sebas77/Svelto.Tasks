@@ -1,6 +1,4 @@
 using System.Runtime.CompilerServices;
-using NUnit.Framework;
-using Svelto.Common;
 
 namespace Svelto.Common.Tests
 {

@@ -1,7 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using NUnit.Framework;
-using Svelto.Common;
 using Svelto.DataStructures;
 
 namespace Svelto.Common.Tests

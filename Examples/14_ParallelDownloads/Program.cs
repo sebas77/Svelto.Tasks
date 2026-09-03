@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using Svelto.Tasks.Parallelism;
 using Svelto.Tasks.Parallelism.ExtraLean;
 
 #pragma warning disable CS0436
@@ -16,14 +15,14 @@ namespace Example14_ParallelDownloads
         public volatile int ThreadId;
     }
 
-    class DownloadTask : IParallelTask
+    struct DownloadTask : IParallelTask
     {
         readonly int _stepDelayMs;
         readonly int _totalSteps;
         readonly DownloadProgress _progress;
         int _stepsLeft;
 
-        public DownloadTask(string fileName, int steps, int stepDelayMs, DownloadProgress progress)
+        public DownloadTask( int steps, int stepDelayMs, DownloadProgress progress)
         {
             _stepDelayMs = stepDelayMs;
             _totalSteps = steps;
@@ -98,8 +97,7 @@ namespace Example14_ParallelDownloads
             _names = new string[TotalDownloads];
             _sequentialMs = new int[TotalDownloads];
 
-            using var collection = new Svelto.Tasks.Parallelism.ExtraLean
-                .MultiThreadedParallelTaskCollection("Downloads", ThreadCount, false);
+            using var collection = new MultiThreadedParallelTaskCollection<DownloadTask>("Downloads", ThreadCount, false);
 
             //the wave-end signal: fires once, on the thread calling Complete()
             bool onCompleteFired = false;
@@ -113,7 +111,7 @@ namespace Example14_ParallelDownloads
                 _sequentialMs[i] = steps * delayMs;
                 _totalSequentialMs += _sequentialMs[i];
                 _progresses[i] = new DownloadProgress();
-                collection.Add(new DownloadTask(_names[i], steps, delayMs, _progresses[i]));
+                collection.Add(new DownloadTask( steps, delayMs, _progresses[i]));
             }
 
             var monitorThread = new Thread(MonitorProgress)

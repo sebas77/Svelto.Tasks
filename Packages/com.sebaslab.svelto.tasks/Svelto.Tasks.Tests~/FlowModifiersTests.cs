@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
-using NUnit.Framework;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;
 

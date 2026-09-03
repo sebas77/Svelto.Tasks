@@ -3,9 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using Svelto.Tasks;
-using Svelto.Tasks.Lean;
 
 #if TASKS_PROFILER_ENABLED
+using Svelto.Tasks.Lean;
 using Svelto.Tasks.Profiler;
 #endif
 
@@ -234,7 +234,7 @@ namespace Example23_ProfilerPlugin
                 return true;
             }
 
-            public TaskContract Current { get; private set; }
+            public Svelto.Tasks.TaskContract Current { get; private set; }
             object IEnumerator.Current => Current;
             public void Reset() { }
             public void Dispose() { }

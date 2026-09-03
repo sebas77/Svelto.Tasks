@@ -25,7 +25,7 @@ namespace Svelto.Tasks.Tests
         {
             const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
-            if (typeof(Svelto.Tasks.Enumerators.Continuation).GetField("_runner", flags) != null)
+            if (typeof(Enumerators.Continuation).GetField("_runner", flags) != null)
                 Assert.Ignore(
                     "Svelto.Tasks is compiled with DEBUG: diagnostic allocations (WeakReference in " +
                     "Continuation, DBC strings) are enabled by design. Zero-allocation guarantees can " +

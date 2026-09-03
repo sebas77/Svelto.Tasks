@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using Svelto.Tasks;
-using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.ExtraLean;
 using Svelto.Tasks.FlowModifiers;
 using Svelto.Tasks.Lean;
@@ -69,7 +67,7 @@ namespace Svelto.Tasks.Tests
         {
             const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
 
-            return typeof(Svelto.Tasks.Enumerators.Continuation).GetField("_runner", flags) != null;
+            return typeof(Enumerators.Continuation).GetField("_runner", flags) != null;
         }
 
         static bool HasGeneratedTaskNames()
@@ -605,7 +603,7 @@ namespace Svelto.Tasks.Tests
                         for (int i = 0; i < ConcurrentTasks; i++)
                         {
                             tasks[i].Restart(StepsPerTask);
-                            ExtraLean.TaskRunnerExtensionsRef.RunOn(tasks[i], runner);
+                            TaskRunnerExtensionsRef.RunOn(tasks[i], runner);
                         }
 
                         allDone &= runner.WaitForTasksDone(MtTimeoutMs);
@@ -692,7 +690,7 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void ExtraLean_MultiThreadRunnerPool_Dispatch_IsZeroAllocation()
         {
-            using (var pool = new ExtraLean.MultiThreadRunnerPool("zeroalloc-pool", 4, RunnerCapacity))
+            using (var pool = new MultiThreadRunnerPool("zeroalloc-pool", 4, RunnerCapacity))
             {
                 var tasks = new ReusableExtraLeanTask[ConcurrentTasks];
                 for (int i = 0; i < ConcurrentTasks; i++)
@@ -741,7 +739,7 @@ namespace Svelto.Tasks.Tests
         [Test]
         public void ExtraLean_GenericMultiThreadRunnerPool_StructDispatch_IsZeroAllocation()
         {
-            using (var pool = new ExtraLean.MultiThreadRunnerPool<CountingExtraLeanStructTask>(
+            using (var pool = new MultiThreadRunnerPool<CountingExtraLeanStructTask>(
                        "zeroalloc-typed-pool", 4, false))
             {
                 var counters = new int[ConcurrentTasks];
@@ -817,12 +815,13 @@ namespace Svelto.Tasks.Tests
         public void ExtraLean_MultiThreadedParallelTaskCollection_Waves_MainThread_IsZeroAllocation()
         {
             using (var collection =
-                       new Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection(
+                       new MultiThreadedParallelTaskCollection<ReusableParallelTask>(
                            "zeroalloc-parallel-tasks", CollectionThreads, false))
             {
-                var tasks = new ReusableParallelTask[ConcurrentTasks];
+                var counters = new int[ConcurrentTasks];
+                var tasks    = new ReusableParallelTask[ConcurrentTasks];
                 for (int i = 0; i < ConcurrentTasks; i++)
-                    tasks[i] = new ReusableParallelTask();
+                    tasks[i] = new ReusableParallelTask(i, counters);
 
                 long allocated = Measure(() =>
                 {
@@ -847,7 +846,7 @@ namespace Svelto.Tasks.Tests
                     $"across {CollectionThreads} threads (submission and spin on the main thread)");
 
                 for (int i = 0; i < ConcurrentTasks; i++)
-                    Assert.That(tasks[i].completedRuns, Is.GreaterThanOrEqualTo(MtWaves * MeasureTotalExecutions), $"task {i}");
+                    Assert.That(counters[i], Is.GreaterThanOrEqualTo(MtWaves * MeasureTotalExecutions), $"task {i}");
             }
         }
 
@@ -1160,9 +1159,13 @@ namespace Svelto.Tasks.Tests
             public void Dispose() { }
         }
 
-        sealed class ReusableParallelTask :  IParallelTask
+        struct ReusableParallelTask :  IParallelTask
         {
-            internal int completedRuns { get; private set; }
+            public ReusableParallelTask(int id, int[] completedRuns) : this()
+            {
+                _id            = id;
+                _completedRuns = completedRuns;
+            }
 
             internal void Restart(int steps)
             {
@@ -1174,7 +1177,8 @@ namespace Svelto.Tasks.Tests
             {
                 if (_stepsLeft == 0)
                 {
-                    ++completedRuns;
+                    //struct copies run on the runner threads: observable state must live outside
+                    ++_completedRuns[_id];
 
                     return false;
                 }
@@ -1192,8 +1196,10 @@ namespace Svelto.Tasks.Tests
                 _stepsLeft = _totalSteps;
             }
 
-            int _stepsLeft;
-            int _totalSteps;
+            readonly int[] _completedRuns;
+            readonly int   _id;
+            int            _stepsLeft;
+            int            _totalSteps;
         }
     }
 }

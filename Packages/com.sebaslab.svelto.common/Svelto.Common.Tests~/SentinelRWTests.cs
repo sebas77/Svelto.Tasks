@@ -9,7 +9,7 @@ namespace Svelto.Common.Tests
         public void MB_AsReader_ReadRead_IsAllowed()
         {
             var backing = new int[4];
-            var mb = Svelto.DataStructures.MB<int>.Create(backing);
+            var mb = DataStructures.MB<int>.Create(backing);
 
             using (var r1 = mb.AsReader())
             using (var r2 = mb.AsReader())
@@ -88,7 +88,7 @@ namespace Svelto.Common.Tests
             var dataPtr = (int*)MemoryUtilities.NativeAlloc(sizeof(int) * 4, Allocator.Persistent);
             dataPtr[0] = 1;
 
-            var nb = Svelto.DataStructures.NB<int>.Create((IntPtr)dataPtr, 4, (IntPtr)statePtr);
+            var nb = DataStructures.NB<int>.Create((IntPtr)dataPtr, 4, (IntPtr)statePtr);
 
             var r1 = nb.AsReader();
             try

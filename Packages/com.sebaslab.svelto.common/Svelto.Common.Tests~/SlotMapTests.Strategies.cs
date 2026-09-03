@@ -1,5 +1,4 @@
-﻿using NUnit.Framework;
-using Svelto.DataStructures;
+﻿using Svelto.DataStructures;
 using Svelto.DataStructures.Native;
 using Assert = NUnit.Framework.Legacy.ClassicAssert;
 

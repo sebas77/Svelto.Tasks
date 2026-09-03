@@ -42,7 +42,7 @@ Key concepts:
 | `Svelto.Tasks.Internal` | Core engine (`SveltoTaskRunner`, `IFlowModifier`, `ContinuationPool`) |
 | `Svelto.Tasks.Enumerators` | Enumerator utilities, `Continuation`, `WaitForSecondsEnumerator`, etc. |
 | `Svelto.Tasks.Parallelism` | Parallel job/task collections, `ISveltoJob` |
-| `Svelto.Tasks.Parallelism.ExtraLean` | `MultiThreadedParallelTaskCollection`, `IParallelTask`, job collections, and `MultiThreadedBurstParallelTaskCollection<TTask>` |
+| `Svelto.Tasks.Parallelism.ExtraLean` | `MultiThreadedParallelTaskCollection<TTask>`, `IParallelTask`, job collections, and `MultiThreadedBurstParallelTaskCollection<TTask>` |
 
 ---
 
@@ -332,15 +332,16 @@ Interface for a parallelizable job (Unity-Jobs-like). `T : struct` not required 
 - `void Update(int jobIndex)` — do one iteration's work.
 - Inherits `IDisposable`.
 
-### `MultiThreadedParallelTaskCollection`
-Runs a collection of `IParallelTask` across N real OS threads (one `MultiThreadRunner` per thread). Tasks wait in a shared queue; a runner whose idle callback fires claims the next queued task, self-balancing uneven durations (NOT round-robin dispatch).
+### `MultiThreadedParallelTaskCollection<TTask>`
+Runs a collection of `IParallelTask` structs across N real OS threads (one `MultiThreadRunner` per thread). Tasks wait in a shared queue; a runner whose idle callback fires claims the next queued task, self-balancing uneven durations (NOT round-robin dispatch).
 - Default thread count: `Math.Max(1, Environment.ProcessorCount - 2)`.
-- `Add(IParallelTask)`, `MoveNext()`, `Stop()`, `Dispose()`.
+- `Add(in TTask)`, `MoveNext()`, `Stop()`, `Dispose()`.
 - `onComplete` event — fired when all tasks done.
 - `isRunning { get; }`.
+- `TTask : struct, IParallelTask`. There is no class/interface-typed variant: struct tasks are never boxed, but they are **copied** on `Add`, on queue hand-off, and into the runner's wrapper. Any state the task mutates or observes from outside (progress, results, dispose-dedup flags) must live in external reference holders (arrays, shared state objects) captured by the struct — instance-field writes stay on a copy and are invisible to the caller. Those holders are written concurrently by multiple runner threads, so they need explicit synchronization (`Interlocked`, `volatile`).
 
 **Variants:**
-- `Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection` / `<TTask>` steps plain `IEnumerator` `IParallelTask` implementations on worker runners. They may yield only ExtraLean wait signals (`null`, `Break.It`, `Break.AndStop`); continuations and return values have nowhere to go on a worker thread.
+- `Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection<TTask>` steps plain `IEnumerator` `IParallelTask` struct implementations on worker runners. They may yield only ExtraLean wait signals (`null`, `Break.It`, `Break.AndStop`); continuations and return values have nowhere to go on a worker thread.
 - `MultiThreadedBurstParallelTaskCollection<TTask>` dispatches atomically claimed ranges to `unmanaged` `IBurstParallelTask` values. `Add(prototype, iterations, elementsPerTask)` configures the ranges; run the returned Lean enumerator from `Run()`, then dispose the collection after its final use.
 
 ### `IParallelTask`
@@ -640,7 +641,7 @@ runner.UseFlowModifier(new TimeBoundFlow(5.0f)); // 5ms max per tick
 | Manual tick control (Unity Update) | `SteppableRunner` |
 | Background thread | `MultiThreadRunner` |
 | Synchronous completion | `SyncRunner` / `.Complete()` |
-| Parallel across N threads | `MultiThreadedParallelTaskCollection` |
+| Parallel across N threads | `MultiThreadedParallelTaskCollection<TTask>` |
 | Data-parallel job | `MultiThreadedParallelJobCollection<TJob>` |
 | Serial task sequence | `SerialTaskCollection` |
 | Concurrent task group | `ParallelTaskCollection` |
@@ -808,11 +809,12 @@ using (var collection = new MultiThreadedParallelJobCollection<TestJob>("test", 
 - `Dispose()` disposes ALL added tasks (even if never started).
 
 ### MultiThreadedParallelTaskCollection
-- Constructor: `(name, threadCount, tightTasks)`.
+- Constructor: `(name, threadCount, tightTasks)`; `TTask : struct, IParallelTask` only.
 - Adding while running is unsupported; Debug DBC builds throw `PreconditionException`.
 - `Stop()` stops execution; `isRunning` becomes false.
 - `Reset()` clears tasks, allows reuse.
 - 4 tasks that each wait 1 second finish in ~1 second (parallel), not ~4 seconds (serial).
+- Tasks are copied into the collection and onto the runners: observable state must be external (reference holders), not struct instance fields.
 
 ### Iterator Block Pool — the reusable pattern
 ```csharp
@@ -860,7 +862,7 @@ Assert.That(block2, Is.SameAs(block1)); // recycled iterator block
 The tests use these helper patterns that serve as reference implementations:
 - `LeanEnumerator` — basic `IEnumerator<TaskContract>` with `Reset()` support, `AllRight` completion check.
 - `ExtraLeanEnumerator` — struct `IEnumerator` with `AllRight` check.
-- `WaitEnumerator` — time-based `IParallelTask` for parallel testing.
+- `WaitEnumerator` / `WaitEnumeratorExtraLean` — struct time-based `IParallelTask` for parallel testing.
 - `DisposableEnumerator` — tracks `disposed` flag to verify disposal behavior.
 - `StartedDisposableEnumerator` — uses `ManualResetEventSlim` to signal task start (for multithreaded tests).
 - `StartedDisposableJobEnumerator` — combines `IEnumerator<TaskContract>` and `ISveltoJob` for parallel job disposal tests.

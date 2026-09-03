@@ -38,7 +38,7 @@ namespace Svelto.DataStructures
     {
         public KeyValuePairFastDebugProxy(in KeyValuePairFast<TKey, TValue, TValueStrategy> keyValue)
         {
-            this._keyValue = keyValue;
+            _keyValue = keyValue;
         }
     
         public TKey key => _keyValue.key;

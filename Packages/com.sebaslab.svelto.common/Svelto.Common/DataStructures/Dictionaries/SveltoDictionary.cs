@@ -653,8 +653,8 @@ namespace Svelto.DataStructures
             _values.SerialiseFrom(otherDicKeys._values.AsBytesPointer());
             _buckets.SerialiseFrom(otherDicKeys._buckets.AsBytesPointer());
 
-            this._collisions = otherDicKeys._collisions;
-            this._freeValueCellIndex = otherDicKeys._freeValueCellIndex;
+            _collisions = otherDicKeys._collisions;
+            _freeValueCellIndex = otherDicKeys._freeValueCellIndex;
 #if DEBUG && !PROFILE_SVELTO
             _structuralRevision.Increment();
 #endif

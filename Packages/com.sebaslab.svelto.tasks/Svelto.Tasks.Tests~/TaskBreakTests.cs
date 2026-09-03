@@ -89,7 +89,7 @@ namespace Svelto.Tasks.Tests
                 yield break;
             }
 
-            using (var runner = new Lean.SteppableRunner("BreakAndStopChain"))
+            using (var runner = new SteppableRunner("BreakAndStopChain"))
             {
                 Root().RunOn(runner);
                 UnrelatedRoot().RunOn(runner);

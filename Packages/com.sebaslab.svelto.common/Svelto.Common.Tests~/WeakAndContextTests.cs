@@ -36,7 +36,7 @@ namespace Svelto.Common.Tests
         public void WeakReference_TracksTargetEqualityAndDispose()
         {
             var target = new object();
-            var weak = new Svelto.DataStructures.WeakReference<object>(target);
+            var weak = new DataStructures.WeakReference<object>(target);
 
             Assert.That(weak.IsValid, Is.True);
             Assert.That(weak.IsAlive, Is.True);

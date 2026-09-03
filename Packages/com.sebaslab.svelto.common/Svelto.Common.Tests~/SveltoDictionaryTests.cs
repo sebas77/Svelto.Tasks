@@ -68,7 +68,7 @@ namespace Svelto.Common.Tests
 
             Assert.That(builderCalls, Is.EqualTo(0));
             Assert.That(recyclerCalls, Is.EqualTo(0));
-            Assert.That(object.ReferenceEquals(v, first), Is.True);
+            Assert.That(ReferenceEquals(v, first), Is.True);
         }
     }
 }
