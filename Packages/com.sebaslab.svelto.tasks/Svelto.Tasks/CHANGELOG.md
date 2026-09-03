@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-preview.6] - 09-2026
+
+### Breaking Changes
+
+* Remove the non-generic `MultiThreadedParallelTaskCollection` (the class/boxing-friendly variant). Parallel tasks are now always struct-typed: `MultiThreadedParallelTaskCollection<TTask>` requires `TTask : struct, IParallelTask`, so tasks are never boxed. Because struct tasks are copied when added and scheduled, any state a task must mutate or share (progress, results, dispose-dedup flags) has to live in external reference holders captured by the struct, not in the struct's own fields.
+
+### Changed
+
+* Update the parallel-downloads example, tests, README and AI guide to the struct-only parallel collection, including the external-state and thread-safety guidance for struct tasks.
+
 ## [2.0.0-preview.5] - 09-2026
 
 ### Changed

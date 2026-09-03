@@ -25,7 +25,7 @@ namespace Svelto.Tasks.Lean
                 #if !PROFILE_SVELTO
                 return _task.ToString();
                 #else
-                return TypeCache<TTask>.name;
+                return Common.TypeCache<TTask>.name;
 #endif
             }
         }
