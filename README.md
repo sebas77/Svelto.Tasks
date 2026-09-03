@@ -157,7 +157,7 @@ Where I would reach for Svelto.Tasks instead is whenever I want **complete contr
 Svelto.Tasks comes in two weights:
 
 - **ExtraLean** tasks are plain co-routines. They can only yield "wait" signals, which makes them extremely lean — ideal for the vast majority of gameplay coroutines.
-- **Lean** tasks yield the **TaskContract**, a discriminated union that can also carry return values, continuations, break directives and nested enumerators. They power the Svelto.Tasks composition logic: waiting for children, returning results, cancelling chains.
+- **Lean** tasks yield the **TaskContract**, a polymorphic union that can also carry return values, continuations, break directives and nested enumerators. They power the Svelto.Tasks composition logic: waiting for children, returning results, cancelling chains.
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 //ExtraLean: the whole contract is "keep me waiting"
@@ -177,7 +177,7 @@ IEnumerator&lt;TaskContract&gt; LoadLevel()
 
 ## Inside Lean Tasks: the TaskContract
 
-Everything a Lean task can say to its runner passes through one type: the **TaskContract**. It is a `readonly struct` working as a **discriminated union**: an internal tag decides which of its overlapping fields is meaningful, and a set of implicit conversions lets you write what comes naturally while nothing allocates behind your back. A whole task vocabulary lives in that single struct:
+Everything a Lean task can say to its runner passes through one type: the **TaskContract** union. An internal tag decides which of its overlapping fields is meaningful, and a set of implicit conversions lets you write what comes naturally while no boxing happens. A whole task vocabulary lives in that single struct:
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 IEnumerator&lt;TaskContract&gt; Vocabulary()
@@ -236,16 +236,16 @@ var (data, block) = pool.Get(); //allocates once, recycles forever after
 data.kind = "Orc";              //re-initialize the data, run again
 </pre>
 
-Reusable blocks resume; they do not restart. Put `Break.It` only at a deliberate cycle boundary inside the infinite loop, and make sure everything after it safely leads back to the top. Locals captured by the iterator survive between cycles, so reset all per-run state at the start of the loop or keep it in the pooled data object and re-initialize that object after every `Get()`. Do not retain references or resources from the previous borrower across the break. A block that reaches `yield break`, falls off the end, or is stopped before reaching its cycle boundary cannot safely be reused.
+Reusable blocks resume; they do not restart. Put `Break.It` only at a deliberate cycle boundary inside the infinite loop, and make sure everything after it safely leads back to the top. Locals captured by the iterator survive between cycles, so reset all per-run state at the start of the loop or keep it in the pooled data object and re-initialize that object after every `Get()`. Do not retain references or resources from the previous borrower across the break. A block that reaches `yield break`, falls off the end, or is stopped before reaching its cycle boundary cannot safely be reused and won't be put back to the pool.
 
 ### Break.AndStop: stopping the entire chain
 
-`Break.It` is polite: it stops the task that yields it and lets the parent continue as if the child had simply completed. Sometimes that is not what you want. When a deep child hits a fatal condition, you do not want every ancestor to poll a flag and unwind politely one per frame — you want the whole pipeline gone. **`Break.AndStop`** is that kill switch: the runner disposes the task that yields it together with its entire `.Continue()` ancestry, in one pass:
+`Break.It` is discrete: it stops the task that yields it and lets the parent continue as if the child had simply completed. Sometimes that is not what you want. When a deep child hits a fatal condition, you do not want every ancestor to poll a flag and unwind one per frame — you want the whole pipeline gone. **`Break.AndStop`** is that kill switch: the runner disposes the task that yields it together with its entire `.Continue()` ancestry, in one pass:
 
 <pre class="EnlighterJSRAW" data-enlighter-language="csharp">
 IEnumerator&lt;TaskContract&gt; LoadPipeline()
 {
-    yield return DownloadAsset().Continue(); //wait for the deep child
+    yield return DownloadAsset().Continue(); //wait for the deep child on the same runner
     SpawnLevel();                            //never reached if the checksum fails
 }
 
@@ -341,7 +341,7 @@ Runner shutdown is cooperative: a task must return from its current `MoveNext()`
 
 ### Thread safety, the whole library in one place
 
-The boundaries are thread-safe by construction: submitting a task to any runner from any thread is safe — admission is serialized and queued through a concurrent structure. So are the iterator pools, the continuation handles you may poll from a foreign thread, and the `WaitForSignal<T>` handshake.
+Runners are thread-safe by construction: submitting a task to any runner from any thread is safe — admission is serialized and queued through a concurrent structure. So are the iterator pools, the continuation handles you may poll from a foreign thread, and the `WaitForSignal<T>` handshake.
 
 Task bodies are not magic: a task runs on the thread of its runner, and if it touches data shared with other threads, synchronizing that data is your job, not the library's — `volatile`, `Interlocked` and locks as usual. In return the library guarantees the useful half: a task's state machine is only ever touched by its owning runner, so a task that keeps its state to itself is thread-safe without a single lock. On the steppable runners the same rule takes a specific form: submit from anywhere, but step from one thread only — the owner of the loop.
 
