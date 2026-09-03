@@ -6,7 +6,6 @@ using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using DBC.Tasks;
-using Svelto.Common;
 using Svelto.DataStructures;
 
 namespace Svelto.Tasks.ExtraLean

@@ -1,5 +1,4 @@
-﻿using Svelto.Tasks.Parallelism;
-using Svelto.Tasks.Parallelism.Internal;
+﻿using Svelto.Tasks.Parallelism.Internal;
 /// <summary>
 /// a ParallelTaskCollection ran by MultiThreadRunner will run the tasks in a single thread
 /// MultiThreadParallelTaskCollection enables parallel tasks to run on different threads
@@ -9,8 +8,7 @@ namespace Svelto.Tasks.Parallelism.ExtraLean
 {
     public class
             MultiThreadedParallelJobCollection<TJob> :  MultiThreadedParallelTaskCollection<
-        ParallelRunEnumerator<TJob>>
-            where TJob : struct, ISveltoJob
+        ParallelRunEnumerator<TJob>> where TJob : struct, ISveltoJob
     {
         //works similarly to Unity Jobs, the same job is split into different iterations, the work is then divided according to the indexed iterations
         public void Add(in TJob job, int iterations)

@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Svelto.Common;
 using Svelto.DataStructures;
 using Svelto.Tasks.Enumerators;
 using Svelto.Tasks.Internal;
@@ -26,7 +25,7 @@ namespace Svelto.Tasks.Lean
                 #if !PROFILE_SVELTO
                 return _task.ToString();
                 #else
-                return TypeCache<TTask>.name;
+                return Common.TypeCache<TTask>.name;
 #endif
             }
         }

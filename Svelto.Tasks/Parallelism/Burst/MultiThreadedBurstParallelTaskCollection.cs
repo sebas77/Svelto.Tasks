@@ -136,7 +136,7 @@ namespace Svelto.Tasks.Parallelism.ExtraLean
 
         ~MultiThreadedBurstParallelTaskCollection()
         {
-            Svelto.Console.LogWarning($"MultiThreadedBurstParallelTaskCollection {_name} wasn't disposed of correctly. You forgot to call Dispose()");
+            Console.LogWarning($"MultiThreadedBurstParallelTaskCollection {_name} wasn't disposed of correctly. You forgot to call Dispose()");
             Dispose();
         }
 

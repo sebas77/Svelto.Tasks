@@ -372,19 +372,5 @@ namespace Svelto.Tasks.Parallelism
             public MultiThreadedParallelTaskCollection(string name, bool tightTasks): this(name, (uint)Math.Max(1, Environment.ProcessorCount - 2),
                 tightTasks) { }
         }
-
-        public class MultiThreadedParallelTaskCollection : BaseMultiThreadedParallelTaskCollection<IParallelTask>, IEnumerator, IDisposable
-        {
-            public object Current
-            {
-                get => throw new NotImplementedException();
-            }
-
-            public MultiThreadedParallelTaskCollection(string name, uint numberOfThreads, bool tightTasks)
-                    : base(name, numberOfThreads, tightTasks) { }
-
-            public MultiThreadedParallelTaskCollection(string name, bool tightTasks): this(name, (uint)Math.Max(1, Environment.ProcessorCount - 2),
-                tightTasks) { }
-        }
     }
 }
