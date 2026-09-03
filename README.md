@@ -12,7 +12,7 @@ Svelto.Tasks has no dependency on any engine. If you can compile C#, you can run
 
 My take is that .NET Tasks were (obviously) not designed for games, and two problems especially make me come back to Svelto.Tasks: being able to **profile** tasks and being sure they are **stopped** when I need them to be. For example: when I leave a match and go back to the main menu, I want to be sure that every task belonging to that match is stopped.
 
-That is where I find the `CancellationToken` pattern awkward and impractical: tokens must be created, passed down through every layer, checked at every step, and remembered at every spawn site. One forgotten call quietly leaves an orphan behind. A runner inverts the responsibility: tasks belong to their context, so stopping the context stops everything, all at once, by construction. `Pause()`, `Stop()` and `Dispose()` give me the certainty that cancellation tokens never could.
+That is where I find the `CancellationToken` pattern awkward and impractical: tokens must be created, passed down through every layer, checked at every step, and remembered at every spawn site. One forgotten call quietly leaves an orphan behind. A runner inverts the responsibility: tasks belong to their context, so stopping the context stops everything, all at once. `Pause()`, `Stop()` and `Dispose()` give me the certainty that cancellation tokens never could.
 
 ## The mental model: tasks are iterators, runners are schedulers
 
