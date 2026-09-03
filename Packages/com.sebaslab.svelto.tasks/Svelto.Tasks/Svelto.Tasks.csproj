@@ -15,7 +15,7 @@
     <PropertyGroup>
         <PackageId>Svelto.Tasks</PackageId>
         <Authors>Sebastiano Mandala</Authors>
-        <PackageVersion>2.0.0-preview.4</PackageVersion>
+        <PackageVersion>2.0.0-preview.5</PackageVersion>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/sebas77/Svelto.Tasks</PackageProjectUrl>
         <PackageDescription>Asynchronous Tasks handling and execution</PackageDescription>
@@ -26,6 +26,8 @@
 
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="..\AGENTS.md" Pack="true" PackagePath="\" />
+        <None Include="..\.aiguides\AI_GUIDE_Svelto.Tasks.md" Pack="true" PackagePath=".aiguides\" />
     </ItemGroup>
 
     <!--Opt-in profiling instrumentation (TaskProfiler + runner hooks). Debug builds are

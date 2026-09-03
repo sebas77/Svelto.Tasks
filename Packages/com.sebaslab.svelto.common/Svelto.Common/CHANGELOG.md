@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file. Changes are listed in random order of importance.
 
+## [3.7.3] - 09-2026
+
+### Fixed
+
+* Make `TombstoneHandle` generational: handles issued before slot reuse or `Clear()` cannot access or remove replacement items, in Debug or Release builds.
+
+### Changed
+
+* Include the package AI development entry point and deep guide in the NuGet package.
+
 ## [3.7.1] - 08-2026
 
 ### Breaking changes

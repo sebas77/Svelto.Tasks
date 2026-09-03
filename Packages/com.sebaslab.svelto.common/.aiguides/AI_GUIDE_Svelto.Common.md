@@ -1,8 +1,10 @@
 # Svelto.Common - AI Developer Guide
 
-> **Note:** `AGENTS.md` (repo root) distills the essentials of this guide. When details conflict, this file is authoritative — update it first, then mirror into AGENTS.md.
+> **Note:** Package-root `AGENTS.md` is the concise implementation entry point. This file is the authoritative API and behavior reference; update it first when behavior changes.
 
-> **Purpose:** A shared utility library used across all Svelto frameworks (ECS, Tasks, etc.). Provides high-performance data structures, memory management, logging, object pooling, profiling, and platform abstractions. Designed to work in both Unity (with Burst/Jobs) and plain .NET.
+> **Scope disclaimer:** Document only the **public interface** of the library. Internal types (e.g., `DBC.Common.Check`, `SeqLock`) are out of scope: mention them only when they are externally observable through public behavior, such as exceptions thrown by public APIs.
+
+> **Purpose:** A shared utility library used across all Svelto frameworks (ECS, Tasks, etc.). Provides high-performance data structures, memory management, logging, profiling, and platform abstractions. Designed to work in both Unity (with Burst/Jobs) and plain .NET.
 
 ## Architecture Overview
 
@@ -27,8 +29,8 @@ Key design principles:
 | `Svelto.Common.Internal` | Debug extensions |
 | `Svelto.DataStructures` | All data structures (managed + unmanaged) |
 | `Svelto.DataStructures.Native` | Native-memory dictionary/buffer variants |
-| `Svelto.ObjectPool` | Object pooling |
-| `DBC.Common` | Design By Contract checks |
+| `DBC.Common` | Internal Design By Contract checks (not public API) |
+| Global namespace | `FixedTypedArray4/8/16/32<T>`, `SpanList<T>`, `FastConcatUtility`, `StringBuilderUtils`, and weak action/event types |
 
 ---
 
@@ -37,7 +39,7 @@ Key design principles:
 ### `ICompositionRoot`
 The entry point interface for a Svelto application. Implement this on a class that bootstraps your application.
 - `OnContextCreated<T>(T contextHolder)` — called when the context is created (e.g., Unity `Awake`).
-- `OnContextInitialized<T>(T contextHolder)` — called after initialization (e.g., one frame after Unity `Start`).
+- `OnContextInitialized<T>(T contextHolder)` — called after initialization (in `UnityContext<T>`, at the end of the first playing frame after `Start`).
 - `OnContextDestroyed(bool hasBeenInitialised)` — called on teardown.
 
 **When to use:** Implement this to bootstrap a Svelto application. In Unity, subclass `UnityContext<T>` (a `MonoBehaviour`) which calls these methods at the right lifecycle points.
@@ -57,12 +59,12 @@ Coordinates framework lifecycle events. Objects register as listeners; the frame
 **When to use:** Implement these on objects that need to react to framework startup/shutdown.
 
 ### `ContextNotifier`
-Default `IContextNotifer` implementation. Uses `WeakReference<T>` for listeners. Each notify can only be called once (lists are nulled after notification).
+Default `IContextNotifer` implementation. Uses `WeakReference<T>` for listeners and notifies them in reverse registration order. Each notification phase can only happen once: its list is nulled afterward, and later registration for that phase throws.
 
 ### `UnityContext<T>` (Unity only)
 Abstract `MonoBehaviour` that bridges Unity lifecycle to `ICompositionRoot`. `T` must be `class, ICompositionRoot, new()`.
 - `Awake()` → `OnContextCreated`
-- `Start()` + one frame → `OnContextInitialized`
+- playing `Start()` + `WaitForEndOfFrame` → `OnContextInitialized`
 - `OnDestroy()` → `OnContextDestroyed`
 
 ---
@@ -76,8 +78,8 @@ The unified logging entry point for ALL Svelto libraries. **Always use this inst
 - `LogWarning(string)` — warning (prefixed with `------> `).
 - `LogError(string, Dictionary<string,string> extraData = null)` — error (prefixed with `-!!!!!!-> `).
 - `LogException(Exception, string message = null, ...)` — exception with inner-exception tracing.
-- `AddLogger<T>(T logger)` — register a custom `ILogger`.
-- `CompressLogsToZipAndShow(string zipName)` — export logs to zip.
+- `AddLogger<T>(T logger)` — register at most one logger for each concrete `T`; later registrations of the same type are ignored.
+- `CompressLogsToZipAndShow(string zipName)` — asks every registered logger to export; support depends on the logger (`SimpleLogger` and `DefaultUnityLogger` do nothing).
 - `logMessage` event — intercept all log calls externally.
 - `onException` event — intercept all exceptions externally.
 
@@ -105,42 +107,13 @@ Contract for log sinks.
 
 ---
 
-## 3. Object Pooling
-
-### `IObjectPool<T>`
-The pool contract. `int pool` parameter allows sub-pools (e.g., pool by size/category).
-- `T Get(int pool, Func<T> onFirstUse = null)` — create or reuse an object.
-- `void Recycle(T obj, int pool)` — return to pool.
-- `void Preallocate(int pool, int size, Func<T> onFirstUse)` — pre-fill a sub-pool.
-- `void Clear()` — empty all pools.
-
-### `ObjectPool<T>`
-General-purpose pool with sub-pool support. Uses `FasterDictionary<int, Stack<T>>` internally. Optional factory function via constructor. In DEBUG, detects double-recycle.
-
-**When to use:** Any reusable objects, especially expensive-to-create ones. Sub-pool key lets you categorize (e.g., pool bullets by type).
-
-### `ThreadSafeObjectPool<T>`
-Thread-safe version using `ConcurrentDictionary` and `ThreadSafeStack`. Constructor requires a factory function.
-
-**When to use:** Multi-threaded pooling scenarios.
-
-### Unity-specific pools
-- `GameObjectPool` — pools `GameObject`s, destroys them on dispose.
-- `MonoBehaviourPool<T>` — pools `MonoBehaviour` components.
-- `PoolDebugger` (editor only) — inspector for monitoring pool stats.
-
-### `IObjectPoolDebug` (DEBUG only)
-Debug counters: objects created, reused, recycled since last check.
-
----
-
-## 4. Profiling
+## 3. Profiling
 
 ### `IPlatformProfiler`
 - `DisposableSampler Sample(string name)` — begin a named profiling scope (returns `IDisposable`).
 - `DisposableSampler Sample<W>(W sampled)` — typed overload.
 
-**Release behavior:** When `ENABLE_PLATFORM_PROFILER` is not defined or not DEBUG, all profilers are zero-cost no-ops. `DisposableSampler.Dispose()` does nothing.
+**Platform-profiler behavior:** Unless Unity 2018.3+, `ENABLE_PLATFORM_PROFILER`, and `DEBUG` are all active, `PlatformProfiler`, `PlatformProfilerMT`, `DisposableSampler`, and `PauseProfiler` are no-op structs. `StandardProfiler` remains an active `Stopwatch`-based profiler independently of those symbols.
 
 ### Implementations
 | Type | Environment | Behavior |
@@ -151,11 +124,11 @@ Debug counters: objects created, reused, recycled since last check.
 | `StandardProfiler` | Non-Unity | Uses `Stopwatch`, logs elapsed on dispose |
 | `StandardDisposableSamplerHolder` | Non-Unity | Programmatic access to `ElapsedMs`/`ElapsedNano` |
 
-**When to use:** Wrap hot loops or methods in `using (profiler.Sample("name")) { ... }`. In release, it costs nothing.
+**When to use:** Wrap hot loops or methods in `using (profiler.Sample("name")) { ... }`. The platform profiler costs nothing in its disabled build; `StandardProfiler` always measures.
 
 ---
 
-## 5. Memory Management
+## 4. Memory Management
 
 ### `MemoryUtilities` (static)
 Low-level native memory operations. Foundation for all unmanaged data structures.
@@ -173,27 +146,29 @@ Low-level native memory operations. Foundation for all unmanaged data structures
 **On Unity:** delegates to `UnsafeUtility` (Burst-compatible). **Off Unity:** uses `Marshal.AllocHGlobal`/`FreeHGlobal`.
 
 ### `Allocator` enum
-Mirrors `Unity.Collections.Allocator`:
+Mirrors Unity allocator values where applicable:
 | Value | Meaning |
 |-------|---------|
 | `Invalid` | Invalid |
 | `None` | No allocation |
-| `Temp` | Short-lived (freed at frame end) |
-| `TempJob` | Job-scoped |
-| `Persistent` | Long-lived, must dispose manually |
-| `Managed` | GC-managed |
+| `Temp` | Unity temporary allocator |
+| `TempJob` | Unity temporary-job allocator |
+| `Persistent` | Long-lived native allocation |
+| `Managed` | Strategy marker; `MemoryUtilities.NativeAlloc` maps it to Unity `Persistent` |
+
+Outside Unity, `NativeAlloc` uses `Marshal.AllocHGlobal` for every allocator value; `Temp` and `TempJob` have no automatic lifetime semantics there. Any successful native allocation must be released explicitly through the matching owner or `NativeFree`.
 
 ### `SharedStaticWrapper<T, Key>`
 Cross-thread shared state. On Unity with Burst, uses `Unity.Burst.SharedStatic`. Off Unity, uses a static field.
 - `ref T Data` — get/set the shared value.
 
-**When to use:** Shared state between main thread and Burst jobs.
+**When to use:** Shared unmanaged state between main-thread code and Burst jobs. When Burst is enabled, initialize the shared value outside Burst before accessing it from Burst code.
 
 ---
 
-## 6. Data Structures
+## 5. Data Structures
 
-### 6.1 Dynamic Arrays
+### 5.1 Dynamic Arrays
 
 #### `FasterList<T>`
 The primary dynamic array. Faster than `List<T>` for most operations. Uses `uint` count internally.
@@ -210,37 +185,37 @@ The primary dynamic array. Faster than `List<T>` for most operations. Uses `uint
 **When to use:** Anywhere you'd use `List<T>`. Use `UnorderedRemoveAt` for O(1) removal when order doesn't matter.
 
 #### `FasterReadOnlyList<T>` (readonly struct)
-Read-only view of a `FasterList<T>`. Implicit conversion from `FasterList<T>`.
+Non-owning view of a `FasterList<T>`. The wrapper cannot replace the list reference, but its indexers return mutable `ref T`; it does not enforce element immutability. Implicit conversion from `FasterList<T>`.
 
-#### `LocalFasterReadOnlyList<T>` (ref struct)
-A snapshot view holding a raw `T[]` and `uint count` (no reference to the original list). Can be used in ref-struct contexts (Burst jobs, etc.). Implicit conversion from `FasterList<T>`.
+#### `LocalFasterReadOnlyList<T>` (readonly ref struct)
+A count snapshot holding the list's existing `T[]` and current count, without retaining the `FasterList<T>` object. It does not copy the elements, and its indexers return mutable `ref T`, so later writes to the backing array remain visible. The managed array makes this unsuitable for Burst jobs. Implicit conversion from `FasterList<T>` and, transitively, from `FasterReadOnlyList<T>`.
 
 #### `FasterListPool<T>` (static)
-Thread-local pool of `FasterList<T>` instances. `Get()` / `Release(FasterList<T>)`.
+Thread-local pool of `FasterList<T>` instances. `Get()` / `Release(FasterList<T>)`; release calls `Clear()` and preserves capacity.
 
 #### `FasterListEnumerator<T>` (ref struct)
 Ref-returning enumerator. Detects modification during iteration in DEBUG.
 
 #### `TombstoneList<T>`
-A list with O(1) removal that leaves "tombstones" in removed slots, which are reused for future additions. Returns `TombstoneHandle` (stable index) on add.
+A list with O(1) removal that leaves "tombstones" in removed slots, which are reused for future additions. Returns a generation-aware `TombstoneHandle` on add.
 - `Add(in T)` → `TombstoneHandle`
 - `AddByRef(out TombstoneHandle)` → `ref T`
 - `RemoveAt(TombstoneHandle)` — marks slot as tombstone, links to free list
 - `this[TombstoneHandle]` → `ref T`
 
-**When to use:** When you need stable indices (handles) that survive removals. The handle remains valid until the item is removed. O(1) add and remove.
+**When to use:** When callers need handles that remain valid across unrelated additions and removals. A handle becomes invalid when its item is removed, its slot is reused, or the list is cleared. `Has(handle)` checks that the exact slot generation is still live. Add and remove are O(1).
 
 #### `TombstoneHandle` (readonly struct)
-Opaque handle into `TombstoneList<T>`. Has `IsInvalid` property. `Invalid = new(-1)`.
+Index-and-generation handle into `TombstoneList<T>`. `Invalid` and a manually constructed `new TombstoneHandle(index)` are invalid; only generated handles carry a usable generation. `IsInvalid` rejects malformed handles, while `TombstoneList<T>.Has` checks whether the same index/generation is live in that list. Handles contain no owner identity, so do not pass them between lists: independently created lists can issue equal handles.
 
-### 6.2 Dictionaries
+### 5.2 Dictionaries
 
 #### `ISveltoDictionary<TKey, TValue>` / `IReadOnlySveltoDictionary<TKey, TValue>`
 The dictionary contracts.
 - **Read-only:** `count`, `ContainsKey`, `TryGetValue`, `TryFindIndex(TKey, out uint)`, `GetIndex(TKey)`, `Dispose`.
 - **Full:** `Add`, `Set`, `Clear`, `GetOrAdd` (multiple overloads), `GetDirectValueByRef(uint)`, `GetValueByRef(TKey)`, `EnsureCapacity`, `IncreaseCapacityBy`, `Remove`, `Trim`, `this[TKey]`.
 
-**Key insight:** `TryFindIndex`/`GetIndex` expose the internal value array index, enabling direct `ref` access for maximum performance.
+**Key insight:** `TryFindIndex`/`GetIndex` expose the internal value-array index, enabling direct `ref` access for maximum performance. That index is not a stable handle: removal swap-moves the last entry, and resizing or later mutation can invalidate assumptions about retained references.
 
 #### `SveltoDictionary<TKey, TValue, TKeyStrategy, TValueStrategy, TBucketStrategy>`
 The core implementation. Values are stored contiguously, enabling direct array iteration. Uses three separate arrays: `_valuesInfo` (keys+hashes+chains), `_values` (values), `_buckets` (hash buckets). Uses Daniel Lemire's `FastMod` on 64-bit.
@@ -263,6 +238,8 @@ The managed-memory wrapper around `SveltoDictionary`. **This is the primary dict
 | `LocalSveltoDictionaryNative<TKey, TValue>` (ref struct) | Non-owning local handle, can't be stored as field |
 | `LocalReadonlySveltoDictionaryNative<TKey, TValue>` (ref struct) | Read-only local handle |
 
+`SharedSveltoDictionaryNative` places the dictionary struct itself in native memory so value-type copies alias the same state. “Shared” does not add locking or make concurrent mutation safe. Treat copied native owners as aliases and dispose the allocation exactly once after all users stop.
+
 #### `ThreadSafeDictionary<TKey, TValue>`
 Wraps `FasterDictionary` with `ReaderWriterLockSlimEx`. All reads use read-lock, writes use write-lock, `GetOrAdd` uses upgradable read.
 
@@ -271,7 +248,7 @@ Wraps `FasterDictionary` with `ReaderWriterLockSlimEx`. All reads use read-lock,
 #### `SveltoDictionaryNode<TKey>`
 Internal node in the dictionary's collision chain: `hashcode`, `previous` (chain link), `key`.
 
-### 6.3 Buffer Strategies (Dual Memory Model)
+### 5.3 Buffer Strategies (Dual Memory Model)
 
 #### `IBufferStrategy<T>`
 Abstracts managed vs. native memory for data structures. Through this interface, dictionaries and other structures can use either memory type interchangeably.
@@ -284,40 +261,42 @@ Abstracts managed vs. native memory for data structures. Through this interface,
 Managed-array-backed strategy. Uses `MBInternal<T>`. `AsBytesPointer`/`SerialiseFrom` throw `NotImplementedException`. `Dispose` is a no-op (GC handles it).
 
 #### `NativeStrategy<T>` (in `Svelto.DataStructures.Native`)
-Native-memory-backed strategy. Uses `NBInternal<T>` + `MemoryUtilities`. For Burst/Jobs. `T : struct`.
+Native-memory-backed strategy. Uses `NBInternal<T>` + `MemoryUtilities`. Intended for Burst/Jobs. Its public constraint is `T : struct`, but Debug rejects types containing managed references; callers must supply an unmanaged-compatible type in every build. `AsBytesPointer()` and `SerialiseFrom()` currently throw `NotImplementedException`, just as they do on `ManagedStrategy<T>`.
 
 #### `IBuffer<T>` / `IBufferBase`
 Base buffer interface: `CopyTo`, `Clear`, `capacity`, `isValid`.
 
-#### `NB<T>` (Native Buffer, ref struct)
+#### `NB<T>` (Native Buffer, struct)
 Wrapper around a native array pointer. Not meant to resize or be freed. Cannot have a count (it's a fixed view).
 - `this[uint/int]` → `ref T` (via `Unsafe.AsRef`).
 - `AsReader()` → `NB<T>.Reader` (read-only, `ref readonly T`).
 - `AsWriter()` → `NB<T>.Writer` (write, `ref T`).
 - `Create(IntPtr array, int capacity, IntPtr rwState)` — static factory.
 
-**When to use:** Inside Unity Jobs/Burst. Wrap external native arrays. Use `AsReader`/`AsWriter` for thread-safe access in DEBUG.
+**When to use:** Inside Unity Jobs/Burst to wrap external native arrays. `AsReader`/`AsWriter` provide Debug-only misuse detection, not synchronization; the caller must still arrange safe concurrent access.
 
 #### `MB<T>` (Managed Buffer, ref struct)
 Wrapper around a managed `T[]` array. Same pattern as `NB<T>` but for managed memory.
 - `this[uint/int]` → `ref T`.
-- `AsReader()` / `AsWriter()`.
+- `AsReader()` / `AsWriter()` — lifetime guards only; unlike `NB<T>.Reader`, `MB<T>.Reader` currently returns mutable `ref T`.
 - `ToManagedArray()` → `T[]`.
 - `Set(T[])`, `CopyFrom(T[], uint)`.
 
-### 6.4 Fixed-Size Arrays
+### 5.4 Fixed-Size Arrays
 
 #### `FixedTypedArray4/8/16/32<T>`
 Fixed-size arrays embedded in structs (no heap allocation). `T : unmanaged`.
 - `capacity` → 4/8/16/32.
-- `this[int]` → `T` (get/set with bounds check).
+- `this[int]` → `T` (get/set). Callers must supply `0 <= index < capacity`; the Debug DBC check only verifies the upper bound and is compiled out in Release.
+
+These types are in the global namespace and are available only under `NEW_C_SHARP || !UNITY_5_3_OR_NEWER`.
 
 **When to use:** In unmanaged/Burst contexts where regular arrays can't be used. Fields are inline, accessed via `Unsafe.Add`.
 
 #### `SpanList<T>` (ref struct)
-A list over a `Span<T>` with a count. `Add(T)` throws if full. `AsSpan()` returns the used portion.
+A global-namespace list over a caller-owned `Span<T>` with a count. `Add(T)` and `AddRange(Span<T>)` throw if the fixed capacity would be exceeded; the ref indexer validates against the current count. `AsSpan()` returns the used portion.
 
-### 6.5 Ring Buffers / Queues
+### 5.5 Ring Buffers / Queues
 
 #### `CircularQueue<T>`
 Fixed-capacity circular queue. Throws on overflow (does NOT overwrite).
@@ -333,45 +312,49 @@ True ring buffer with overwrite-on-full semantics. Overwrites oldest element whe
 **When to use:** Sliding-window/log-buffer scenarios where newest data matters most.
 
 #### `UnmanagedCircularQueue<TCell>`
-Non-concurrent ring buffer with fixed unmanaged cell size. `TCell : unmanaged`. Uses monotonic `long head`/`tail` with bitmask.
+Non-concurrent, managed-array-backed ring buffer with an unmanaged cell type. `TCell : unmanaged`. Uses monotonic `long head`/`tail` with a bitmask.
 - `TryEnqueue(in TCell)` / `TryDequeue(out TCell)` — non-throwing.
 - Supports copying partial bytes via `count` parameter.
 
 #### `UnmanagedConcurrentCircularQueue<TCell>`
-Bounded MPMC lock-free ring queue (Vyukov algorithm). `TCell : unmanaged`.
+Bounded, managed-array-backed MPMC lock-free ring queue (Vyukov algorithm). `TCell : unmanaged`.
 - Uses CAS on `head`/`tail` with sequence numbers per slot.
 - `PaddedLong` for `head`/`tail` (64-byte padding to avoid false sharing).
 - `TryEnqueue` / `TryDequeue` — non-blocking, returns false if full/empty.
 
 **When to use:** High-performance multi-producer multi-consumer queue. Lock-free, no `lock` statements.
 
-### 6.6 Slot Maps
+### 5.6 Slot Maps
 
 #### `ManagedSlotMap<T>`
-A managed-memory slot map. User doesn't choose keys; `Add` returns a `ValueIndex` handle. Handles are versioned—stale handles (from removed items) are detected.
+A managed-memory slot map. Normal use obtains keys from `Add`, which returns a versioned `ValueIndex` handle. `Has` can detect stale handles from removed items.
 - `Add(T)` → `ValueIndex`
 - `Remove(ValueIndex)` — increments version, links to free list
-- `this[ValueIndex]` → `ref T` (validates version)
+- `this[ValueIndex]` → `T` (validates version)
 - `Has(ValueIndex)` → `bool`
 - O(1) add, remove, lookup.
+
+Indexer and `Remove` validation use Debug-only DBC checks. In Release, call `Has(handle)` before using any handle whose validity is uncertain; stale access can otherwise read or remove the current occupant of a reused slot.
+
+**Lifecycle:** `ManagedSlotMap<T>` exposes `Dispose()` but does not implement `IDisposable`; call it explicitly when the map is no longer needed.
 
 **When to use:** When you need O(1) add/remove with stable, versioned handles. Especially useful when external code holds references that may become stale.
 
 #### `ValueIndex` (readonly struct)
-External handle: lower 24 bits = sparse index, upper 8 bits = version.
+External handle: lower 24 bits = sparse index, upper 8 bits = version. It has a public `(uint index, byte version)` constructor and no owner identity, so treat only values returned by the target map as handles. A slot is permanently retired after generation 255 rather than allowing an old handle to become valid again.
 
 #### `SparseIndex`
 Internal per-slot metadata: dense index, version, free-list links.
 
-### 6.7 Monotonic Window Buffer
+### 5.7 Monotonic Window Buffer
 
 #### `MonotonicWindowBuffer<T>`
 SPSC (single-producer/single-consumer) fixed-capacity sliding window indexed by a monotonically increasing `int` "logical index." Producer may publish indices out-of-order (e.g., set 8 before 5).
 - `SetHead(int newHead)` — **must be called before any `Add`**. Sets the starting logical index. Cannot move backwards.
-- `Add(int index, in T value)` → `bool` — publisher writes value then marker (release). Throws if outside window or head not set.
-- `TryGet(int index, out T value)` → `MonotonicSlotState` — peek without retiring.
-- `TryPeek(out T value)` → `bool` — peek at head if published.
-- `TryDequeue(out T value)` → `bool` — dequeue (retire) head if published.
+- `Add(int index, in T value)` → `bool` — publisher writes value then marker (release). Throws if outside window or head not set; returns `false` for retired (below-head) indices. Re-adding an already-published index is a silent no-op that returns `true` without updating the value.
+- `TryGet(int index, out T value)` → `MonotonicSlotState` — peek without retiring; throws `MonotonicWindowBufferOverflowException` for indices above the window.
+- `TryPeek(out T value)` → `bool` — peek at head if published; throws `InvalidOperationException` if the head was never set.
+- `TryDequeue(out T value)` → `bool` — dequeue (retire) head if published; throws `InvalidOperationException` if the head was never set.
 - `Count` — **WARNING:** counts holes (unpublished indices). NOT the number of dequeue-able items. Do NOT use `if (Count > 0) TryDequeue()`.
 - `HighestPublishedIndex` — highest index published so far.
 
@@ -380,36 +363,37 @@ SPSC (single-producer/single-consumer) fixed-capacity sliding window indexed by 
 #### `MonotonicSlotState` enum
 `NotPublished`, `Published`, `Consumed`, `OutOfRange`, `NotInitialised` (head not set).
 
-### 6.8 Streams
+### 5.8 Streams
 
 #### `SveltoStream`
-Core cursor-based reader/writer over raw memory. Burst-compatible (typeless native queue based on ring-buffer model).
+Core cursor-based reader/writer over caller-provided memory (a linear cursor, not a ring buffer; it owns no memory). Burst-compatible.
 - `Read<T>(in Span<byte>)` → `ref T`, `Write<T>(in Span<byte>, in T)`.
-- `WriteSpan<T>` / `ReadSpan<T>` — length-prefixed span read/write.
+- `WriteSpan<T>` / `ReadSpan<T>` — length-prefixed span read/write; the prefix is a `ushort` byte count, so spans whose serialized size exceeds 65,535 bytes silently truncate on write.
 - `OverwriteAt<T>` — overwrite previously written data.
-- `Clear()`, `Reset()`, `CanAdvance()`.
+- `Clear()` / `Reset()` — both reset only the read/write cursor; `length` and buffer contents are kept.
+- `CanAdvance()` reports at least one byte free; `CanAdvance(int)` / `CanAdvance<T>()` return `false` when *exactly* the requested size remains (strict `<` against capacity), even though `Write` accepts the exact fit. Leave one byte of headroom when gating writes with them.
 
 #### `ManagedStream`
-Wraps a `byte[]` with `SveltoStream`. Read/write typed values and spans over a managed array.
+Wraps a `byte[]` (or `ArraySegment<byte>`) with `SveltoStream`. Read/write typed values and spans over a managed array. `UnsafeRead<T>` allows reading fewer bytes than `sizeof(T)` into a struct (optional destination offset); there is no matching `UnsafeWrite`. `stream.ReadByteArraySegment<T>()` reads a span written by `WriteSpan` as a zero-copy `ByteArraySegment<T>` over the buffer.
 
 #### `UnmanagedStream`
-Wraps a `byte*` with `SveltoStream`. Read/write typed values over native memory.
+Wraps a `byte*` with `SveltoStream`. Read/write typed values over native memory; supports `UnsafeWrite<T>` (partial-size write), but has no `UnsafeRead`.
 
 #### `ByteArraySegment<T>`
-Wraps either `Memory<byte>` or `T[]` as a readable segment. Implicit conversion to `ReadOnlySpan<T>`.
+Wraps either `Memory<byte>` or `T[]` as a readable segment whose `Span` is mutable. Implicit conversion to `ReadOnlySpan<T>`. `T : unmanaged`.
 
 **When to use streams:** Type-safe serialization over raw memory buffers. Useful for network serialization, save data, etc.
 
-### 6.9 Unmanaged/Native Structures
+### 5.9 Unmanaged/Native Structures
 
 #### `NativeBag`
-Heterogeneous type-safe queue over native memory. Can enqueue/dequeue different unmanaged types (must dequeue in order). Burst-compatible.
-- `Enqueue<T>(in T)`, `Dequeue<T>()` → `T`.
+Heterogeneous native-memory queue. Can enqueue/dequeue different struct types (must dequeue in order); callers must preserve the enqueue/dequeue type sequence. Burst-compatible.
+- `Enqueue<T>(in T)`, `Dequeue<T>()` → `T` — `T : struct` (not `unmanaged`) because of Svelto.ECS constraints; no type or sequence validation is performed, so storing managed-containing types is unsafe and undetected.
 - `ReserveEnqueue<T>(out UnsafeArrayIndex)` → `ref T` — reserve space, update later.
 - `AccessReserved<T>(UnsafeArrayIndex)` → `ref T`.
 - `count`, `capacity`, `IsEmpty()`, `Clear()`.
 
-**When to use:** Preallocated memory pool for any unmanaged type. Or a type-erased queue in Burst code.
+**When to use:** A growing native queue or a preallocated native-memory pool for struct values. `count` is bytes, not item count. Like all native-owning structs, copies alias the same allocation: dispose exactly one copy.
 
 #### `NativeDynamicArray`
 Type-erased dynamic array over native memory. Type specified per-method-call via generic parameter.
@@ -422,24 +406,24 @@ Type-erased dynamic array over native memory. Type specified per-method-call via
 #### `NativeDynamicArrayCast<T>`
 Typed wrapper around `NativeDynamicArray` that fixes the type parameter. Cleaner API: `this[int]` → `ref T`, `Add(in T)`, etc.
 
-#### `AtomicNativeBags` (Unity only)
-Collection of `NativeBag` instances, one per Unity job thread. Each thread writes to its own bag without synchronization.
+#### `AtomicNativeBags` (Unity only, `UNITY_NATIVE`)
+Collection of `NativeBag` instances sized `JobsUtility.MaxJobThreadCount + 1` (one per worker thread plus the main thread). Each thread writes to its own bag without synchronization.
 
 #### `SharedNativeInt`
 A native `int` shared across threads/jobs. Atomic `Increment`/`Decrement`/`Add`/`CompareExchange` via `Interlocked`.
 
 #### `SharedDisposableNative<T>`
-Stores an unmanaged `IDisposable` struct in native memory. `Dispose()` calls `value.Dispose()` then frees native memory.
+Stores an unmanaged `IDisposable` struct in native memory (`Allocator.Persistent`). `Dispose()` calls `value.Dispose()` then frees native memory. Copies alias the same allocation; dispose exactly one copy. `value` is the `ref T` accessor (Debug-guarded against use after dispose).
 
-### 6.10 Thread-Safe Wrappers
+### 5.10 Thread-Safe Wrappers
 
 #### `ThreadSafeFasterList<T>`
-Wraps `FasterList<T>` with `ReaderWriterLockSlimEx`. Read operations use read-lock, writes use write-lock.
+Wraps `FasterList<T>` with `ReaderWriterLockSlimEx`. Reads use read-lock, writes use write-lock. **Caveats:** the ref-returning indexer takes the lock only while fetching the reference — the returned `ref T` is used after the lock is released, so it is not safe against concurrent mutation; `GetEnumerator()` enumerates the underlying list without holding any lock. Prefer copy-out (`ToArrayFast`) patterns in contested code.
 
 #### `ThreadSafeStack<T>`
-Wraps `System.Collections.Generic.Stack<T>` with `ReaderWriterLockSlimEx`.
+Wraps `System.Collections.Generic.Stack<T>` with a plain `lock` (not `ReaderWriterLockSlimEx`). `GetValues` returns a `ThreadSafeValues` guard struct that holds the monitor for the enumeration lifetime — always use it with `using` and dispose it promptly.
 
-### 6.11 Helpers
+### 5.11 Helpers
 
 #### `RefWrapper<T>` (readonly struct)
 Wraps a reference type (`class`) as a `struct` for use as a dictionary key. Caches hash at construction.
@@ -452,15 +436,15 @@ Wraps a reference type (`class`) as a `struct` for use as a dictionary key. Cach
 Wraps `string` as a struct. Implicit conversions both ways. Specifically for string dictionary keys.
 
 #### `RefWrapperType` (readonly struct)
-Wraps `System.Type` as a struct. `NativeRefWrapperType` wraps it as a Guid for Burst compatibility.
+Wraps `System.Type` as a struct. `NativeRefWrapperType` maps it to a stable-per-process `Guid` for Burst compatibility; the GUID cache is a static `FasterDictionary` built without locking, so first-time construction of a given wrapper is not safe to race across threads.
 
 #### `HashHelpers` (static)
 Daniel Lemire's `FastMod` for fast modulo. Prime number tables for hash table sizing.
 
 #### `TypeCache<T>` (static)
-Caches `Type`, `Name`, and `isUnmanaged` for type `T`.
+Caches `type` (`Type`), `name`, `fullName`, and `isUnmanaged` for type `T` (all public lowercase fields). Companion: `TypeHash<T>.hash` — Burst-safe type hash used for native-structure type checks.
 
-### 6.12 Sentinel (Debug Thread Safety)
+### 5.12 Sentinel (Debug Thread Safety)
 
 #### `Sentinel`
 Debug-only thread safety validation for `NB`/`MB` buffers. In release, zero-cost.
@@ -470,18 +454,9 @@ Debug-only thread safety validation for `NB`/`MB` buffers. In release, zero-cost
 
 ---
 
-## 7. Utilities
+## 6. Utilities
 
-### `DBC.Common.Check` (static)
-Design By Contract validation. All methods are `[Conditional("__NEVER_DEFINED__")]` in release (zero-cost).
-- `Require(bool, string)` — precondition. Throws `PreconditionException`.
-- `Ensure(bool, string)` — postcondition. Throws `PostconditionException`.
-- `Invariant(bool, string)` — invariant. Throws `InvariantException`.
-- `Assert(bool, string)` — assertion. Throws `AssertionException`.
-- `ParanoidRequire(bool, string)` — always-active precondition (not disabled in release).
-- `UseAssertions` — switch to `Trace.Assert` instead of exceptions.
-
-**When to use:** Validate preconditions at method entry, postconditions at exit, invariants. All compile away in release.
+> `DBC.Common` (Design By Contract) is internal infrastructure, not public API: every Svelto library asserts through its own internal DBC copy, and nothing else should be used for assertions inside Svelto code. What callers observe from the outside: in Debug builds, contract violations surface as the public `DBC.Common` exception types (`PreconditionException`, `PostconditionException`, `InvariantException`, `AssertionException`); in Release the checks are compiled away (zero-cost).
 
 ### `ThreadUtility` (static)
 Thread synchronization utilities (spinning, yielding, sleeping).
@@ -498,18 +473,15 @@ Fast, evenly-distributed `uint` hash from `byte[]`. Seed `0x1337`.
 ### `FastConcatUtility` (static)
 Thread-local `StringBuilder` for allocation-free string concatenation. Extension methods on `string`: `FastConcat(int)`, `FastConcat(string)`, etc.
 
-### `StringBuilderUtils` (static)
-Allocation-free formatting with Unity rich-text color tags. `AppendWithColor(StringBuilder, string, string color)`, etc.
+### `StringBuilderUtils` (static, global namespace)
+Formatting helpers with Unity rich-text color tags. The numeric overloads (`AppendWithColor`/`AppendValue` for `int`, `long`, `float` with fixed decimals, `DateTime` as `HH:mm:ss`) append without `ToString` allocations; the `string` overload allocates via concatenation.
 
 ### `ReaderWriterLockSlimEx` (struct)
 Wraps `ReaderWriterLockSlim` with `NoRecursion`. On WebGL: all methods are no-ops.
 
-### `SeqLock` (internal)
-Sequence lock for "many readers, rare writers" with optimistic reads. Readers do no RMW (no cache-line ping-pong). Writers serialize via `Interlocked`.
-
 ### `WeakAction` / `WeakEvent`
-- `WeakAction` — holds an `Action` as a weak reference to the target. `IsAlive`, `Invoke()`.
-- `WeakEvent` — C# event that doesn't prevent GC of subscribers. Supports `+=`/`-=`.
+- `WeakAction` — holds an `Action`'s target as a weak reference (static delegates stay strong). `IsAlive`, `Invoke()`.
+- `WeakEvent` — multicast holder with `+`/`-` operators (not a C# `event`) that doesn't prevent GC of subscribers; dead handlers are pruned on `Invoke`.
 
 **When to use:** When subscribers may forget to unsubscribe. Prevents memory leaks from event handler references.
 
@@ -536,10 +508,17 @@ Insert custom update functions into Unity's player loop with precise ordering.
 - `RemoveSystem<TCustom>`, `ClearAllCustomSystems`.
 
 ### `Utils.NextPowerOfTwo(int/uint)`
-Returns the next power of two >= input.
+Returns the smallest power of two >= input, with a floor of 2 (`NextPowerOfTwo(0)` and `NextPowerOfTwo(1)` both return 2).
 
 ### `TypeToString<T>` / `TypeToString`
 Caches `typeof(T).ToString()` in a static field for fast type name lookup.
+
+### Other public utilities
+- `TimeUtils.ToNanoseconds(this TimeSpan)` — ticks × 100 conversion (global namespace).
+- `DataToString.DetailString(Dictionary<string,string>)` — formats extra log data with teal color tags.
+- `NetFXCoreWrappers` — reflection compatibility extensions (`GetInterfacesEx`, `IsValueTypeEx`, `GetCustomAttributes`, …) for platforms with limited reflection (global namespace).
+- `FastInvoke<T>` — builds an unboxed field setter for struct fields holding an interface reference.
+- `DebugExtensions.TypeName<T>()` (`Svelto.Common.Internal`) — cached type-name lookup used by profilers.
 
 ---
 
@@ -548,11 +527,12 @@ Caches `typeof(T).ToString()` in a static field for fast type name lookup.
 | Need | Use |
 |------|-----|
 | Dynamic array | `FasterList<T>` |
-| Read-only array view | `FasterReadOnlyList<T>` or `LocalFasterReadOnlyList<T>` (ref struct) |
-| Stable indices with removal | `TombstoneList<T>` |
+| Non-owning list view (mutable refs, no copies) | `FasterReadOnlyList<T>` or `LocalFasterReadOnlyList<T>` (ref struct) |
+| Slot handles invalidated on removal/reuse | `TombstoneList<T>` |
 | Dictionary (managed) | `FasterDictionary<TKey, TValue>` |
 | Dictionary (native/Burst) | `SveltoDictionaryNative<TKey, TValue>` |
-| Dictionary (shared across threads) | `SharedSveltoDictionaryNative` or `ThreadSafeDictionary` |
+| Dictionary with synchronized multi-thread access | `ThreadSafeDictionary` |
+| Aliased native dictionary state (caller provides synchronization) | `SharedSveltoDictionaryNative` |
 | Dictionary with class keys | `FasterDictionary<RefWrapper<string>, TValue>` |
 | Fixed queue (throws on full) | `CircularQueue<T>` |
 | Ring buffer (overwrites oldest) | `RingBuffer<T>` |
@@ -563,7 +543,6 @@ Caches `typeof(T).ToString()` in a static field for fast type name lookup.
 | Native dynamic array | `NativeDynamicArray` / `NativeDynamicArrayCast<T>` |
 | Serialization | `ManagedStream` / `UnmanagedStream` |
 | Fixed-size struct array | `FixedTypedArray4/8/16/32<T>` |
-| Object pooling | `ObjectPool<T>` / `ThreadSafeObjectPool<T>` |
 | Thread-safe list | `ThreadSafeFasterList<T>` |
 | Per-thread bags (jobs) | `AtomicNativeBags` |
 | Shared atomic int | `SharedNativeInt` |
@@ -578,7 +557,7 @@ Every native/unmanaged structure must be disposed in `try/finally`:
 var bag = new NativeBag(Allocator.Persistent);
 try { /* use */ } finally { bag.Dispose(); }
 ```
-This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDisposableNative<T>`, `SveltoDictionaryNative`, `ManagedSlotMap<T>`, and all native strategy-backed structures.
+This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDisposableNative<T>`, `SveltoDictionaryNative`, and all native strategy-backed structures.
 
 ### FasterList
 - `AddAt(index, value)` can create **gaps** — indices between old count and index are `default`.
@@ -586,18 +565,20 @@ This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDi
 - `TrimCount(n)` only changes the logical `count`, not the capacity or buffer.
 - `GetOrCreate(index, factory)` — factory is called **only if** the slot is `default(T)`. Returns `ref T` for in-place mutation.
 - `ToSpan<T>()` / `ToByteSpan<T>()` require `#if NEW_C_SHARP || !UNITY_5_3_OR_NEWER` (not available in older Unity).
-- `CopyFrom` accepts `T[]`, `IList<T>`, `FasterList<T>`, and `FasterReadOnlyList<T>`.
+- `CopyFrom` extension overloads accept `T[]`, `IList<T>`, `FasterList<T>`, and `FasterReadOnlyList<T>`, but are constrained to `T : unmanaged`.
 - Implicit conversions chain: `FasterList<T>` → `FasterReadOnlyList<T>` → `LocalFasterReadOnlyList<T>`.
 
 ### TombstoneList
-- **Handle reuse**: After `RemoveAt(h)`, the next `Add` returns the **same handle** (slot index is reused). A version mechanism prevents stale handles from being valid.
-- **Double-remove throws**: `RemoveAt` on an already-removed handle throws `PreconditionException`.
-- **Invalid handle access**: Both `TombstoneHandle.Invalid` and removed handles throw `PreconditionException`.
-- **Enumerator invalidation**: Any mutation (Add/Remove) during enumeration throws `InvalidOperationException`.
+- **Handle reuse**: After `RemoveAt(h)`, the next `Add` can reuse the same slot index, but it returns a new generation-aware handle. The old `h` remains invalid.
+- **Invalidation**: `RemoveAt`, slot reuse, and `Clear()` invalidate previous handles. Use `Has(h)` before retaining or dereferencing an externally held handle.
+- **Invalid handle access**: `TombstoneHandle.Invalid`, manually constructed bare-index handles, removed handles, and stale handles throw `PreconditionException` when used for access or removal.
+- **Enumerator invalidation**: In Debug builds, Add/Remove during enumeration is detected on the next `MoveNext()` and throws `InvalidOperationException`; the version check is absent in Release.
 - `AddByRef(out handle)` returns `ref T` for in-place initialization.
 - Constructor accepts initial capacity: `new TombstoneList<int>(initialSize)`.
 
 ### SveltoDictionary / FasterDictionary
+- `Add` rejects an existing key and `Set` rejects a missing key only in Debug contract builds. In Release those checks are compiled out: `Add` overwrites an existing value and `Set` can insert a missing key. Use `TryAdd`, `ContainsKey`, or the indexer when behavior must not depend on build configuration.
+- `GetIndex` and `GetValueByRef` throw for a missing key only in Debug contract builds. In Release a missing lookup falls through with index `0`; validate with `TryFindIndex` when absence is possible.
 - `RecycleOrAdd<TConcrete>(key, builder, recycler)` is a **polymorphic recycling** API:
   - If key is **missing**: `builder` is called, value stored, `recycler` NOT called.
   - If key **exists**: **neither** builder nor recycler is called — existing value returned as-is via `ref`.
@@ -611,9 +592,9 @@ This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDi
 - **RingBuffer** = overwriting (drops oldest when full, `count` stays at capacity).
 - **CircularQueue** = throwing (throws when full).
 - `CircularQueue` capacity 4 only holds **3** elements (one slot kept empty to distinguish full/empty).
-- `RingBuffer` enumerator is a **snapshot** — mutations after creation don't affect enumerated items.
+- `RingBuffer` enumerator snapshots the starting cursor and item count, but not the backing values. Later writes—especially overwrite-on-full writes—can change values observed by an existing enumerator.
 - `UnmanagedCircularQueue` / `UnmanagedConcurrentCircularQueue` use `Try*` pattern (return `bool`, no exceptions).
-- The **size overload** `TryEnqueue(value, byteCount)` allows partial writes (e.g., write only 4 bytes of an 8-byte struct).
+- The **size overload** `TryEnqueue(value, byteCount)` allows partial writes (e.g., write only 4 bytes of an 8-byte struct). The caller must ensure `0 <= byteCount <= sizeof(TCell)`; this is only a `Debug.Assert`, and invalid values can corrupt memory in Release.
 
 ### MonotonicWindowBuffer
 - **Head is monotonic** — `SetHead` can only move forward; backward throws `InvalidOperationException`.
@@ -621,7 +602,8 @@ This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDi
 - `Add` returns `false` (not throws) for indices **below** head, but **throws** for indices **above the window**.
 - `Count` includes gaps — it's the span from head to highest published, NOT the number of published items. Do NOT use `if (Count > 0) TryDequeue()`.
 - `TryGet` returns `MonotonicSlotState` enum, not `bool`.
-- `TryPeek`/`TryDequeue` return `false` (not throw) if the head slot hasn't been published yet.
+- `TryPeek`/`TryDequeue` throw `InvalidOperationException` if `SetHead` was never called; with the head set, they return `false` (not throw) while the head slot is still unpublished.
+- `TryDequeue` does not clear the retired slot — for reference types, the value stays referenced until the slot is overwritten.
 
 ### Streams (SveltoStream, ManagedStream, UnmanagedStream)
 - `SveltoStream` requires an **external buffer** passed as `Span<byte>` to every operation — it doesn't own memory.
@@ -634,10 +616,11 @@ This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDi
 ### NativeBag
 - `NativeBag.count` is in **bytes**, not item count. (3 ints = 12 bytes.)
 - `ReserveEnqueue<T>(out UnsafeArrayIndex)` returns `ref T` — reserve space, write to it later via `AccessReserved<T>(idx)`.
-- Can enqueue/dequeue different unmanaged types (must dequeue in order).
+- Can enqueue/dequeue different struct types (must dequeue in order).
 
 ### NativeDynamicArray
 - Methods are **generic per-call**: `Add<int>(1)`, `Get<int>(0)`, `Set<int>(1, 99)`. Use `NativeDynamicArrayCast<T>` for a typed wrapper that eliminates per-call generics.
+- In DEBUG, `Get<T>` validates the index against `Count<T>()` while `Set<T>` validates against `Capacity<T>()` — writing reserved-but-not-yet-added slots via `Set` is legal, reading them via `Get` is not.
 - `AddWithoutGrow<T>(item)` throws if no space — use when you want manual growth control.
 - `ToManagedArray<T>()` copies to a managed array.
 - In DEBUG, type consistency is validated via hash.
@@ -649,7 +632,7 @@ This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDi
 - `MB<T>.Clear()` modifies the **backing array in-place** (zeros it).
 - `NB<T>.Create` requires you to **manually allocate and free** both data and state pointers.
 - `ManagedStrategy.FastClear()` for **reference types** nulls the slots (prevents GC leaks); for **value types** it may be a no-op.
-- `ManagedStrategy.AsBytesPointer()` / `SerialiseFrom()` throw `NotImplementedException` — only available on native strategies.
+- `ManagedStrategy.AsBytesPointer()` / `SerialiseFrom()` and `NativeStrategy.AsBytesPointer()` / `SerialiseFrom()` currently throw `NotImplementedException`.
 - `ShiftRight(start, end)` moves `[start..end-1]` → `[start+1..end]`. `ShiftLeft(start, end)` moves `[start+1..end]` → `[start..end-1]`.
 
 ### MemoryUtilities Alignment
@@ -658,16 +641,17 @@ This applies to: `NativeBag`, `NativeDynamicArray`, `SharedNativeInt`, `SharedDi
 - `Align4(0) = 0` (zero is already "aligned").
 
 ### SharedNativeInt
-- Atomic operations return the **previous** value: `Increment()` returns old, `Add(n)` returns old, `CompareExchange(new, comparand)` returns old.
+- `Increment()`, `Decrement()`, and `Add(n)` return the **new** value. `CompareExchange(new, comparand)` returns the previous value.
 - `Set(n)` uses `Volatile.Write` (non-atomic write visible to other threads).
 
 ### Allocator Parameter
-Native structures accept an `Allocator` enum. Common values: `Persistent` (long-lived, must dispose), `Managed` (GC-managed), `Temp` (frame-scoped). On Unity, these map to `Unity.Collections.Allocator`; off Unity, to `Marshal.AllocHGlobal`.
+Native structures accept an `Allocator` enum. On Unity, `Temp`, `TempJob`, and `Persistent` map to their Unity allocator counterparts, while `Managed` maps to Unity `Persistent` when passed to `MemoryUtilities.NativeAlloc`. Outside Unity, native allocation uses `Marshal.AllocHGlobal` regardless of the enum value, so no temporary lifetime is automatic.
 
 ### ManagedSlotMap
 - **Versioned handles**: Reused slots get incremented version. Old handles remain invalid even after the slot is reused.
 - `Add(T)` returns `ValueIndex`. `Remove(ValueIndex)` invalidates it. `Has(ValueIndex)` checks validity.
-- Must `Dispose()` — it's `IDisposable`.
+- Handles are not tied to a particular map, and indexer/removal validation is Debug-only. Do not construct or transfer handles between maps; call `Has` before uncertain access in Release.
+- Call `Dispose()` explicitly when the map is no longer needed; the type does not implement `IDisposable`.
 
 ### No Setup/Teardown in Tests
 Tests are self-contained: each constructs, uses, and disposes inline. No shared state. This is the recommended pattern for testing Svelto data structures.

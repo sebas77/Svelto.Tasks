@@ -1,6 +1,8 @@
 # Svelto.Tasks - AI Developer Guide
 
-> **Note:** `AGENTS.md` (repo root) distills the essentials of this guide. When details conflict, this file is authoritative — update it first, then mirror into AGENTS.md.
+> **Note:** Package-root `AGENTS.md` is the concise implementation entry point. This file is the authoritative API and behavior reference; update it first when behavior changes.
+
+> **Scope disclaimer:** Document only the **public interface** of the library. Internal types (e.g., `DBC.Tasks.Check`) are out of scope: mention them only when they are externally observable through public behavior, such as exceptions thrown by public APIs.
 
 > **Purpose:** A library to run serial and parallel asynchronous tasks (coroutines) in C#/Unity. Platform-agnostic core with Unity-specific extensions. Tasks are iterator-based (`IEnumerator`), not `async`/`await`-based, giving precise control over execution flow, scheduling, and threading.
 
@@ -33,14 +35,14 @@ Key concepts:
 | Namespace | Contains |
 |-----------|----------|
 | `Svelto.Tasks` | Core interfaces (`ISveltoTask`, `IRunner`), `TaskContract`, extensions |
-| `Svelto.Tasks.Lean` | Lean task wrappers, steppable/multi-thread/sync runners for Lean |
+| `Svelto.Tasks.Lean` | Lean task wrappers, steppable/multi-thread/sync runners, and `TaskSynchronizationContext` |
 | `Svelto.Tasks.ExtraLean` | ExtraLean task wrappers, runners for ExtraLean |
 | `Svelto.Tasks.ExtraLean.Struct` | Struct-generic ExtraLean variants |
 | `Svelto.Tasks.FlowModifiers` | Flow modifier implementations |
 | `Svelto.Tasks.Internal` | Core engine (`SveltoTaskRunner`, `IFlowModifier`, `ContinuationPool`) |
 | `Svelto.Tasks.Enumerators` | Enumerator utilities, `Continuation`, `WaitForSecondsEnumerator`, etc. |
 | `Svelto.Tasks.Parallelism` | Parallel job/task collections, `ISveltoJob` |
-| `Svelto.Tasks.Parallelism.ExtraLean` | `MultiThreadedParallelTaskCollection`, `IParallelTask`, Burst/Job collection variants |
+| `Svelto.Tasks.Parallelism.ExtraLean` | `MultiThreadedParallelTaskCollection`, `IParallelTask`, job collections, and `MultiThreadedBurstParallelTaskCollection<TTask>` |
 
 ---
 
@@ -65,25 +67,27 @@ Result of a single `Step` call:
 
 ### `TaskContract` (readonly struct)
 **The central value type** that Lean tasks yield from `IEnumerator<TaskContract>.Current`. It's a discriminated union (internal `States` enum) that can carry:
-- A **primitive value** (`int`, `uint`, `ulong`, `float`, `bool`, `string`) — return a value to the caller.
+- An **inline scalar value** (`int`, `uint`, `ulong`, `long`, `float`, `bool`) — return a value to the caller.
+- A **string payload** — stored in the reference field.
 - A **reference** (`object`) — return a reference to the caller.
-- An **exception** — propagate an error.
+- An **exception payload** — stored and retrieved with `ToRef<Exception>()`; constructing this payload does not throw it.
 - A **continuation** — wait for another task.
 - A **break signal** (`Break.It` / `Break.AndStop`) — stop the task.
 - A **yield signal** (`Yield.It`) — yield execution to the next task/frame.
-- A **continue signal** (`Continue.It`) — spawn a child task on the SAME runner as the parent and wait.
+- A **same-runner child** (`child.Continue()`) — schedule a child on the parent runner and wait.
+- An **immediate-continue signal** (`TaskContract.Continue.It`) — ask a custom enumerator for another `MoveNext()` in the same scheduler pass.
 - A **nested enumerator** — run a child enumerator inline.
 - A **fire-and-forget enumerator** — run a child but don't wait.
 
-**Public constructors:** `(int)`, `(uint)`, `(ulong)`, `(float)`, `(bool)`, `(string)`, `(Exception)`.
-**Implicit operators:** `int`, `long`, `float`, `Continuation`, `Break`, `Yield`, `Continue`, `string` → `TaskContract`.
-**Extraction methods:** `ToInt()`, `ToUlong()`, `ToFloat()`, `ToBool()`, `ToRef<T>()`, `FromReference(object)`.
+**Public constructors:** `(int)`, `(uint)`, `(ulong)`, `(long)`, `(float)`, `(bool)`, `(string)`, `(Exception)`.
+**Implicit operators:** `int`, `ulong`, `long`, `float`, `Continuation`, `Break`, `Yield`, `Continue`, `string` → `TaskContract`.
+**Extraction methods:** `ToInt()`, `ToUInt()`, `ToUlong()`, `ToLong()`, `ToFloat()`, `ToBool()`, `ToRef<T>()`; use `FromReference(object)` for an arbitrary reference.
 
 ### `TaskContract.Yield`
 Sentinel for yielding one frame/iteration. Usage: `yield return TaskContract.Yield.It;` (or just `yield return Yield.It;` with `using static`).
 
 ### `TaskContract.Continue`
-Sentinel to continue a child task on the **same runner** as the parent. Usage: `yield return someEnumerator.Continue();`
+`TaskContract.Continue.It` requests an immediate next `MoveNext()` for a custom `IEnumerator<TaskContract>` implementation. It is not the `.Continue()` extension: use `yield return someEnumerator.Continue();` to schedule a child task on the same runner and wait for it.
 
 ### `TaskContract.Break`
 Sentinel to break out of a task loop.
@@ -135,7 +139,7 @@ A manually-stepped runner. You call `Step()` each frame/tick. Uses `StandardFlow
 - `Stop()` — marks running tasks for cancellation on the next step; queued tasks wait until automatic unstop.
 - `Flush()` — synchronously disposes running and queued tasks, then allows reuse.
 - `Reset()` — equivalent to `Flush()` for all SteppableRunner variants.
-- `UseFlowModifier<TFlowModifier>()` — set the flow modifier strategy.
+- `UseFlowModifier(flowModifier)` — set the flow modifier strategy with an instance, such as `new TimeBoundFlow(5.0f)`.
 - Implements `IEnumerator`/`IEnumerator<TaskContract>` itself, so it can be yielded as a task inside another runner.
 
 **Variants:**
@@ -150,7 +154,7 @@ A manually-stepped runner. You call `Step()` each frame/tick. Uses `StandardFlow
 Runs tasks on a **dedicated background thread**. One thread per runner (all tasks on a runner share the same thread).
 - **Constructors:** `(string name, bool relaxed, bool tightTasks, uint initialNumberOfTasks)` or `(string name, uint intervalInMs, uint initialNumberOfTasks)`.
   - `relaxed: true` — less reactive to new tasks, lower CPU.
-  - `tightTasks: true` — the worker stops volunteering periodic yields; use it for cache-friendly tight loops that should own the thread.
+  - `tightTasks: true` — skips periodic waits while tasks are active, which may improve throughput for deliberately tight/cache-friendly workloads but can consume a core aggressively.
   - `intervalInMs` — starts a low-CPU runner that ticks at the given interval.
   - `initialNumberOfTasks` — pre-sizes the internal task containers to avoid growth allocations.
 - Uses a "quick locking" spin mechanism for reactive pause/resume.
@@ -197,7 +201,7 @@ stop the runner.
 
 ## 4. Flow Modifiers
 
-Flow modifiers control how a runner iterates its task list each `MoveNext` tick. Set via `runner.UseFlowModifier<TFlowModifier>()`.
+Flow modifiers control how a runner iterates its task list each `MoveNext` tick. Set one with an instance: `runner.UseFlowModifier(new StaggeredFlow(2))`.
 
 ### `IFlowModifier`
 - `bool CanMoveNext<T>(ref int nextIndex, int coroutinesCount, bool hasCoroutineCompleted)` — decide whether to continue to the next task in the same tick.
@@ -264,12 +268,12 @@ yield return backgroundTask.Forget();
 Runs a task synchronously to completion on a thread-local `SyncRunner`.
 ```csharp
 enumerator.Complete();  // blocks until done
-enumerator.Complete(timeoutMs: 5000);  // with timeout
+enumerator.Complete(5000);  // with timeout (parameter name: MSTimeOut)
 ```
-Also works on `ISteppableRunner`: `runner.WaitForTasksDone()` / `WaitForTasksDoneRelaxed()`.
+Also works on runners: `MultiThreadRunner.WaitForTasksDone(timeoutMs)` and, for any `ISteppableRunner`, `WaitForTasksDone(frequency, timeoutMs)` / `WaitForTasksDoneRelaxed(timeoutMs)` (both extension methods).
 
 ### `.ToTask<T>()` (Lean only)
-Converts a Lean iterator into an awaitable `ValueTask<T>` that polls the continuation on the thread pool. Requires a runner and `T` must be a reference type (`TaskContract` cannot box a generic value).
+Converts a Lean iterator into an awaitable `ValueTask<T>`. It schedules the iterator on the supplied runner and repeatedly awaits `Task.Yield()` while polling its continuation. `T` must be a reference type because the result is read through `TaskContract.ToRef<T>()`.
 ```csharp
 string result = await enumerator.ToTask<string>(runner);
 ```
@@ -336,7 +340,8 @@ Runs a collection of `IParallelTask` across N real OS threads (one `MultiThreadR
 - `isRunning { get; }`.
 
 **Variants:**
-- `Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection` / `<TTask>` — the only flavor. Tasks are stepped as plain `IEnumerator`s and may yield only ExtraLean wait signals (`null`, `Break.It`, `Break.AndStop`): continuations, return values and `Continue.It` have nowhere to go on a worker thread, and compiler-generated `IEnumerator<TaskContract>` iterators box every `TaskContract` through the non-generic `Current`, so they cannot run here. Write tasks as hand-written `IParallelTask` implementations that yield only wait signals.
+- `Svelto.Tasks.Parallelism.ExtraLean.MultiThreadedParallelTaskCollection` / `<TTask>` steps plain `IEnumerator` `IParallelTask` implementations on worker runners. They may yield only ExtraLean wait signals (`null`, `Break.It`, `Break.AndStop`); continuations and return values have nowhere to go on a worker thread.
+- `MultiThreadedBurstParallelTaskCollection<TTask>` dispatches atomically claimed ranges to `unmanaged` `IBurstParallelTask` values. `Add(prototype, iterations, elementsPerTask)` configures the ranges; run the returned Lean enumerator from `Run()`, then dispose the collection after its final use.
 
 ### `IParallelTask`
 - Inherits `IEnumerator, IDisposable`.
@@ -374,10 +379,13 @@ Abstract base for cross-thread signaling. Self-referential generic (`T : WaitFor
 
 **When to use:** Cross-thread synchronization where one thread waits for a signal from another.
 
+**Current behavior:** the implementation always resets after a successful signal; the `autoreset` constructor argument is presently not applied. Do not rely on it to retain the signaled state.
+
 #### `WaitForState<T, W>`
 Abstract state-machine waiter. Subclass with an enum `W` of states.
-- `Generate()` → `WaitForEnumerator` — blocks until the state matches a target.
-- `SignalStateChange(W newState)` — update the state.
+- `Generate()` → `WaitForEnumerator` — creates a reusable wait controller.
+- `WaitForEnumerator.WaitFor(W state)` → `IEnumerator` — begins waiting for a target state.
+- `WaitForEnumerator.SignalStateChange(W state)` — updates the shared state. The outer `WaitForState` method is private.
 
 ### Action Wrappers
 #### `LocalFunctionEnumerator` / `LocalFunctionEnumerator<T>`
@@ -441,8 +449,9 @@ Same concept but for plain `IEnumerator`.
 
 ### `MultiThreadRunnerPool` (ExtraLean)
 A pool of independent ExtraLean `MultiThreadRunner`s. Each scheduled task is a root task dispatched round-robin to one of the inner runners. Runner-local continuation indices cannot be transferred between different inner runners, so this pool is intended for independently scheduled root tasks.
-- Constructor: `(string name, int threadCount, uint initialNumberOfTasks, ...)`.
-- `AddTask(...)` / `Stop()` dispatch to the next inner runner; `Dispose()` disposes every inner runner.
+- Non-generic (class `IEnumerator` tasks): `(string name, int threadCount, uint initialNumberOfTasks = 3)` or `(string name, uint initialNumberOfTasks = 3)` — inner runners are resumed in the constructor and use `tightTasks: false`.
+- Generic struct variant `MultiThreadRunnerPool<TTask>` (`TTask : struct, IEnumerator, IDisposable`): `(string name, int threadCount, bool tightTasks = false)` or `(string name, bool tightTasks = false)`.
+- `AddTask(...)` throws `MultiThreadRunnerPoolException` for child (non-root) tasks and after disposal; `Stop()` stops every inner runner (tasks added while stopping run after the runner unstops); `Dispose()` disposes every inner runner and is idempotent.
 - The owner must guarantee that no `AddTask` or `Stop` calls overlap disposal.
 
 **When to use:** When many independent background tasks should share a fixed set of worker threads instead of one runner per concern.
@@ -460,6 +469,9 @@ Extension methods that let `.NET Tasks` and `ValueTasks` be awaited through a Sv
 Custom awaiters (`ICriticalNotifyCompletion`) that wrap the real `TaskAwaiter`/`ValueTaskAwaiter`. When the awaited operation completes, the async continuation is enqueued on the chosen Svelto runner, so code after the `await` runs on the runner's thread, interleaved with its other tasks. If the runner is no longer valid at completion time, the continuation is deliberately never run and the async task stays pending.
 
 **When to use:** When you need to interop with `async`/`await` code while keeping continuation affinity to a Svelto runner. Note the direction: these awaiters bring .NET Tasks *into* Svelto; use `ToTask<T>()` to bring iterators out to .NET.
+
+### `TaskSynchronizationContext`
+`Svelto.Tasks.Lean.TaskSynchronizationContext` hosts .NET `async` methods on an existing Lean runner. Construct it with an `IGenericLeanRunner`, then call `Run(Func<Task>)` or `Run<T>(Func<Task<T>>)`. Capturing incomplete awaits resume through a permanent pump task on a later runner tick; completed awaits run inline and `ConfigureAwait(false)` bypasses the context. Disposing the runner abandons queued continuations, so hosted tasks remain incomplete.
 
 ---
 
@@ -500,8 +512,7 @@ Task names are normalized (`Type.Method` for iterators; wrapper enumerators reso
 
 ## 14. DBC (Design By Contract)
 
-### `DBC.Tasks.Check` (static)
-Same pattern as `Svelto.Common.DBC.Common.Check` but in the `DBC.Tasks` namespace. Precondition/postcondition/invariant/assertion checks. All compile away in release (`DISABLE_CHECKS`).
+`DBC.Tasks` is internal infrastructure, not public API. In Debug builds, contract violations surface as the public `DBC.Tasks` exception types (`PreconditionException`, `PostconditionException`, `InvariantException`, `AssertionException`); in Release the checks are compiled away (`DISABLE_CHECKS`). Each Svelto library carries its own internal DBC copy — do not reference `DBC.Tasks` from user code.
 
 ---
 
@@ -574,7 +585,7 @@ IEnumerator<TaskContract> ParentTask()
 ### Run synchronously
 ```csharp
 myTask.Complete();  // blocks until done
-myTask.Complete(timeoutMs: 5000);  // with timeout
+myTask.Complete(5000);  // blocks with timeout (parameter name: MSTimeOut)
 ```
 
 ### Reusable iterator block
@@ -593,7 +604,7 @@ IEnumerator<TaskContract> ReusableWork()
 ```csharp
 var jobCollection = new MultiThreadedParallelJobCollection<MyJob>();
 jobCollection.Add(myJob, iterations: 10000);
-jobCollection.RunOn(parallelRunner);
+jobCollection.Run().Complete(5000);
 ```
 
 ### Serial task collection
@@ -617,8 +628,7 @@ parallel.RunOn(runner);  // all run concurrently, yielding to each other
 ### Time-bound flow
 ```csharp
 var runner = new SteppableRunner("Bounded");
-runner.UseFlowModifier<TimeBoundFlow>();  // won't exceed default time
-// or: new TimeBoundFlow(5.0f) for 5ms max per tick
+runner.UseFlowModifier(new TimeBoundFlow(5.0f)); // 5ms max per tick
 ```
 
 ---
@@ -682,7 +692,7 @@ IEnumerator<TaskContract> Parent() {
 ### TaskContract: yielding and extracting typed values
 ```csharp
 IEnumerator<TaskContract> SubEnumerator(int i, int total) {
-    do { yield return TaskContract.Yield.It; } while (++i < count);
+    do { yield return TaskContract.Yield.It; } while (++i < total);
     yield return i;  // int is stored inline in TaskContract; retrieve via .ToInt()
 }
 // To read the result after continuation:
@@ -700,6 +710,7 @@ TaskContract TestContinuation(int i) {
         case 0: return TestEnum().Continue();     // continue another task
         case 1: return TaskContract.Continue.It;   // immediate MoveNext (no yield)
         case 2: return AnotherTask().Continue();
+        default: return TaskContract.Yield.It;
     }
 }
 ```
@@ -736,10 +747,11 @@ IEnumerator<TaskContract> FirstEnum() {
 
 ### MultiThreadRunner specifics
 - `new MultiThreadRunner("name")` — starts immediately, uses default spinning.
-- `new MultiThreadRunner("name", relaxed: true, tightTasks: false)` — relaxed: less reactive, lower CPU. tightTasks: for cache-friendly tasks, forces periodic yields.
+- `new MultiThreadRunner("name", relaxed: true, tightTasks: false)` — relaxed mode is less reactive and lowers idle CPU use; `tightTasks: false` also permits periodic waits while work is active.
+- `tightTasks: true` skips the active-work periodic waits for deliberately tight/cache-friendly workloads and can use a core more aggressively.
 - `new MultiThreadRunner("name", intervalInMs)` — low-CPU runner that ticks at the given interval.
 - `Pause()` / `Resume()` — thread-safe; counter stays frozen while paused.
-- `WaitForTasksDone(timeoutMs)` — returns `true` if all tasks completed within timeout.
+- `WaitForTasksDone(timeoutMs)` — returns `true` if all tasks completed within timeout; `0` (default) waits unbounded.
 - `Flush()` blocks until reset cleanup completes, rejects task admission during that window, and preserves the worker for reuse.
 - `Dispose()` signals terminal reset and joins the worker. Repeated disposal is safe; scheduling afterward throws `MultiThreadRunnerException`.
 - `Flush()` and `Dispose()` throw when called from the worker thread, avoiding a self-wait/self-join deadlock.
@@ -765,11 +777,11 @@ runner.UseFlowModifier(new TimeSlicedFlow(20f));
 ```
 - `SerialFlow` does NOT guarantee execution order of queued tasks — "tasks removed are shuffled." Do not rely on FIFO ordering with `SerialFlow`.
 - `StaggeredFlow(n)` limits to N tasks per `Step()`. If there are more tasks, excess tasks are starved until others complete.
-- `TimeBoundFlow(ms)` and `TimeSlicedFlow(ms)` use `Stopwatch` to bound time. TaskCollections count as a single task.
+- `TimeBoundFlow(ms)` and `TimeSlicedFlow(ms)` check a `Stopwatch` between task steps. They cannot preempt a long `MoveNext()`, so a single step can exceed the requested budget. TaskCollections count as a single runner task.
 
 ### Task Collections
-- **Cannot `Add()` while running** — throws `PreconditionException`.
-- `Clear()` removes all tasks. `Reset()` resets collection AND calls `.Reset()` on each task (tasks must support `Reset`; compiler-generated iterators do NOT support `Reset`).
+- Adding while running is unsupported; Debug DBC builds throw `PreconditionException`.
+- `Clear()` disposes/removes all tasks. `Reset()` trims child stacks and calls `.Reset()` on each retained root. `NotSupportedException` is swallowed, but a completed compiler-generated iterator still cannot restart; reusable collections therefore need resettable custom root enumerators.
 - `ParallelTaskCollection` constructor takes a name and optional capacity: `new ParallelTaskCollection("name", 4)`.
 - `SerialTaskCollection` runs tasks sequentially: `[1, -1, 2, -2, 3, -3]`.
 - `ParallelTaskCollection` runs tasks concurrently: one `MoveNext` progresses ALL tasks by one step each: `[1, 2]` then `[-1, -2]`.
@@ -789,17 +801,15 @@ using (var collection = new MultiThreadedParallelJobCollection<TestJob>("test", 
 }
 // Every results[i] == 1
 ```
-- Default thread count: `Math.Max(1, Environment.ProcessorCount - 2)`.
-- `Add(job, iterations)` splits `iterations` across threads. Remainder is distributed.
-- Constructor: `(name, threadCount, tightTasks)`. Worker threads start lazily on the first
-  `MoveNext`/`Complete`; `tightTasks: true` forces periodic yields inside worker threads
-  so cache-saturating tasks don't starve other threads.
+- `Add(job, iterations)` creates one equal slice per worker and one extra remainder slice when necessary.
+- Constructor: `(name, numberOfThreads, tightTasks)`. Worker threads are created by the constructor; job scheduling starts on the first `MoveNext()`/`Complete()`.
+- `tightTasks: false` lets each worker periodically wait so other threads can run. `tightTasks: true` skips those waits for intentionally tight workloads.
 - `onComplete` event fires when all tasks done.
 - `Dispose()` disposes ALL added tasks (even if never started).
 
 ### MultiThreadedParallelTaskCollection
 - Constructor: `(name, threadCount, tightTasks)`.
-- `Add(task)` while running throws `MultiThreadedParallelTaskCollectionException`.
+- Adding while running is unsupported; Debug DBC builds throw `PreconditionException`.
 - `Stop()` stops execution; `isRunning` becomes false.
 - `Reset()` clears tasks, allows reuse.
 - 4 tasks that each wait 1 second finish in ~1 second (parallel), not ~4 seconds (serial).
@@ -817,8 +827,8 @@ IEnumerator<TaskContract> MyIterator(PoolData data) {
 var pool = new IteratorBlockPool<PoolData>(MyIterator, "TestPool");
 var (data1, block1) = pool.Get();
 data1.value = 0;  // MUST initialize data before use
-block1.MoveNext();  // data.value = 1
-block1.MoveNext();  // data.value = 2, block releases to pool
+bool stillRunning = block1.MoveNext(); // data.value = 1; wrapper observes Break.It and returns false
+block1.Dispose();                     // Lean wrapper returns the break-completed block to the pool
 
 // Get again — SAME objects recycled!
 var (data2, block2) = pool.Get();
@@ -831,19 +841,12 @@ Assert.That(block2, Is.SameAs(block1)); // recycled iterator block
 - Both Lean and ExtraLean pools support **concurrent `Get()`/`Return()`** and may be shared across worker runners. `Dispose()` must be called **exactly once**, only after all borrowed blocks have returned and worker activity is quiescent — **concurrent disposal is unsupported**.
 
 ### Awaiter / async interop
-```csharp
-async Task SomeAsyncOperation(SteppableRunner runner) {
-    await Task.Delay(10).RunOn(runner);  // Svelto awaiter extension
-    continued = true;
-    runner.Stop();
-    await Task.Delay(10).RunOn(runner);  // this continuation should NOT run after Stop
-}
-```
-- When the runner is stopped, queued continuations do **NOT** execute. `Task.IsCompleted` stays `false`.
-- The awaiter posts `async` continuations back onto the Svelto runner via `ContinuationEnumerator`.
+- The awaiter posts `async` continuations back onto the Svelto runner via `ContinuationEnumerator` after the wrapped .NET operation completes.
+- If the runner is invalid at that moment (for example, disposed), no Svelto task is admitted and the awaiting async operation remains pending.
+- `Stop()` is not terminal. A continuation queued while a runner is stopping can execute after the runner automatically unstops. For a steppable runner this requires subsequent `Step()` calls; stopping and then ceasing to step merely leaves the continuation queued.
 
 ### ExtraLean task restrictions
-- ExtraLean tasks can yield only: `null`, `Yield.It`, `Break.It`, `Break.AndStop`, or `yield break`.
+- ExtraLean tasks can yield only: `null`/`Yield.It` (the same null sentinel), `Break.It`, `Break.AndStop`, or `yield break`.
 - Yielding anything else throws `SveltoTaskException` with message: "ExtraLean enumerator can return only null, Yield.It, Break.It, Break.AndStop and yield break".
 - The exception faults the task and is reported through `TaskExceptionStrategy.Current`. The built-in strategy logs
   it through `Console.LogException`, which also raises `Console.onException`.

@@ -941,3 +941,41 @@ That one million rotating points can be simulated on the CPU every frame while t
 Two areas: the .NET Tasks interop (`SveltoAwaiter`, `TaskSynchronizationContext`) and the Burst-oriented job path inside Unity. They work and the examples demonstrate them, but consider their APIs more fluid than the rest until real-world feedback comes in.
 
 Everything is on GitHub in the [sebas77/Svelto.Tasks-Repo](https://github.com/sebas77/Svelto.Tasks-Repo) repository. If you have questions or spot problems, leave a comment here or join our populated [Discord server](https://discord.gg/JTUZuJcME5). Feedback on the beta is not only welcome, it is necessary!
+
+## Installation
+
+Svelto.Tasks reaches you in three forms: the source code in this repository, NuGet packages for plain .NET projects, and OpenUPM packages for Unity. `Svelto.Tasks` is accompanied by its low-level dependency `Svelto.Common` in every channel.
+
+### Unity, through OpenUPM
+
+Add the packages to your project through the OpenUPM registry, either with the CLI:
+
+```powershell
+openupm add com.sebaslab.svelto.tasks
+```
+
+or by adding the scoped registry and the dependencies to `Packages/manifest.json`:
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": ["com.sebaslab"]
+    }
+  ],
+  "dependencies": {
+    "com.sebaslab.svelto.common": "3.7.3",
+    "com.sebaslab.svelto.tasks": "2.0.0-preview.5"
+  }
+}
+```
+
+### Plain .NET, through NuGet
+
+```powershell
+dotnet add package Svelto.Tasks --version 2.0.0-preview.5
+```
+
+`Svelto.Common` is restored automatically as a dependency. However, even on plain .NET I recommend consuming the source code directly whenever your setup allows it: both libraries are designed around conditional compilation (debug checks, profiling instrumentation, the Unity/Burst paths) and around being read, debugged and evolved together with your code. The packages are a convenience for quick integration — source-first is the workflow the libraries are built for.

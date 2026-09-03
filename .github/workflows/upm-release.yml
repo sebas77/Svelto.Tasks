@@ -28,8 +28,8 @@ jobs:
           PACKAGE_DIR="$RUNNER_TEMP/svelto-tasks-upm"
           rm -rf "$PACKAGE_DIR"
           mkdir -p "$PACKAGE_DIR"
-          rsync -r --exclude '.git' --exclude '.github' --exclude '.aiguides' --exclude '.gitignore' \
-            --exclude 'PROPOSALS' --exclude 'Svelto.Tasks.Tests~' --exclude 'AGENTS.md' \
+          rsync -r --exclude '.git' --exclude '.github' --exclude '.gitignore' \
+            --exclude 'PROPOSALS' --exclude 'Svelto.Tasks.Tests~' \
             --exclude '*.csproj' --exclude '*.nuspec' --exclude '*.targets' \
             --exclude 'bin' --exclude 'obj' --exclude 'bin~' --exclude 'obj~' \
             Packages/com.sebaslab.svelto.tasks/ "$PACKAGE_DIR/"

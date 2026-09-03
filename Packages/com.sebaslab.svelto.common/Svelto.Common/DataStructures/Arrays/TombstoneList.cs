@@ -3,7 +3,6 @@
 #endif
 
 using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Svelto.DataStructures
@@ -11,30 +10,40 @@ namespace Svelto.DataStructures
     public struct TombstoneItem<T>
     {
         public T Item;
-        public int NextUnusedIndex; // 0 indicates the cell is used, otherwise points to the next unused cell (+1)
+        // A non-negative value is the next free slot in the base-one free list. A negative value marks a live
+        // slot and carries its generation token. Reusing this field preserves the existing item layout.
+        public int NextUnusedIndex;
     }
 
     public readonly struct TombstoneHandle : IEquatable<TombstoneHandle>, IComparable<TombstoneHandle>
     {
-        public static readonly TombstoneHandle Invalid = new TombstoneHandle(-1);
+        public static readonly TombstoneHandle Invalid = new TombstoneHandle(-1, 0);
 
-        public TombstoneHandle(int index)
+        // A bare index cannot identify a slot after it has been recycled. Preserve source compatibility, but
+        // reserve generation zero for manually constructed/default handles so TombstoneList never accepts them.
+        public TombstoneHandle(int index) : this(index, 0)
+        {
+        }
+
+        internal TombstoneHandle(int index, int generation)
         {
             this.index = index;
+            _generation = generation;
         }
 
         public static explicit operator int(TombstoneHandle handle) => (int)handle.index;
         public static explicit operator uint(TombstoneHandle handle) => (uint)handle.index;
 
         public readonly int index;
-        public bool IsInvalid => index == Invalid.index;
+        // Full validity depends on the owning TombstoneList slot; call TombstoneList.Has for that check.
+        public bool IsInvalid => index < 0 || _generation == 0;
 
-        public static bool operator ==(TombstoneHandle left, TombstoneHandle right) => left.index == right.index;
-        public static bool operator !=(TombstoneHandle left, TombstoneHandle right) => left.index != right.index;
+        public static bool operator ==(TombstoneHandle left, TombstoneHandle right) => left.index == right.index && left._generation == right._generation;
+        public static bool operator !=(TombstoneHandle left, TombstoneHandle right) => (left == right) == false;
 
         public bool Equals(TombstoneHandle other)
         {
-            return index == other.index;
+            return this == other;
         }
 
         public override bool Equals(object obj)
@@ -44,13 +53,21 @@ namespace Svelto.DataStructures
 
         public override int GetHashCode()
         {
-            return index;
+            unchecked
+            {
+                return (index * 397) ^ _generation;
+            }
         }
 
         public int CompareTo(TombstoneHandle other)
         {
-            return index.CompareTo(other.index);
+            var compare = index.CompareTo(other.index);
+            return compare != 0 ? compare : _generation.CompareTo(other._generation);
         }
+
+        internal int generation => _generation;
+
+        readonly int _generation;
     }
 
     /// <summary>
@@ -95,6 +112,19 @@ namespace Svelto.DataStructures
 
                 return ref _buffer[index.index].Item;
             }
+        }
+
+        /// <summary>
+        /// Returns true only while this list owns the exact slot generation represented by the handle.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Has(TombstoneHandle handle)
+        {
+            if (handle.IsInvalid || (uint)handle.index >= (uint)_buffer.Length)
+                return false;
+
+            var slotMetadata = _buffer[handle.index].NextUnusedIndex;
+            return IsLive(slotMetadata) && GetGeneration(slotMetadata) == handle.generation;
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -162,7 +192,8 @@ namespace Svelto.DataStructures
             _largestUsedIndex = 0;
             _version++;
 #endif
-            Array.Clear(_buffer, 0, _buffer.Length); //must reset the NextUnusedIndex flags too
+            // Do not reset _nextGeneration: a handle issued before Clear must not match a slot issued afterwards.
+            Array.Clear(_buffer, 0, _buffer.Length);
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -175,22 +206,11 @@ namespace Svelto.DataStructures
             _buffer = newList;
         }
 
-        [Conditional("ENABLE_DEBUG_CHECKS")]
         void ValidateIndexAndTombstone(TombstoneHandle index)
         {
-            DBC.Common.Check.Require(index.IsInvalid == false, "index must be not negative");
-
-            // this must always be validated to guarantee safety even without ENABLE_DEBUG_CHECKS
-            DBC.Common.Check.Require(index.index < _buffer.Length,
-                $"out of bound index {index} - capacity {_buffer.Length}");
-
-#if ENABLE_DEBUG_CHECKS
-            DBC.Common.Check.Require(index.index < _largestUsedIndex,
-                $"out of bound index {index} - largest used index {_largestUsedIndex}");
-#endif
-
-            DBC.Common.Check.Require(_buffer[index.index].NextUnusedIndex == 0,
-                $"trying to access a tombstone at index {index} that is already removed");
+            // This remains active in Release: a debug-only guard would let a stale handle access a replacement item.
+            if (Has(index) == false)
+                throw new DBC.Common.PreconditionException($"invalid, removed, or stale tombstone handle at index {index.index}");
         }
         
         //then if we want to add a new item, we check if there are any unused slots from the linked list
@@ -209,14 +229,12 @@ namespace Svelto.DataStructures
 
             int indexToUse = _firstUnusedIndex - 1; // convert base 1 → base-0
 
-            // this slot is not part of the free list anymore, setting to 0 can be used to check if the slot is used or not 
-            // we use 0 as "used" flag inside the TombstoneListEnumerator
+            // This slot is no longer free. Give it a new token so any older handle for the same slot stays stale.
             ref int nextUnusedIndex = ref _buffer[indexToUse].NextUnusedIndex;
-         
+          
             if (nextUnusedIndex > 0) //the linked list is pointing to another unused slot
             {
                 _firstUnusedIndex = nextUnusedIndex; //take note of the next unused slot
-                nextUnusedIndex = 0;
             }
             else
             {
@@ -230,18 +248,52 @@ namespace Svelto.DataStructures
                 //_firstUnusedIndex will be just count + 1
                 _firstUnusedIndex = _count + 1; //_firstUnusedIndex is in base 1
             }
+
+            nextUnusedIndex = EncodeLiveGeneration(NextGeneration());
 #if ENABLE_DEBUG_CHECKS
             if (indexToUse >= _largestUsedIndex)
                 _largestUsedIndex = indexToUse + 1; //_largestUsedIndex is in base 1
 #endif
 
-            return new TombstoneHandle(indexToUse);
+            return new TombstoneHandle(indexToUse, GetGeneration(nextUnusedIndex));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static bool IsLive(int slotMetadata)
+        {
+            return slotMetadata < 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static int GetGeneration(int slotMetadata)
+        {
+            return slotMetadata & int.MaxValue;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static int EncodeLiveGeneration(int generation)
+        {
+            return int.MinValue | generation;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        int NextGeneration()
+        {
+            // Generation zero is reserved for default/manually constructed handles, so generated handles always
+            // carry an identity token. Only after over two billion allocations can the counter wrap.
+            if (_nextGeneration == int.MaxValue)
+                _nextGeneration = 1;
+            else
+                _nextGeneration++;
+
+            return _nextGeneration;
         }
         
 
         internal TombstoneItem<T>[] _buffer;
         int _firstUnusedIndex; //in base 1, 0 means no free slots
         int _count; // number of used slots
+        int _nextGeneration;
       
 
 #if ENABLE_DEBUG_CHECKS
@@ -263,7 +315,8 @@ namespace Svelto.DataStructures
         }
 
         public ref T Current => ref _owner._buffer[_index].Item; //current as capital C for foreach support
-        public TombstoneHandle currentHandle => new TombstoneHandle(_index);
+        public TombstoneHandle currentHandle => new TombstoneHandle(_index,
+            _owner._buffer[_index].NextUnusedIndex & int.MaxValue);
 
         public bool MoveNext()
         {
@@ -274,7 +327,7 @@ namespace Svelto.DataStructures
             // advance to next used slot
             while (++_index < _owner._buffer.Length)
             {
-                if (_owner._buffer[_index].NextUnusedIndex == 0) // live element
+                if (_owner._buffer[_index].NextUnusedIndex < 0) // live element
                 {
                     if (++_returned > _owner.count) // safety net
                         return false;

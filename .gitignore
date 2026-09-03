@@ -15,3 +15,4 @@ Packages/unity-mcp/
 
 # Python bytecode caches.
 __pycache__/
+temp/

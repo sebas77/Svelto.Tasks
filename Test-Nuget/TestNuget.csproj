@@ -12,6 +12,6 @@
   <ItemGroup>
     <!-- Consumes the published nuget.org packages, NOT the local ProjectReferences:
          this project exists to prove the NuGet release restores and runs. -->
-    <PackageReference Include="Svelto.Tasks" Version="2.0.0-preview.4" />
+    <PackageReference Include="Svelto.Tasks" Version="2.0.0-preview.5" />
   </ItemGroup>
 </Project>

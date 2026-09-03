@@ -97,12 +97,12 @@ namespace Svelto.Common.Tests
             var handle3 = list.Add(3);
 
             Assert.That(list.count, Is.EqualTo(2), "Count should be 2 after re‑adding an item.");
-            Assert.That(handle3, Is.EqualTo(handle1), "Removed slot should be reused for the next insertion.");
+            Assert.That((int)handle3, Is.EqualTo((int)handle1), "Removed slot should be reused for the next insertion.");
+            Assert.That(handle3, Is.Not.EqualTo(handle1), "Reused slots must receive a new generation.");
             Assert.That(list[handle3], Is.EqualTo(3), "New value should be stored in the reused slot.");
             Assert.That(list[handle2], Is.EqualTo(2), "Second handle should still refer to its original value.");
         }
 
-#if DEBUG
         [Test]
         public void RemoveAt_Twice_Throws()
         {
@@ -113,7 +113,91 @@ namespace Svelto.Common.Tests
 
             Assert.That(() => list.RemoveAt(index), Throws.TypeOf<DBC.Common.PreconditionException>());
         }
-#endif
+
+        [Test]
+        public void StaleHandle_CannotAccessOrRemoveAReusedSlot()
+        {
+            var list = new TombstoneList<int>();
+            var stale = list.Add(1);
+
+            list.RemoveAt(stale);
+            var replacement = list.Add(2);
+
+            Assert.That((int)replacement, Is.EqualTo((int)stale), "The free slot should be reused.");
+            Assert.That(list.Has(stale), Is.False, "The removed handle must remain invalid after slot reuse.");
+            Assert.That(list.Has(replacement), Is.True, "The newly issued handle must be valid.");
+            Assert.Throws<DBC.Common.PreconditionException>(() => { var _ = list[stale]; });
+            Assert.Throws<DBC.Common.PreconditionException>(() => list.RemoveAt(stale));
+            Assert.That(list[replacement], Is.EqualTo(2), "A stale removal must not affect the replacement item.");
+        }
+
+        [Test]
+        public void StaleHandle_RemainsInvalidAfterClearAndReuse()
+        {
+            var list = new TombstoneList<int>();
+            var stale = list.Add(1);
+
+            list.Clear();
+            var replacement = list.Add(2);
+
+            Assert.That((int)replacement, Is.EqualTo((int)stale), "Clear restarts allocation from the first slot.");
+            Assert.That(list.Has(stale), Is.False, "Clear must invalidate handles from the previous contents.");
+            Assert.That(list.Has(replacement), Is.True);
+            Assert.Throws<DBC.Common.PreconditionException>(() => { var _ = list[stale]; });
+            Assert.That(list[replacement], Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ManuallyConstructedHandle_CannotForgeTheFirstLiveSlot()
+        {
+            var list = new TombstoneList<int>();
+            var generated = list.Add(42);
+            var manuallyConstructed = new TombstoneHandle((int)generated);
+
+            Assert.That(manuallyConstructed.IsInvalid, Is.True, "A bare index has no generation and must be invalid.");
+            Assert.That(list.Has(manuallyConstructed), Is.False);
+            Assert.Throws<DBC.Common.PreconditionException>(() => { var _ = list[manuallyConstructed]; });
+            Assert.That(list[generated], Is.EqualTo(42), "Rejecting a forged handle must not affect the generated handle.");
+        }
+
+        [Test]
+        public void EnumeratorHandle_IdentifiesTheCurrentLiveGeneration()
+        {
+            var list = new TombstoneList<int>();
+            list.Add(10);
+            list.Add(20);
+
+            var enumerator = list.GetEnumerator();
+            Assert.That(enumerator.MoveNext(), Is.True);
+            var current = enumerator.currentHandle;
+
+            Assert.That(list.Has(current), Is.True);
+            Assert.That(list[current], Is.EqualTo(10));
+        }
+
+        [Test]
+        public void EveryPriorGeneration_RemainsStaleAcrossRepeatedReuse()
+        {
+            var list = new TombstoneList<int>();
+            var staleHandles = new List<TombstoneHandle>();
+            var current = list.Add(0);
+
+            for (int value = 1; value <= 32; value++)
+            {
+                list.RemoveAt(current);
+                staleHandles.Add(current);
+                current = list.Add(value);
+
+                Assert.That(list.Has(current), Is.True);
+                Assert.That(list[current], Is.EqualTo(value));
+            }
+
+            foreach (var stale in staleHandles)
+            {
+                Assert.That(list.Has(stale), Is.False);
+                Assert.Throws<DBC.Common.PreconditionException>(() => { var _ = list[stale]; });
+            }
+        }
 
         /// <summary>
         /// Enumerating the list should yield only live items (non‑tombstoned slots) in the order
@@ -213,7 +297,6 @@ namespace Svelto.Common.Tests
         /// handle is considered invalid if it equals <see cref="TombstoneHandle.Invalid"/> or points
         /// to a slot that has been removed.
         /// </summary>
-#if DEBUG
         [Test]
         public void Indexer_ShouldThrow_WhenHandleIsInvalidOrRemoved()
         {
@@ -231,7 +314,6 @@ namespace Svelto.Common.Tests
                 () => { var _ = list[TombstoneHandle.Invalid]; },
                 "Accessing an invalid handle should throw.");
         }
-#endif
 
         /// <summary>
         /// Adding a large number of items beyond the initial capacity should increase

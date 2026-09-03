@@ -6,7 +6,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <!-- NuGet package version. Single source of truth for nuget.org releases
              (upm/nuget workflows verify it matches the package.json UPM version). -->
-        <PackageVersion>3.7.2</PackageVersion>
+        <PackageVersion>3.7.3</PackageVersion>
         <AssemblyVersion>3.4</AssemblyVersion>
         <Company>Svelto</Company>
         <IsPackable>true</IsPackable>
@@ -29,6 +29,8 @@
 
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="..\AGENTS.md" Pack="true" PackagePath="\" />
+        <None Include="..\.aiguides\AI_GUIDE_Svelto.Common.md" Pack="true" PackagePath=".aiguides\" />
     </ItemGroup>
     
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
