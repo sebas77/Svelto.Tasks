@@ -938,7 +938,7 @@ That one million rotating points can be simulated on the CPU every frame while t
 
 Two areas: the .NET Tasks interop (`SveltoAwaiter`, `TaskSynchronizationContext`) and the Burst-oriented job path inside Unity. They work and the examples demonstrate them, but consider their APIs more fluid than the rest until real-world feedback comes in.
 
-Everything is on GitHub in the [sebas77/Svelto.Tasks-Repo](https://github.com/sebas77/Svelto.Tasks-Repo) repository. If you have questions or spot problems, leave a comment here or join our populated [Discord server](https://discord.gg/JTUZuJcME5). Feedback on the beta is not only welcome, it is necessary!
+If you have questions or spot problems, leave a comment here or join our populated [Discord server](https://discord.gg/JTUZuJcME5). Feedback on the beta is not only welcome, it is necessary!
 
 ## Installation
 
